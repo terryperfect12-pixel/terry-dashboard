@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Executive Dashboard</title>
+<style>
+  :root{
+    color-scheme:light;
+    --page:#eef1f5; --surface:#ffffff; --sidebar:#ffffff;
+    --ink:#0f172a; --ink2:#475569; --muted:#94a3b8; --line:#e5e9f0; --brandnavy:#1e293b;
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#8b5cf6;
+    --good:#16a34a; --danger:#dc2626; --warn:#d97706; --info:#2563eb;
+    --track:#eef1f5; --shadow:0 1px 3px rgba(15,23,42,.06),0 1px 2px rgba(15,23,42,.04);
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    color-scheme:dark; --page:#0b1120; --surface:#131a2b; --sidebar:#0f1626;
+    --ink:#f1f5f9; --ink2:#cbd5e1; --muted:#7c8aa3; --line:#243049; --brandnavy:#0b1120;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#a78bfa;
+    --good:#22c55e; --danger:#f87171; --warn:#fbbf24; --info:#60a5fa; --track:#1c2740; --shadow:0 1px 3px rgba(0,0,0,.4);}}
+  :root[data-theme="dark"]{
+    color-scheme:dark; --page:#0b1120; --surface:#131a2b; --sidebar:#0f1626;
+    --ink:#f1f5f9; --ink2:#cbd5e1; --muted:#7c8aa3; --line:#243049; --brandnavy:#0b1120;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#a78bfa;
+    --good:#22c55e; --danger:#f87171; --warn:#fbbf24; --info:#60a5fa; --track:#1c2740; --shadow:0 1px 3px rgba(0,0,0,.4);}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--page);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;font-size:14px;}
+  .app{display:block;min-height:100vh;}
+  .sidebar{display:none;}
+  .sidebarX{background:var(--sidebar);border-right:1px solid var(--line);padding:20px 14px;display:flex;flex-direction:column;}
+  .brand{display:flex;gap:11px;align-items:center;padding:4px 8px 20px;}
+  .brand .logo{width:40px;height:40px;border-radius:11px;background:var(--brandnavy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;flex:none;}
+  :root:not([data-theme="light"]) .brand .logo{background:var(--s1);}
+  .brand .bt{font-weight:800;font-size:14px;line-height:1.15;} .brand .bv{font-size:10px;color:var(--muted);font-weight:600;margin-top:2px;}
+  nav{display:flex;flex-direction:column;gap:2px;margin-top:4px;}
+  nav a{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:9px;color:var(--ink2);text-decoration:none;font-size:13.5px;font-weight:500;cursor:pointer;}
+  nav a .ic{width:18px;text-align:center;opacity:.9;} nav a:hover{background:var(--track);color:var(--ink);}
+  nav a.active{background:var(--brandnavy);color:#fff;font-weight:600;} :root:not([data-theme="light"]) nav a.active{background:var(--s1);}
+  .side-foot{margin-top:auto;background:var(--track);border-radius:12px;padding:14px;font-size:12px;}
+  .side-foot .b{font-weight:700;color:var(--ink);font-size:13.5px;margin:2px 0 8px;} .side-foot .h{color:var(--muted);} .side-foot .s{color:var(--ink2);line-height:1.5;}
+  .side-ver{font-size:11px;color:var(--muted);padding:12px 8px 0;}
+  .main{padding:22px 26px 40px;min-width:0;max-width:1440px;margin:0 auto;}
+  .topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px;}
+  .topbar h1{font-size:27px;font-weight:800;margin:0 0 3px;letter-spacing:-0.01em;} .topbar .sub{color:var(--ink2);font-size:14px;}
+  .top-right{display:flex;gap:12px;align-items:stretch;flex-wrap:wrap;}
+  .top-chip{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 14px;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px;}
+  .top-chip .lab{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;} .top-chip .val{font-size:15px;font-weight:700;} .top-chip select{font-family:inherit;font-size:15px;font-weight:700;border:none;background:transparent;color:var(--ink);cursor:pointer;padding:0;}
+  .online{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--good);background:color-mix(in srgb,var(--good) 14%,transparent);padding:5px 11px;border-radius:999px;}
+  .online::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--good);}
+  .online.load{color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent);} .online.load::before{background:var(--warn);animation:pulse 1s infinite;}
+  .online.err{color:var(--danger);background:color-mix(in srgb,var(--danger) 14%,transparent);} .online.err::before{background:var(--danger);}
+  @keyframes pulse{50%{opacity:.3;}}
+  button.tgl,.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink2);border-radius:10px;padding:7px 12px;font-size:12px;cursor:pointer;font-family:inherit;box-shadow:var(--shadow);}
+  /* global filter bar */
+  .gbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:20px;box-shadow:var(--shadow);}
+  .gbar .gl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-right:2px;}
+  .gbar .brands{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;}
+  .gbar .brands button{border:none;background:var(--surface);color:var(--ink2);font-size:12.5px;font-family:inherit;padding:7px 14px;cursor:pointer;}
+  .gbar .brands button.active{background:var(--brandnavy);color:#fff;font-weight:600;} :root:not([data-theme="light"]) .gbar .brands button.active{background:var(--s1);}
+  .gbar .sp{flex:1;}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;}
+  .seg button{border:none;background:var(--surface);color:var(--ink2);font-size:12px;font-family:inherit;padding:7px 13px;cursor:pointer;} .seg button.active{background:var(--s1);color:#fff;font-weight:600;}
+  select.mini{font-family:inherit;font-size:12px;padding:6px 9px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;}
+  .sec-label{font-size:13px;font-weight:700;letter-spacing:.02em;color:var(--ink2);text-transform:uppercase;margin:0 2px 11px;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);} .card.pad{padding:18px 20px;}
+  .card-h{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink2);margin:0 0 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+  .card-h .tag{font-size:11px;font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;}
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr) 1.55fr;gap:14px;margin-bottom:22px;}
+  .kpi{border-radius:14px;padding:16px 17px;box-shadow:var(--shadow);border:1px solid var(--line);}
+  .kpi .kl{font-size:12px;font-weight:600;opacity:.85;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;} .kpi .kicon{font-size:18px;opacity:.6;}
+  .kpi .kv{font-size:30px;font-weight:800;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;line-height:1.05;} .kpi .ks{font-size:11.5px;margin-top:7px;opacity:.85;}
+  .kpi.dark{background:var(--brandnavy);color:#fff;border-color:transparent;}
+  .kpi.green{background:color-mix(in srgb,var(--good) 12%,var(--surface));} .kpi.green .kv{color:var(--good);}
+  .kpi.red{background:color-mix(in srgb,var(--danger) 12%,var(--surface));} .kpi.red .kv{color:var(--danger);}
+  .kpi.amber{background:color-mix(in srgb,var(--warn) 14%,var(--surface));} .kpi.amber .kv{color:var(--warn);}
+  .info-banner{background:color-mix(in srgb,var(--info) 9%,var(--surface));border:1px solid color-mix(in srgb,var(--info) 30%,var(--line));border-radius:14px;padding:15px 17px;display:flex;gap:12px;align-items:flex-start;box-shadow:var(--shadow);}
+  .info-banner .bi{width:26px;height:26px;border-radius:50%;background:var(--info);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;flex:none;}
+  .info-banner .bt{font-weight:700;color:var(--info);font-size:14px;margin-bottom:4px;} .info-banner .bd{font-size:12.5px;color:var(--ink2);line-height:1.55;}
+  .row{display:grid;gap:14px;margin-bottom:22px;} .row-2{grid-template-columns:1.5fr 1fr;} .row-mid{grid-template-columns:1.4fr 1.15fr 1fr;}
+  svg.chart{display:block;width:100%;height:auto;font-family:inherit;}
+  .cx-grid line{stroke:var(--line);stroke-width:1;} .cx-axis text{fill:var(--muted);font-size:10.5px;} .cx-axis text.tab{font-variant-numeric:tabular-nums;}
+  .lc-line{fill:none;stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round;} .lc-area{opacity:.10;}
+  .lc-dot{stroke:var(--surface);stroke-width:1.5;} .lc-cross{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3;opacity:0;} .lc-hit{fill:transparent;cursor:pointer;}
+  .lgd{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:5px 12px 5px 10px;cursor:pointer;font-size:12px;color:var(--ink);font-family:inherit;transition:opacity .12s,border-color .12s;}
+  .lgd:hover{border-color:var(--muted);} .lgd .sw{width:12px;height:12px;border-radius:3px;flex:none;} .lgd .nm{font-weight:600;} .lgd .tv{font-variant-numeric:tabular-nums;color:var(--muted);}
+  .lgd.off{opacity:.42;} .lgd.off .sw{background:var(--muted)!important;} .lgd.off .nm{text-decoration:line-through;}
+  .lc-tip{position:absolute;pointer-events:none;opacity:0;transform:translate(-50%,-108%);background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:12px;box-shadow:0 6px 20px rgba(0,0,0,.16);min-width:150px;z-index:9;}
+  .lc-tip .m{font-weight:700;margin-bottom:5px;} .lc-tip .r{display:flex;justify-content:space-between;gap:14px;color:var(--ink2);} .lc-tip .r .v{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;}
+  .delta{font-weight:700;font-variant-numeric:tabular-nums;font-size:12px;} .dn{color:var(--danger);} .up{color:var(--good);} .fl{color:var(--ink2);}
+  .big-delta{display:flex;align-items:baseline;gap:10px;margin:2px 0 12px;} .big-delta .n{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;}
+  .plat-block{margin-bottom:16px;} .plat-block:last-child{margin-bottom:0;}
+  .plat-title{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;margin-bottom:8px;} .plat-title .pt-tot{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--ink2);font-weight:700;}
+  .subrow{display:grid;grid-template-columns:104px 1fr 92px 64px;gap:10px;align-items:center;padding:5px 0;font-size:12.5px;}
+  .subrow .snm{color:var(--ink2);} .subrow .strk{height:9px;border-radius:5px;background:var(--track);overflow:hidden;} .subrow .sfl{height:100%;border-radius:5px;} .subrow .sval{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;} .subrow .sdl{text-align:right;font-variant-numeric:tabular-nums;font-weight:700;font-size:11.5px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;} .table-scroll{width:100%;overflow-x:auto;}
+  thead th{text-align:left;font-size:11px;color:var(--muted);font-weight:600;padding:0 8px 9px;border-bottom:1px solid var(--line);white-space:nowrap;} thead th.num{text-align:right;}
+  tbody td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:middle;} tbody tr:last-child td{border-bottom:none;} td.num{text-align:right;font-variant-numeric:tabular-nums;}
+  .rk{width:22px;height:22px;border-radius:6px;background:var(--track);color:var(--ink2);font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;} .rk.g{background:var(--brandnavy);color:#fff;} :root:not([data-theme="light"]) .rk.g{background:var(--s1);}
+  .swatch{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:7px;vertical-align:middle;}
+  .chip{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;}
+  .chip.tk{background:color-mix(in srgb,var(--s3) 16%,transparent);color:var(--s3);} .chip.sp{background:color-mix(in srgb,var(--s2) 16%,transparent);color:var(--s2);}
+  .traf-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;} .traf{border:1px solid var(--line);border-radius:11px;padding:11px 12px;} .traf .l{font-size:10.5px;color:var(--muted);font-weight:600;margin-bottom:5px;} .traf .v{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;} .traf .d{font-size:11px;font-weight:700;margin-top:3px;}
+  .insight-box{background:color-mix(in srgb,var(--info) 8%,var(--surface));border:1px solid color-mix(in srgb,var(--info) 26%,var(--line));border-radius:11px;padding:13px 14px;display:flex;gap:11px;margin-bottom:14px;}
+  .insight-box .bi{width:24px;height:24px;border-radius:50%;background:var(--info);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;flex:none;}
+  .insight-box .t{font-weight:700;font-size:13.5px;margin-bottom:3px;} .insight-box .d{font-size:12px;color:var(--ink2);line-height:1.5;}
+  .lam{font-size:12px;color:var(--ink2);line-height:1.7;} .lam .hh{font-weight:700;color:var(--ink);font-size:11px;text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;display:block;} .lam ul{margin:0;padding-left:2px;list-style:none;} .lam li{display:flex;gap:8px;padding:2px 0;} .lam li::before{content:"•";color:var(--s1);font-weight:800;}
+  .health li{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;} .health li:last-child{border-bottom:none;} .health li .ck{font-size:15px;} .health li .nm{flex:1;color:var(--ink2);} .health li .vv{font-weight:700;font-variant-numeric:tabular-nums;font-size:12.5px;}
+  .empty{text-align:center;padding:20px;color:var(--muted);font-size:12.5px;border:1px dashed var(--line);border-radius:10px;line-height:1.6;}
+  .kpi-row>*,.row>*{min-width:0;}
+  @media (max-width:1150px){.kpi-row{grid-template-columns:repeat(2,1fr);}.kpi-row .info-banner{grid-column:1/-1;}.row-2,.row-mid{grid-template-columns:1fr;}.traf-grid{grid-template-columns:1fr 1fr;}}
+  @media (max-width:820px){.app{grid-template-columns:1fr;}.sidebar{display:none;}.main{padding:16px;}.kpi-row{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="app">
+  <main class="main">
+    <div class="topbar">
+      <div><h1>EXECUTIVE DASHBOARD</h1><div class="sub">Performance · Traffic · Product · Insight · Action</div></div>
+      <div class="top-right">
+        <div class="top-chip"><span>🗓️</span><div><div class="lab">Selected Month</div><select id="selMonth"></select></div></div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;justify-content:center">
+          <span class="online load" id="status">Loading…</span>
+          <span style="display:flex;gap:6px"><button class="btn" id="btnRefresh">🔄 Refresh</button><button class="tgl" id="btnCfg">⚙</button><button class="tgl" id="themeToggle">🌙</button></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- GLOBAL FILTER BAR -->
+    <div class="gbar" id="dashOnly1">
+      <span class="gl">Brand</span>
+      <span class="brands" id="gBrand"></span>
+      <span class="sp"></span>
+      <span class="gl">GMV Trend</span>
+      <span class="seg" id="gGran"><button data-b="day" class="active">1 วัน</button><button data-b="week">7 วัน</button><button data-b="month">1 เดือน</button></span>
+    </div>
+
+    <!-- ============ DASHBOARD VIEW ============ -->
+    <div id="viewDash">
+      <div class="sec-label">Key Performance Indicators</div>
+      <div class="kpi-row" id="kpiRow"></div>
+
+      <!-- HERO: GMV multi-line (Total + 3 platforms, toggleable) -->
+      <div class="row" style="grid-template-columns:1fr">
+        <div class="card pad">
+          <div class="card-h"><span>GMV Trend · แยกแพลตฟอร์ม</span><span class="tag" id="trBrandTag"></span></div>
+          <div class="chart-legend" id="gmvLegend" style="display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px"></div>
+          <div style="position:relative"><svg class="chart" id="lineChart" viewBox="0 0 1180 340" preserveAspectRatio="xMidYMid meet"></svg><div class="lc-tip" id="lcTip"></div></div>
+          <div class="tag" style="font-size:10.5px;color:var(--muted);margin-top:6px">ที่มา: Data ads gmv (รายวัน) · คลิกที่ปุ่มสีเพื่อเปิด/ปิดเส้น · เลือกช่วงเวลา 1วัน/7วัน/1เดือน ด้านบน</div>
+        </div>
+      </div>
+
+      <div class="row row-2">
+        <div class="card pad">
+          <div class="card-h"><span>GMV by Channel</span>
+            <span style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--muted)">เทียบ <select class="mini" id="chA"></select> กับ <select class="mini" id="chB"></select></span>
+          </div>
+          <div id="chArea"></div>
+          <div class="tag" style="font-size:10.5px;color:var(--muted);margin-top:8px">ที่มา: performan all brand (รายเดือน) · แยกตามคอนเทนต์</div>
+        </div>
+        <div class="card pad">
+          <div class="card-h"><span>Product Ranking</span><span class="tag" id="prTag">Top 10 · by Sales/GMV</span></div>
+          <div id="prodArea"><div class="empty">กำลังโหลดสินค้า…</div></div>
+          <div class="tag" style="font-size:10.5px;color:var(--muted);margin-top:8px">ที่มา: Shopee (Confirmed Sales) / TikTok (GMV) SKU Revenue</div>
+        </div>
+      </div>
+
+      <div class="row" style="grid-template-columns:1fr">
+        <div class="card pad">
+          <div class="card-h"><span>Traffic Analytics</span>
+            <span style="display:flex;gap:8px;align-items:center"><span class="tag" id="trafTag"></span>
+              <select class="mini" id="trafMetric">
+                <option value="visitors">ผู้เข้าชม (Visitors)</option>
+                <option value="pageViews">Page Views / คลิก</option>
+                <option value="orders">Orders</option>
+              </select></span>
+          </div>
+          <div class="chart-legend" id="trafLegend" style="display:flex;gap:14px;margin-bottom:6px;font-size:11.5px;color:var(--ink2)"></div>
+          <div style="position:relative"><svg class="chart" id="trafChart" viewBox="0 0 1180 260" preserveAspectRatio="xMidYMid meet"></svg><div class="lc-tip" id="trafTip"></div></div>
+          <div id="trafSummary" class="lam" style="margin-top:8px"></div>
+          <div class="tag" style="font-size:10.5px;color:var(--muted);margin-top:6px">ที่มา: Shopee / TikTok Traffic (รายวัน)</div>
+        </div>
+      </div>
+
+      <div class="row row-mid">
+        <div class="card pad">
+          <div class="card-h"><span>Executive Insight</span><span class="tag">อัตโนมัติ</span></div>
+          <div class="insight-box"><div class="bi">i</div><div><div class="t" id="insTitle"></div><div class="d" id="insDesc"></div></div></div>
+          <div class="lam"><span class="hh" id="insHead"></span><ul id="insList"></ul></div>
+        </div>
+        <div class="card pad"><div class="card-h">Executive Priority</div><ol id="prioList" style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px"></ol></div>
+        <div class="card pad">
+          <div class="card-h"><span>Management Action</span></div>
+          <div class="lam"><ul id="actionList"></ul></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ CONFIG / HEALTH VIEW ============ -->
+    <div id="viewConfig" hidden>
+      <div class="sec-label">System Health &amp; Data Sources</div>
+      <div class="row" style="grid-template-columns:1fr 1fr">
+        <div class="card pad">
+          <div class="card-h"><span>Data Source Status</span><span class="online" id="cfgStatus">—</span></div>
+          <ul class="health" id="healthList" style="list-style:none;margin:0;padding:0"></ul>
+        </div>
+        <div class="card pad">
+          <div class="card-h"><span>Connected Sheets</span></div>
+          <div class="table-scroll"><table><thead><tr><th>Sheet</th><th>Use</th><th class="num">Status</th></tr></thead><tbody id="sheetTbl"></tbody></table></div>
+          <div style="margin-top:12px"><button class="btn" id="btnRefresh2">🔄 Refresh live data</button></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+/* ===================== CONFIG ===================== */
+const F_ADS ="1qBSV0u7O9YzwKRkeXMOmmejjxY18NDfQmQ1IUOILckU";
+const F_PERF="1Ty7FgiYMwx5iIex6pDeMYrnFZE_js7FytTliOaHoQ88";
+const F_SHTRAF="1y3jgMoL_bhbfva9SLeRSqIHpaOQ1Na0Baax9c2zAthQ";
+const F_TKTRAF="1VYmAR91rFknX6-hx7NnuvE02enUULZ4WV65CMDhArUY";
+const F_SHSKU="1hQTqShDk_b-jhrXymnDeKc27aDcXczCs4YgjwD-zhWM";
+const F_TKSKU="1nxqJQM1zDx1dFBp4d1zeoPuTRbALUqhiKJT3TZzEpl0";
+const BRANDS=["Benutra","Terry","Gala"];
+const BRAND_C={Benutra:"var(--s1)",Terry:"var(--s3)",Gala:"var(--s4)"};
+const TARGET_BRAND={Benutra:16229000,Terry:19000000,Gala:10000000,ALL:45229000};
+const SUB_ORDER=["Live-Self","Live-Aff","VDO-Self","VDO-Aff","Product Card"];
+const SUB_C={"Live-Self":"var(--s1)","Live-Aff":"var(--s2)","VDO-Self":"var(--s3)","VDO-Aff":"var(--s4)","Product Card":"var(--s5)"};
+const PLAT_C={Shopee:"var(--s2)",TikTok:"var(--s3)",Lazada:"var(--s1)"};
+const MABBR=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const PROD_TAB={6:"Jun",7:"July",8:"Aug",5:"May",9:"Sep"};
+const THAI_M={"ม.ค.":1,"ก.พ.":2,"มี.ค.":3,"เม.ย.":4,"พ.ค.":5,"มิ.ย.":6,"ก.ค.":7,"ส.ค.":8,"ก.ย.":9,"ต.ค.":10,"พ.ย.":11,"ธ.ค.":12};
+
+/* ===================== helpers ===================== */
+const $=id=>document.getElementById(id);
+const thb=n=>"฿"+Math.round(n).toLocaleString("en-US");
+const MM=n=>(n/1e6).toFixed(Math.abs(n)>=1e6?1:2)+"M";
+const kOf=n=>n>=1e6?(n/1e6).toFixed(2)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":Math.round(n).toLocaleString();
+const num=v=>{const n=Number(String(v==null?"":v).replace(/[,฿%\s]/g,""));return isNaN(n)?0:n;};
+const deltaHTML=p=>{if(p==null||!isFinite(p))return `<span class="delta fl">—</span>`;const c=p>0.05?"up":p<-0.05?"dn":"fl";return `<span class="delta ${c}">${p>0?"+":""}${p.toFixed(1)}%</span>`;};
+function mLabel(k){const[y,m]=k.split("-");return MABBR[+m-1]+" "+y;}
+function mShort(k){return MABBR[+k.split("-")[1]-1];}
+function addMonths(mk,d){let[y,m]=mk.split("-").map(Number);let t=(y*12+(m-1))+d;return Math.floor(t/12)+"-"+String((t%12)+1).padStart(2,"0");}
+function parseCSV(t){const R=[];let c=[],f="",q=false;for(let i=0;i<t.length;i++){const ch=t[i];if(q){if(ch==='"'){if(t[i+1]==='"'){f+='"';i++;}else q=false;}else f+=ch;}else{if(ch==='"')q=true;else if(ch===','){c.push(f);f="";}else if(ch==='\n'){c.push(f);R.push(c);c=[];f="";}else if(ch==='\r'){}else f+=ch;}}if(f.length||c.length){c.push(f);R.push(c);}return R;}
+async function fetchSheet(id,tab){const url=`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}`;const r=await fetch(url);if(!r.ok)throw new Error("HTTP "+r.status);const txt=await r.text();if(txt.trim().startsWith("<"))throw new Error("not-csv");return parseCSV(txt);}
+function parseMonthYear(s){s=String(s).trim();if(/target|growth|ach|portion|diff/i.test(s))return null;const m=s.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+(20\d\d)\b/i);if(!m)return null;const i=MABBR.findIndex(x=>x.toLowerCase()===m[1].slice(0,3).toLowerCase());return m[2]+"-"+String(i+1).padStart(2,"0");}
+function parseThaiDate(s){const m=String(s).trim().match(/^(\d{1,2})\s+(\S+)\s+(\d{2})$/);if(!m)return null;const mo=THAI_M[m[2]];if(!mo)return null;return "20"+m[3]+"-"+String(mo).padStart(2,"0")+"-"+String(+m[1]).padStart(2,"0");}
+function parseDMY(s){const m=String(s).trim().match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);if(!m)return null;return m[3]+"-"+String(+m[2]).padStart(2,"0")+"-"+String(+m[1]).padStart(2,"0");}
+
+/* ===================== PARSERS ===================== */
+function parseAdsDaily(grid){const out=[];for(const row of grid){const d=parseThaiDate(row[1]);if(!d)continue;const lz=num(row[7]),sp=num(row[8]),tk=num(row[9]);out.push({date:d,gmv:lz+sp+tk,laz:lz,shp:sp,tik:tk,ads:num(row[2])+num(row[3])+num(row[4])+num(row[5])});}return out;}
+function parsePerforman(grid,anchor){
+  let hr=-1;for(let i=0;i<Math.min(grid.length,6);i++){if(grid[i].some(c=>parseMonthYear(c))){hr=i;break;}}
+  let monthCol={};
+  if(hr>=0)grid[hr].forEach((c,idx)=>{const mk=parseMonthYear(c);if(mk&&monthCol[mk]==null)monthCol[mk]=idx;});
+  if(Object.keys(monthCol).length<3){monthCol={};const EXCL=/target|diff|growth|portion|ach|%/i;const hdr=grid[0]||[];const inc=grid.find(r=>/^income/i.test(String(r[0]||"").trim()));if(inc){const cols=[];inc.forEach((c,idx)=>{if(idx<1)return;const h=String(hdr[idx]||"").trim();if(EXCL.test(h))return;if(num(c)>100000)cols.push(idx);});for(let i=cols.length-1,d=0;i>=0;i--,d--)monthCol[addMonths(anchor||"2026-08",d)]=cols[i];}hr=-1;}
+  const res={};Object.keys(monthCol).forEach(mk=>res[mk]={income:0,chan:{}});
+  let section=null;
+  for(let i=(hr>=0?hr+1:0);i<grid.length;i++){const label=String(grid[i][0]||"").trim();if(!label)continue;const low=label.toLowerCase();let plat=null,sub=null,isInc=false,isLz=false;
+    if(/^income/i.test(label))isInc=true;else if(/^lazada/i.test(label))isLz=true;else if(/^shopee/i.test(label)){section="Shopee";continue;}else if(low==="tiktok"){section="TikTok";continue;}
+    else if(/^tiktok-/i.test(label)){plat="TikTok";sub=label.replace(/tiktok-/i,"").trim();}
+    else if(SUB_ORDER.includes(label)){plat=(label==="Product Card")?section:"Shopee";sub=label;}else continue;
+    for(const mk in monthCol){const v=num(grid[i][monthCol[mk]]);if(isInc)res[mk].income=v;else if(isLz)res[mk].chan["Lazada|Lazada"]=v;else res[mk].chan[plat+"|"+sub]=v;}
+  }
+  return res;
+}
+function findHeaderRow(grid,test){for(let i=0;i<Math.min(grid.length,8);i++){if(grid[i].some(test))return i;}return -1;}
+function parseShopeeTraffic(grid){
+  const hr=findHeaderRow(grid,c=>String(c).trim()==="วันที่");if(hr<0)return null;
+  const daily=[];let total=null;
+  for(let i=hr+1;i<grid.length;i++){const row=grid[i];const d=parseDMY(row[0]);const rec={date:d,sales:num(row[1]),orders:num(row[3]),clicks:num(row[5]),visitors:num(row[6]),buyers:num(row[12])};
+    if(d)daily.push(rec); else if(!total && num(row[1])>0 && String(row[0]).trim()==="") total=rec; else if(!total && num(row[1])>0 && /\d{2}-\d{2}-\d{4}/.test(String(row[0]))) total=rec;}
+  if(!total){total={sales:0,orders:0,clicks:0,visitors:0,buyers:0};daily.forEach(r=>{for(const k in total)total[k]+=r[k]||0;});}
+  return {total,daily,month:daily.length?daily[0].date.slice(0,7):null};
+}
+function parseTiktokTraffic(grid){
+  // r0 header (title+cols), r1 totals, r2 mom%, r3+ daily
+  const hr=0; const hdr=grid[hr]||[];
+  const total={gmv:num(grid[1]?.[1]),orders:num(grid[1]?.[2]),pageViews:num(grid[1]?.[8]),visitors:num(grid[1]?.[9]),cvr:num(grid[1]?.[10]),impressions:num(grid[1]?.[11]),clicks:num(grid[1]?.[13])};
+  const momRow=grid[2]||[];
+  const mom={gmv:num(momRow[1]),orders:num(momRow[2]),pageViews:num(momRow[8]),visitors:num(momRow[9]),impressions:num(momRow[11]),clicks:num(momRow[13])};
+  const daily=[];for(let i=3;i<grid.length;i++){const d=parseDMY(grid[i][0]);if(!d)continue;daily.push({date:d,gmv:num(grid[i][1]),orders:num(grid[i][2]),visitors:num(grid[i][9]),pageViews:num(grid[i][8])});}
+  return {total,mom,daily,month:daily.length?daily[0].date.slice(0,7):null};
+}
+function parseShopeeSKU(grid){
+  const hr=findHeaderRow(grid,c=>String(c).trim()==="รหัสสินค้า");if(hr<0)return [];
+  const out=[];for(let i=hr+1;i<grid.length;i++){const row=grid[i];const opt=String(row[3]||"").trim();if(opt!==""&&opt!=="-")continue; /* summary only */ const name=String(row[1]||"").trim();if(!name)continue;const sales=num(row[9])||num(row[8]);if(sales<=0)continue;out.push({name,sales,ch:"Shopee"});}
+  return out;
+}
+function parseTiktokSKU(grid){
+  const hr=findHeaderRow(grid,r=>false)>=0?0:0; // header may be r0 or r3
+  let hrow=-1;for(let i=0;i<Math.min(grid.length,6);i++){if(grid[i].some(c=>/รหัสสินค้า/.test(String(c)))){hrow=i;break;}}
+  if(hrow<0)hrow=0;
+  const hdr=grid[hrow]; let gmvCol=hdr.findIndex(c=>/^(ทั้งหมด\s*)?GMV$/.test(String(c).trim()));if(gmvCol<0)gmvCol=4;
+  let nameCol=0;
+  const out=[];for(let i=hrow+1;i<grid.length;i++){const row=grid[i];let name=String(row[nameCol]||"").trim();if(!name||/วันที่วิเคราะห์/.test(name))continue;const gmv=num(row[gmvCol]);if(gmv<=0)continue;out.push({name,sales:gmv,ch:"TikTok"});}
+  return out;
+}
+
+/* ===================== STORE ===================== */
+const store={daily:{},chan:{},traf:{},prod:{},months:[],err:[],loaded:false,lastFetch:null};
+const GLOBAL={brand:"Benutra",gran:"day"};
+
+async function loadCore(){
+  $("status").className="online load";$("status").textContent="Loading…";
+  store.err=[];
+  await Promise.all(BRANDS.map(async b=>{try{store.daily[b]=parseAdsDaily(await fetchSheet(F_ADS,b));}catch(e){store.err.push("ads/"+b);}}));
+  let anchor="2026-08";BRANDS.forEach(b=>(store.daily[b]||[]).forEach(r=>{const mk=r.date.slice(0,7);if(mk>anchor)anchor=mk;}));
+  await Promise.all(BRANDS.map(async b=>{try{store.chan[b]=parsePerforman(await fetchSheet(F_PERF,b),anchor);}catch(e){store.err.push("perf/"+b);}}));
+  const mset=new Set();BRANDS.forEach(b=>{if(store.chan[b])Object.keys(store.chan[b]).forEach(m=>mset.add(m));(store.daily[b]||[]).forEach(r=>mset.add(r.date.slice(0,7)));});
+  store.months=[...mset].sort();store.loaded=true;store.lastFetch=new Date();
+  const okD=BRANDS.filter(b=>store.daily[b]&&store.daily[b].length).length;
+  $("status").className=store.err.length&&okD===0?"online err":"online";$("status").textContent=store.err.length?"Live (บางส่วน)":"Live Data";
+}
+async function loadProducts(mk){
+  if(store.prod[mk])return; const tab=PROD_TAB[+mk.split("-")[1]];if(!tab){store.prod[mk]={};return;}
+  const res={};
+  await Promise.all(BRANDS.map(async b=>{res[b]=[];
+    try{res[b]=res[b].concat(parseShopeeSKU(await fetchSheet(F_SHSKU,tab+" "+b)).map(x=>({...x,brand:b})));}catch(e){}
+    try{res[b]=res[b].concat(parseTiktokSKU(await fetchSheet(F_TKSKU,tab+" "+b)).map(x=>({...x,brand:b})));}catch(e){}
+  }));
+  store.prod[mk]=res;
+}
+
+/* ===================== derived ===================== */
+function hasMonth(mk){return BRANDS.some(b=>(store.daily[b]||[]).some(r=>r.date.slice(0,7)===mk))||BRANDS.some(b=>store.chan[b]&&store.chan[b][mk]);}
+function latestMonth(){const m=store.months.filter(hasMonth);return m[m.length-1];}
+function monthlyGMV(brand,mk){let s=0;(brand==="ALL"?BRANDS:[brand]).forEach(b=>(store.daily[b]||[]).forEach(r=>{if(r.date.slice(0,7)===mk)s+=r.gmv;}));return s;}
+
+/* ===================== POPULATE ===================== */
+function buildBrandBar(){$("gBrand").innerHTML=BRANDS.map(b=>`<button data-b="${b}"${b===GLOBAL.brand?' class="active"':''}>${b}</button>`).join("");}
+function populate(){
+  const months=store.months.slice();if(!months.includes("2026-09"))months.push("2026-09");
+  const def=latestMonth()||months[months.length-1];const cur=$("selMonth").value;
+  $("selMonth").innerHTML=months.map(k=>`<option value="${k}">${k==="2026-09"?"September 2026":mLabel(k)}</option>`).join("");
+  $("selMonth").value=cur&&months.includes(cur)?cur:def;
+  // channel compare selectors (perf months)
+  const pm=[...new Set(BRANDS.flatMap(b=>store.chan[b]?Object.keys(store.chan[b]):[]))].sort();
+  const fill=(sel,val)=>{sel.innerHTML=pm.map(k=>`<option value="${k}">${mLabel(k)}</option>`).join("");sel.value=val;};
+  fill($("chA"),pm[pm.length-1]); fill($("chB"),pm[pm.length-2]||pm[0]);
+}
+
+/* ===================== KPI ===================== */
+function renderKPI(){
+  const mk=$("selMonth").value,brand=GLOBAL.brand,open=!hasMonth(mk);
+  const gmv=open?0:monthlyGMV(brand,mk),tgt=TARGET_BRAND[brand]||TARGET_BRAND.ALL;
+  const ach=open?0:gmv/tgt*100,gap=open?tgt:(tgt-gmv);
+  const mi=store.months.indexOf(mk),prevK=mi>0?store.months[mi-1]:null,prev=prevK?monthlyGMV(brand,prevK):null,mom=(open||!prev)?null:(gmv-prev)/prev*100;
+  const cards=[
+    {cls:"dark",l:"GMV (THB)",v:open?"0":MM(gmv),s:open?"Open Month":(mom!=null?(mom>=0?"+":"")+mom.toFixed(1)+"% vs "+mShort(prevK):"—")},
+    {cls:"green",l:"Target (THB)",v:tgt.toLocaleString(),s:brand},
+    {cls:"red",l:"Achievement",v:ach.toFixed(0)+"%",s:"vs. Target"},
+    {cls:"amber",l:"Gap (THB)",v:Math.round(gap).toLocaleString(),s:"Remaining to Target"},
+  ];
+  $("kpiRow").innerHTML=cards.map(c=>`<div class="kpi ${c.cls}"><div class="kl"><span>${c.l}</span></div><div class="kv">${c.v}</div><div class="ks">${c.s}</div></div>`).join("")+
+    `<div class="info-banner"><div class="bi">i</div><div><div class="bt">${open?"September 2026 — Data Not Available Yet":mLabel(mk)+" · "+brand}</div><div class="bd">${open?"ยังไม่มีข้อมูลในชีตสำหรับเดือนนี้ (Open Month Safety) · การวิเคราะห์ด้านล่างอิงเดือนล่าสุดที่มีข้อมูล":"GMV "+MM(gmv)+" · Achievement "+ach.toFixed(1)+"% · Gap ฿"+Math.round(gap).toLocaleString()}</div></div></div>`;
+}
+
+/* ===================== GMV TREND ===================== */
+const GMV_SERIES=[
+  {key:"Total",label:"GMV รวม",color:"var(--s1)",wide:3.2},
+  {key:"TikTok",label:"TikTok",color:"var(--s3)",wide:2.2},
+  {key:"Shopee",label:"Shopee",color:"var(--s2)",wide:2.2},
+  {key:"Lazada",label:"Lazada",color:"var(--s4)",wide:2.2},
+];
+const GMV_VIS={Total:true,TikTok:true,Shopee:true,Lazada:true};
+function trendMulti(brand,bucket){
+  const map={};(brand==="ALL"?BRANDS:[brand]).forEach(b=>(store.daily[b]||[]).forEach(r=>{
+    let k=r.date;if(bucket==="week"){const d=new Date(r.date);const mo=new Date(d);mo.setDate(d.getDate()-((d.getDay()+6)%7));k=mo.toISOString().slice(0,10);}else if(bucket==="month")k=r.date.slice(0,7);
+    if(!map[k])map[k]={Total:0,TikTok:0,Shopee:0,Lazada:0};
+    map[k].Total+=r.gmv;map[k].TikTok+=r.tik;map[k].Shopee+=r.shp;map[k].Lazada+=r.laz;}));
+  const keys=Object.keys(map).sort();return {keys,map};
+}
+const lsvg=$("lineChart"),ltip=$("lcTip");
+function renderGMV(){
+  const brand=GLOBAL.brand,bucket=GLOBAL.gran,{keys,map}=trendMulti(brand,bucket);
+  $("trBrandTag").textContent=brand+" · "+(bucket==="day"?"รายวัน":bucket==="week"?"ราย 7 วัน":"รายเดือน");
+  if(!keys.length){$("gmvLegend").innerHTML="";lsvg.innerHTML="";return;}
+  const tot={};GMV_SERIES.forEach(s=>tot[s.key]=keys.reduce((a,k)=>a+map[k][s.key],0));
+  $("gmvLegend").innerHTML=GMV_SERIES.map(s=>`<button class="lgd${GMV_VIS[s.key]?"":" off"}" data-k="${s.key}"><span class="sw" style="background:${s.color}"></span><span class="nm">${s.label}</span><span class="tv">${thb(tot[s.key])}</span></button>`).join("");
+  const series=GMV_SERIES.filter(s=>GMV_VIS[s.key]).map(s=>({name:s.label,color:s.color,width:s.wide,data:keys.map(k=>map[k][s.key])}));
+  drawMultiLine(lsvg,ltip,keys.map(k=>({k})),series,v=>thb(v),k=>lb(bucket,k,1),{W:1180,H:340,m:{t:18,r:18,b:34,l:66},dot:keys.length<=45});
+}
+function lb(b,k,short){if(b==="month")return short?mShort(k):mLabel(k);const d=new Date(k);return d.getDate()+"/"+(d.getMonth()+1);}
+
+/* ===================== CHANNEL ===================== */
+function chanSum(brand,mk){const o={};(brand==="ALL"?BRANDS:[brand]).forEach(b=>{const c=store.chan[b]&&store.chan[b][mk];if(!c)return;for(const key in c.chan)o[key]=(o[key]||0)+c.chan[key];});return o;}
+function renderChannel(){
+  const brand=GLOBAL.brand,mk=$("chA").value,prev=$("chB").value;
+  const cur=chanSum(brand,mk),pv=chanSum(brand,prev);
+  let html="";["Shopee","TikTok"].forEach(p=>{
+    const vals=SUB_ORDER.map(sc=>({sc,v:cur[p+"|"+sc]||0,pv:pv[p+"|"+sc]||0}));const max=Math.max(...vals.map(v=>v.v),1),tot=vals.reduce((a,v)=>a+v.v,0);
+    html+=`<div class="plat-block"><div class="plat-title"><span class="swatch" style="background:${PLAT_C[p]}"></span>${p}<span class="pt-tot">${thb(tot)}</span></div>`;
+    vals.forEach(v=>{const dl=v.pv>0?(v.v-v.pv)/v.pv*100:null;html+=`<div class="subrow"><span class="snm">${v.sc}</span><span class="strk"><span class="sfl" style="width:${(v.v/max*100).toFixed(0)}%;background:${SUB_C[v.sc]}"></span></span><span class="sval">${thb(v.v)}</span><span class="sdl">${deltaHTML(dl)}</span></div>`;});
+    html+=`</div>`;});
+  if(!html)html=`<div class="empty">ไม่มีข้อมูล sub-channel</div>`;
+  $("chArea").innerHTML=html;
+}
+
+/* ===================== TRAFFIC (per-month, line chart) ===================== */
+async function loadTraffic(mk){
+  if(store.traf[mk])return; const tab=PROD_TAB[+mk.split("-")[1]]; if(!tab){store.traf[mk]={sh:{},tk:{}};return;}
+  const sh={},tk={};
+  await Promise.all(BRANDS.map(async b=>{
+    try{sh[b]=parseShopeeTraffic(await fetchSheet(F_SHTRAF,tab+" "+b));}catch(e){}
+    try{tk[b]=parseTiktokTraffic(await fetchSheet(F_TKTRAF,tab+" "+b));}catch(e){}
+  }));
+  store.traf[mk]={sh,tk};
+}
+const tsvg=$("trafChart"),ttip=$("trafTip");
+function renderTraffic(){
+  const brand=GLOBAL.brand, mk=$("selMonth").value, field=$("trafMetric").value;
+  const T=store.traf[mk];
+  $("trafTag").textContent=mLabel(mk)+" · "+brand;
+  if(!T){$("trafArea"),tsvg.innerHTML="";$("trafLegend").innerHTML="";$("trafSummary").innerHTML=`<div class="empty">กำลังโหลด Traffic…</div>`;return;}
+  const sh=T.sh[brand], tk=T.tk[brand];
+  if(!sh&&!tk){tsvg.innerHTML="";$("trafLegend").innerHTML="";$("trafSummary").innerHTML=`<div class="empty">ไม่มีข้อมูล Traffic สำหรับ ${mLabel(mk)} · ${brand}<br>(Traffic มีเฉพาะ มิ.ย.–ส.ค.)</div>`;return;}
+  const byDate=(daily,f)=>{const m={};(daily||[]).forEach(r=>{if(r.date)m[r.date]=(m[r.date]||0)+(r[f]||0);});return m;};
+  const tkM=byDate(tk&&tk.daily, field==="pageViews"?"pageViews":field), shM=byDate(sh&&sh.daily, field==="pageViews"?"clicks":field);
+  const dates=[...new Set([...Object.keys(tkM),...Object.keys(shM)])].sort();
+  const series=[{name:"TikTok",color:"var(--s3)",data:dates.map(d=>tkM[d]??null)},{name:"Shopee",color:"var(--s2)",data:dates.map(d=>shM[d]??null)}];
+  $("trafLegend").innerHTML=series.map(s=>`<span><span style="display:inline-block;width:14px;height:3px;border-radius:2px;background:${s.color};margin-right:5px;vertical-align:middle"></span>${s.name}${field==="pageViews"?(s.name==="Shopee"?" (คลิก)":" (Page Views)"):""}</span>`).join("");
+  drawMultiLine(tsvg,ttip,dates.map(d=>({k:d})),series,v=>kOf(v),d=>{const x=new Date(d);return x.getDate()+"/"+(x.getMonth()+1);},{W:1180,H:260,m:{t:16,r:16,b:30,l:58}});
+  // summary totals
+  const sum=(daily,f)=>(daily||[]).reduce((a,r)=>a+(r[f]||0),0);
+  $("trafSummary").innerHTML=`<span class="hh">สรุปเดือน ${mShort(mk)}</span><ul>
+    <li>TikTok: ผู้เข้าชม ${kOf(sum(tk&&tk.daily,"visitors"))} · Page Views ${kOf(sum(tk&&tk.daily,"pageViews"))} · Orders ${kOf(sum(tk&&tk.daily,"orders"))}${tk&&tk.total&&tk.total.impressions?` · Impressions ${kOf(tk.total.impressions)}`:""}</li>
+    <li>Shopee: ผู้เยี่ยมชม ${kOf(sum(sh&&sh.daily,"visitors"))} · คลิก ${kOf(sum(sh&&sh.daily,"clicks"))} · Orders ${kOf(sum(sh&&sh.daily,"orders"))}</li></ul>`;
+}
+/* generic multi-line drawer */
+function drawMultiLine(svg,tip,pts,series,fmtV,fmtX,opts){
+  opts=opts||{};const W=opts.W||640,H=opts.H||230,m=opts.m||{t:14,r:12,b:30,l:50},iw=W-m.l-m.r,ih=H-m.t-m.b,n=pts.length;
+  const showDot=opts.dot!=null?opts.dot:true;
+  svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  if(!n){svg.innerHTML="";return;}
+  const xOf=i=>n<=1?m.l+iw/2:m.l+iw*i/(n-1);
+  const all=series.flatMap(s=>s.data).filter(v=>v!=null);const maxV=Math.max(...all,1);
+  const st=Math.pow(10,Math.floor(Math.log10(maxV)));const yMax=Math.ceil(maxV/(st/2))*(st/2)||maxV;const yOf=v=>m.t+ih-(v/yMax)*ih;
+  let out=`<g class="cx-grid">`;for(let t=0;t<=4;t++){const yy=yOf(yMax/4*t);out+=`<line x1="${m.l}" y1="${yy.toFixed(1)}" x2="${m.l+iw}" y2="${yy.toFixed(1)}"></line>`;}out+=`</g><g class="cx-axis">`;
+  for(let t=0;t<=4;t++){const val=yMax/4*t,yy=yOf(val);out+=`<text class="tab" x="${m.l-8}" y="${(yy+4).toFixed(1)}" text-anchor="end">${kOf(val)}</text>`;}
+  const step=Math.ceil(n/8);pts.forEach((p,i)=>{if(i%step===0||i===n-1)out+=`<text x="${xOf(i).toFixed(1)}" y="${m.t+ih+18}" text-anchor="middle">${fmtX(p.k)}</text>`;});out+=`</g>`;
+  series.forEach(s=>{let d="",pen=false;s.data.forEach((v,i)=>{if(v==null){pen=false;return;}d+=(pen?"L":"M")+xOf(i).toFixed(1)+" "+yOf(v).toFixed(1)+" ";pen=true;});out+=`<path class="lc-line" d="${d.trim()}" style="stroke:${s.color}${s.width?";stroke-width:"+s.width:""}"></path>`;});
+  if(showDot)series.forEach(s=>s.data.forEach((v,i)=>{if(v==null)return;out+=`<circle class="lc-dot" cx="${xOf(i).toFixed(1)}" cy="${yOf(v).toFixed(1)}" r="${n>40?2:3}" style="fill:${s.color}"></circle>`;}));
+  out+=`<line class="lc-cross" id="tCross" x1="0" y1="${m.t}" x2="0" y2="${m.t+ih}"></line>`;
+  const band=n<=1?iw:iw/(n-1);pts.forEach((p,i)=>out+=`<rect class="lc-hit" data-i="${i}" x="${(xOf(i)-band/2).toFixed(1)}" y="${m.t}" width="${band.toFixed(1)}" height="${ih}"></rect>`);
+  svg.innerHTML=out;const cross=svg.querySelector("#tCross"),wrap=svg.parentElement;
+  function show(i){cross.setAttribute("x1",xOf(i));cross.setAttribute("x2",xOf(i));cross.style.opacity=1;tip.innerHTML=`<div class="m">${fmtX(pts[i].k)}</div>`+series.map(s=>`<div class="r"><span><span class="lc-tip" style="display:none"></span>${s.name}</span><span class="v">${s.data[i]==null?"—":fmtV(s.data[i])}</span></div>`).join("");const rc=svg.getBoundingClientRect(),sc=rc.width/W,wr=wrap.getBoundingClientRect();const vals=series.map(s=>s.data[i]).filter(v=>v!=null);const tv=vals.length?Math.max(...vals):yMax*.5;tip.style.left=(rc.left+xOf(i)*sc-wr.left)+"px";tip.style.top=(rc.top+yOf(tv)*sc-wr.top)+"px";tip.style.opacity=1;}
+  svg.querySelectorAll(".lc-hit").forEach(h=>{h.addEventListener("mousemove",()=>show(+h.dataset.i));h.addEventListener("mouseenter",()=>show(+h.dataset.i));});
+  svg.addEventListener("mouseleave",()=>{tip.style.opacity=0;cross.style.opacity=0;});
+}
+
+/* ===================== PRODUCT ===================== */
+function renderProducts(){
+  const mk=$("selMonth").value,brand=GLOBAL.brand;
+  const P=store.prod[mk];
+  $("prTag").textContent="Top 10 · "+brand+" · "+mShort(mk);
+  if(!P){$("prodArea").innerHTML=`<div class="empty">กำลังโหลดสินค้าเดือน ${mLabel(mk)}…</div>`;return;}
+  let list=(P[brand]||[]).slice().sort((a,b)=>b.sales-a.sales).slice(0,10);
+  if(!list.length){$("prodArea").innerHTML=`<div class="empty">ไม่มีข้อมูลสินค้าสำหรับ ${mLabel(mk)} · ${brand}<br>(Product SKU มีเฉพาะ มิ.ย.–ส.ค.)</div>`;return;}
+  $("prodArea").innerHTML=`<div class="table-scroll"><table><thead><tr><th>#</th><th>Product</th><th>Ch.</th><th class="num">Sales / GMV</th></tr></thead><tbody>`+
+    list.map((p,i)=>`<tr><td><span class="rk ${i<3?'g':''}">${i+1}</span></td><td style="white-space:normal;max-width:300px;line-height:1.3">${p.name}</td><td><span class="chip ${p.ch==='TikTok'?'tk':'sp'}">${p.ch==='TikTok'?'TK':'SP'}</span></td><td class="num">${thb(p.sales)}</td></tr>`).join("")+
+    `</tbody></table></div>`;
+}
+
+/* ===================== INSIGHT / PRIORITY / ACTION ===================== */
+function renderInsight(){
+  const mk=latestMonth();const gmv=mk?monthlyGMV("ALL",mk):0;
+  $("insTitle").textContent="สรุปอัตโนมัติจากข้อมูลสด";
+  $("insDesc").textContent="ดึงจาก Google Sheets · เดือนล่าสุดที่มีข้อมูล: "+(mk?mLabel(mk):"—");
+  $("insHead").textContent="Last Available Month ("+(mk?mLabel(mk):"—")+")";
+  // channel driver: biggest sub-channel change vs prev
+  const bits=[];bits.push("GMV รวม "+MM(gmv)+" · Achievement "+(gmv/TARGET_BRAND.ALL*100).toFixed(1)+"%");
+  const perfMonths=[...new Set(BRANDS.flatMap(b=>store.chan[b]?Object.keys(store.chan[b]):[]))].sort();const cm=perfMonths[perfMonths.length-1],pm2=perfMonths[perfMonths.length-2];
+  if(cm&&pm2){const cur=chanSum("ALL",cm),pv=chanSum("ALL",pm2);let best=null,worst=null;["Shopee","TikTok"].forEach(p=>SUB_ORDER.forEach(sc=>{const k=p+"|"+sc,c=cur[k]||0,pvv=pv[k]||0;if(pvv>50000){const g=(c-pvv)/pvv;if(!best||g>best.g)best={k,g,c};if(!worst||g<worst.g)worst={k,g,c};}}));
+    if(best)bits.push("โตเด่น: "+best.k.replace("|"," ")+" "+deltaText(best.g*100));
+    if(worst)bits.push("ตกเด่น: "+worst.k.replace("|"," ")+" "+deltaText(worst.g*100));}
+  bits.push("Traffic: TikTok Visitors ต้องเฝ้าระวัง · Conversion เทียบเดือนก่อน");
+  $("insList").innerHTML=bits.map(t=>`<li>${t}</li>`).join("");
+  const PRIO=[{h:1,t:"เดือนกันยายนเป็น Open Month — รอข้อมูลเข้าชีต"},{t:"ผลักดัน Shopee Live-Self / TikTok VDO-Aff ที่เป็นตัวหลัก"},{t:"เฝ้าระวังคอนเทนต์ที่ยอดตกเทียบเดือนก่อน"},{t:"โฟกัสสินค้า Top 10 เพื่อขยายผล"},{t:"ตรวจ Traffic (ผู้เข้าชม/การมองเห็น) รายแบรนด์"}];
+  $("prioList").innerHTML=PRIO.map((p,i)=>`<li style="display:flex;gap:11px;align-items:center;background:${p.h?'color-mix(in srgb,var(--warn) 12%,transparent)':'var(--track)'};border-radius:10px;padding:10px 12px;font-size:12.5px"><span style="width:24px;height:24px;border-radius:50%;background:${p.h?'var(--warn)':'var(--brandnavy)'};color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none">${i+1}</span><span>${p.t}</span></li>`).join("");
+  $("actionList").innerHTML=["<b>ช่องทาง:</b> เพิ่มงบคอนเทนต์ที่ ROI ดี (เทียบ 2 เดือนในการ์ด GMV by Channel)","<b>สินค้า:</b> ทำโปรกับสินค้า Top และกู้ตัวที่ตก","<b>Traffic:</b> เพิ่มการมองเห็น (Impressions/Views) ช่องที่ผู้เข้าชมตก","<b>รายเดือน:</b> ใช้ยอดจริงเป็นฐานตั้งเป้าเดือนถัดไป"].map(t=>`<li>${t}</li>`).join("");
+}
+function deltaText(p){return (p>0?"+":"")+p.toFixed(1)+"%";}
+
+/* ===================== CONFIG / HEALTH ===================== */
+function renderConfig(){
+  const okD=BRANDS.filter(b=>store.daily[b]&&store.daily[b].length).length;
+  const okC=BRANDS.filter(b=>store.chan[b]&&Object.keys(store.chan[b]).length).length;
+  const mkeys=Object.keys(store.traf);
+  const okSh=mkeys.length?BRANDS.filter(b=>mkeys.some(m=>store.traf[m].sh&&store.traf[m].sh[b])).length:0;
+  const okTk=mkeys.length?BRANDS.filter(b=>mkeys.some(m=>store.traf[m].tk&&store.traf[m].tk[b])).length:0;
+  $("cfgStatus").textContent=store.err.length?"บางส่วนโหลดไม่ได้":"ทุกแหล่งเชื่อมต่อ";
+  const H=[
+    {nm:"Daily rows (Data ads gmv)",vv:BRANDS.reduce((a,b)=>a+((store.daily[b]||[]).length),0)+" rows",ok:okD>0},
+    {nm:"Sub-channel months",vv:store.months.length+" เดือน",ok:okC>0},
+    {nm:"Shopee Traffic",vv:okSh+"/3",ok:okSh>0},{nm:"TikTok Traffic",vv:okTk+"/3",ok:okTk>0},
+    {nm:"Last fetch",vv:store.lastFetch?store.lastFetch.toLocaleString("th-TH",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"—",ok:true},
+    {nm:"Fetch errors",vv:store.err.length?store.err.join(", "):"ไม่มี",ok:!store.err.length},
+  ];
+  $("healthList").innerHTML=H.map(h=>`<li><span class="ck" style="color:${h.ok?'var(--good)':'var(--danger)'}">${h.ok?'✔':'✕'}</span><span class="nm">${h.nm}</span><span class="vv">${h.vv}</span></li>`).join("");
+  const sheets=[["Data ads gmv","GMV รายวัน",okD+"/3"],["performan all brand","GMV by channel",okC+"/3"],["Shopee Traffic","Traffic",okSh+"/3"],["TikTok Traffic","Traffic",okTk+"/3"],["Shopee SKU Revenue","Products (lazy)","on-demand"],["TikTok SKU Revenue","Products (lazy)","on-demand"]];
+  $("sheetTbl").innerHTML=sheets.map(s=>`<tr><td>${s[0]}</td><td>${s[1]}</td><td class="num">${s[2]}</td></tr>`).join("");
+}
+
+/* ===================== RENDER ALL ===================== */
+function renderAll(){renderKPI();renderGMV();renderChannel();renderTraffic();renderProducts();renderInsight();if(!$("viewConfig").hidden)renderConfig();}
+
+/* ===================== events ===================== */
+$("gBrand").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;GLOBAL.brand=b.dataset.b;buildBrandBar();renderAll();});
+$("gGran").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;GLOBAL.gran=b.dataset.b;$("gGran").querySelectorAll("button").forEach(x=>x.classList.remove("active"));b.classList.add("active");renderGMV();});
+$("gmvLegend").addEventListener("click",e=>{const b=e.target.closest(".lgd");if(!b)return;const k=b.dataset.k;if(GMV_VIS[k]&&GMV_SERIES.filter(s=>GMV_VIS[s.key]).length<=1)return;GMV_VIS[k]=!GMV_VIS[k];renderGMV();});
+$("selMonth").addEventListener("change",async()=>{const mk=$("selMonth").value;renderKPI();renderTraffic();renderProducts();await Promise.all([loadProducts(mk),loadTraffic(mk)]);renderProducts();renderTraffic();});
+$("chA").addEventListener("change",renderChannel);$("chB").addEventListener("change",renderChannel);
+$("trafMetric").addEventListener("change",renderTraffic);
+async function doRefresh(){const mk=$("selMonth").value;store.prod={};store.traf={};await loadCore();populate();await Promise.all([loadProducts($("selMonth").value),loadTraffic($("selMonth").value)]);renderAll();}
+$("btnRefresh").addEventListener("click",doRefresh);$("btnRefresh2").addEventListener("click",doRefresh);
+function showConfig(on){$("viewConfig").hidden=!on;$("viewDash").hidden=on;$("dashOnly1").style.display=on?"none":"";if(on)renderConfig();}
+$("btnCfg").addEventListener("click",()=>showConfig($("viewConfig").hidden));
+const tb=$("themeToggle");
+function applyTheme(t){if(t)document.documentElement.setAttribute("data-theme",t);else document.documentElement.removeAttribute("data-theme");tb.textContent=(t==="dark")?"☀️":"🌙";}
+let sv=null;try{sv=localStorage.getItem("exec-theme");}catch(e){}if(sv)applyTheme(sv);
+tb.addEventListener("click",()=>{const dk=document.documentElement.getAttribute("data-theme")==="dark"||(!document.documentElement.getAttribute("data-theme")&&matchMedia("(prefers-color-scheme: dark)").matches);const nx=dk?"light":"dark";applyTheme(nx);try{localStorage.setItem("exec-theme",nx);}catch(e){}renderAll();});
+
+/* ===================== init ===================== */
+buildBrandBar();
+(async function(){ await loadCore(); populate(); renderAll(); const mk=$("selMonth").value; await Promise.all([loadProducts(mk),loadTraffic(mk)]); renderProducts(); renderTraffic(); renderInsight(); })();
+</script>
+</body>
+</html>
