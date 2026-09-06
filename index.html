@@ -148,7 +148,10 @@
               <span class="tag" id="trBrandTag"></span>
             </span>
           </div>
-          <div class="chart-legend" id="gmvLegend" style="display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px"></div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin:6px 0 12px;flex-wrap:wrap">
+            <div class="chart-legend" id="gmvLegend" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+            <div id="gmvCompare" style="text-align:right;white-space:nowrap;line-height:1.25"></div>
+          </div>
           <div style="position:relative"><svg class="chart" id="lineChart" viewBox="0 0 1180 340" preserveAspectRatio="xMidYMid meet"></svg><div class="lc-tip" id="lcTip"></div></div>
           <div class="tag" style="font-size:10.5px;color:var(--muted);margin-top:6px">ที่มา: Data ads gmv (รายวัน) · คลิกที่ปุ่มสีเพื่อเปิด/ปิดเส้น · เลือกช่วงเวลา 1วัน/7วัน/1เดือน ด้านบน</div>
         </div>
@@ -352,13 +355,14 @@ function renderKPI(){
   const ach=open?0:gmv/tgt*100,gap=open?tgt:(tgt-gmv);
   const mi=store.months.indexOf(mk),prevK=mi>0?store.months[mi-1]:null,prev=prevK?monthlyGMV(brand,prevK):null,mom=(open||!prev)?null:(gmv-prev)/prev*100;
   const cards=[
-    {cls:"dark",l:"GMV (THB)",v:open?"0":MM(gmv),s:open?"Open Month":(mom!=null?(mom>=0?"+":"")+mom.toFixed(1)+"% vs "+mShort(prevK):"—")},
+    {cls:"dark",l:"GMV (THB)",v:open?"0":Math.round(gmv).toLocaleString("en-US"),s:open?"Open Month":(mom!=null?(mom>=0?"+":"")+mom.toFixed(1)+"% vs "+mShort(prevK):"—")},
     {cls:"green",l:"Target (THB)",v:tgt.toLocaleString(),s:brand},
     {cls:"red",l:"Achievement",v:ach.toFixed(0)+"%",s:"vs. Target"},
     {cls:"amber",l:"Gap (THB)",v:Math.round(gap).toLocaleString(),s:"Remaining to Target"},
   ];
+  $("kpiRow").style.gridTemplateColumns=open?"repeat(4,1fr) 1.55fr":"repeat(4,1fr)";
   $("kpiRow").innerHTML=cards.map(c=>`<div class="kpi ${c.cls}"><div class="kl"><span>${c.l}</span></div><div class="kv">${c.v}</div><div class="ks">${c.s}</div></div>`).join("")+
-    `<div class="info-banner"><div class="bi">i</div><div><div class="bt">${open?"September 2026 — Data Not Available Yet":mLabel(mk)+" · "+brand}</div><div class="bd">${open?"ยังไม่มีข้อมูลในชีตสำหรับเดือนนี้ (Open Month Safety) · การวิเคราะห์ด้านล่างอิงเดือนล่าสุดที่มีข้อมูล":"GMV "+MM(gmv)+" · Achievement "+ach.toFixed(1)+"% · Gap ฿"+Math.round(gap).toLocaleString()}</div></div></div>`;
+    (open?`<div class="info-banner"><div class="bi">i</div><div><div class="bt">September 2026 — Data Not Available Yet</div><div class="bd">ยังไม่มีข้อมูลในชีตสำหรับเดือนนี้ (Open Month Safety) · การวิเคราะห์ด้านล่างอิงเดือนล่าสุดที่มีข้อมูล</div></div></div>`:"");
 }
 
 /* ===================== GMV TREND (2 modes: by platform / by brand) ===================== */
@@ -384,9 +388,17 @@ function renderGMV(){
   const {keys,map}=mode==="plat"?trendByPlatform(GLOBAL.brand,bucket):trendByBrand(bucket);
   $("gmvMode").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x.dataset.m===mode));
   $("trBrandTag").textContent=(mode==="plat"?GLOBAL.brand:"เทียบ 3 แบรนด์")+" · "+granLabel(bucket);
-  if(!keys.length){$("gmvLegend").innerHTML="";lsvg.innerHTML="";return;}
+  if(!keys.length){$("gmvLegend").innerHTML="";$("gmvCompare").innerHTML="";lsvg.innerHTML="";return;}
   const tot={};SER.forEach(s=>tot[s.key]=keys.reduce((a,k)=>a+map[k][s.key],0));
   $("gmvLegend").innerHTML=SER.map(s=>`<button class="lgd${VIS[s.key]?"":" off"}" data-k="${s.key}"><span class="sw" style="background:${s.color}"></span><span class="nm">${s.label}</span><span class="tv">${thb(tot[s.key])}</span></button>`).join("");
+  // period-over-period comparison (of currently-visible lines), fills header empty space
+  const visK=SER.filter(s=>VIS[s.key]).map(s=>s.key), ptot=k=>visK.reduce((a,key)=>a+(map[k][key]||0),0);
+  const lastK=keys[keys.length-1], prevK2=keys.length>1?keys[keys.length-2]:null;
+  const cur=ptot(lastK), prv=prevK2!=null?ptot(prevK2):null, dl=(prv&&prv>0)?(cur-prv)/prv*100:null;
+  const pWord=bucket==="day"?"วันล่าสุด":bucket==="week"?"7 วันล่าสุด":"เดือนล่าสุด";
+  $("gmvCompare").innerHTML=`<div style="font-size:11px;color:var(--muted)">${pWord} · ${lb(bucket,lastK)}</div>`+
+    `<div style="font-size:21px;font-weight:800;font-variant-numeric:tabular-nums">${thb(cur)}</div>`+
+    `<div style="font-size:11.5px">${deltaHTML(dl)} <span style="color:var(--muted)">เทียบ ${prevK2!=null?lb(bucket,prevK2):"—"}</span></div>`;
   const series=SER.filter(s=>VIS[s.key]).map(s=>({name:s.label,color:s.color,width:2.4,data:keys.map(k=>map[k][s.key])}));
   drawMultiLine(lsvg,ltip,keys.map(k=>({k})),series,v=>thb(v),k=>lb(bucket,k,1),{W:1180,H:340,m:{t:18,r:18,b:34,l:66},dot:keys.length<=45});
 }
