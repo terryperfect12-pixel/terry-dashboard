@@ -203,18 +203,31 @@
 
       <div class="row" style="grid-template-columns:1fr">
         <div class="card pad">
-          <div class="card-h"><span>Traffic Analytics</span>
-            <span style="display:flex;gap:8px;align-items:center"><span class="tag" id="trafTag"></span>
-              <select class="mini" id="trafMetric">
-                <option value="visitors">ผู้เข้าชม (Visitors)</option>
-                <option value="pageViews">Page Views / คลิก</option>
-                <option value="orders">Orders</option>
-              </select></span>
+          <div class="card-h"><span>การเข้าชม &amp; ROAS · ดูควบคู่</span>
+            <span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <button id="trafCmpToggle" class="tglbtn" title="แสดงเส้นเดือนก่อนหน้าซ้อนด้านหลัง">⇄ เปรียบเทียบ</button>
+              <span class="tag" id="trafTag"></span>
+            </span>
           </div>
-          <div class="chart-legend" id="trafLegend" style="display:flex;gap:14px;margin-bottom:6px;font-size:11.5px;color:var(--ink2)"></div>
-          <div style="position:relative"><svg class="chart" id="trafChart" viewBox="0 0 1180 260" preserveAspectRatio="xMidYMid meet"></svg><div class="lc-tip" id="trafTip"></div></div>
-          <div id="trafSummary" class="lam" style="margin-top:8px"></div>
-          <div class="tag" style="font-size:10.5px;color:var(--muted);margin-top:6px">ที่มา: Shopee / TikTok Traffic (รายวัน)</div>
+          <div class="split2">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:var(--ink);border-left:3px solid var(--s1);padding-left:8px">การเข้าชมทั้งร้าน (TikTok + Shopee)</div>
+              <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin:6px 0 10px;flex-wrap:wrap">
+                <div class="chart-legend" id="trafLegend" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+                <div id="trafCompare" style="text-align:right;white-space:nowrap;line-height:1.25"></div>
+              </div>
+              <div style="position:relative"><svg class="chart" id="trafChart" viewBox="0 0 580 300" preserveAspectRatio="xMidYMid meet"></svg><div class="lc-tip" id="trafTip"></div><div id="trafEmpty" class="empty" hidden></div></div>
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:13px;color:var(--ink);border-left:3px solid var(--warn);padding-left:8px">ROAS ต่อแพลตฟอร์ม (ยอดขาย ÷ ค่าแอด)</div>
+              <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin:6px 0 10px;flex-wrap:wrap">
+                <div class="chart-legend" id="roasLegend" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+                <div id="roasCompare" style="text-align:right;white-space:nowrap;line-height:1.25"></div>
+              </div>
+              <div style="position:relative"><svg class="chart" id="roasChart" viewBox="0 0 580 300" preserveAspectRatio="xMidYMid meet"></svg><div class="lc-tip" id="roasTip"></div><div id="roasEmpty" class="empty" hidden></div></div>
+            </div>
+          </div>
+          <div class="tag" style="font-size:10.5px;color:var(--muted);margin-top:8px">ซ้าย = ที่มา Shopee/TikTok Traffic (คน) · ขวา = ROAS จาก Data ads gmv · เลือกเดือน/แบรนด์/ช่วงเวลา ที่หัวแดชบอร์ด · ROAS ยิ่งสูงยิ่งคุ้ม</div>
         </div>
       </div>
 
@@ -316,7 +329,7 @@ function parseTiktokTraffic(grid){
   const total={gmv:num(grid[1]?.[1]),orders:num(grid[1]?.[2]),pageViews:num(grid[1]?.[8]),visitors:num(grid[1]?.[9]),cvr:num(grid[1]?.[10]),impressions:num(grid[1]?.[11]),clicks:num(grid[1]?.[13])};
   const momRow=grid[2]||[];
   const mom={gmv:num(momRow[1]),orders:num(momRow[2]),pageViews:num(momRow[8]),visitors:num(momRow[9]),impressions:num(momRow[11]),clicks:num(momRow[13])};
-  const daily=[];for(let i=3;i<grid.length;i++){const d=parseDMY(grid[i][0]);if(!d)continue;daily.push({date:d,gmv:num(grid[i][1]),orders:num(grid[i][2]),visitors:num(grid[i][9]),pageViews:num(grid[i][8])});}
+  const daily=[];for(let i=3;i<grid.length;i++){const d=parseDMY(grid[i][0]);if(!d)continue;daily.push({date:d,gmv:num(grid[i][1]),orders:num(grid[i][2]),visitors:num(grid[i][9]),pageViews:num(grid[i][8]),impressions:num(grid[i][11]),clicks:num(grid[i][13])});}
   return {total,mom,daily,month:daily.length?daily[0].date.slice(0,7):null};
 }
 function parseShopeeSKU(grid){
@@ -492,25 +505,67 @@ async function loadTraffic(mk){
   }));
   store.traf[mk]={sh,tk};
 }
-const tsvg=$("trafChart"),ttip=$("trafTip");
-function renderTraffic(){
-  const brand=GLOBAL.brand, mk=$("selMonth").value, field=$("trafMetric").value;
-  const T=store.traf[mk];
+const tsvg=$("trafChart"),ttip=$("trafTip"),rsvg=$("roasChart"),rtip=$("roasTip");
+const TRAF_METRICS=[
+  {key:"Visitors",label:"ผู้เข้าชม",color:"var(--s1)"},
+  {key:"PageViews",label:"ยอดดูหน้าเว็บ",color:"var(--s3)"},
+  {key:"Impressions",label:"การมองเห็น",color:"var(--s5)"},
+  {key:"Clicks",label:"คลิกสินค้า",color:"var(--s2)"},
+];
+const TRAF_VIS={Visitors:true,PageViews:true,Impressions:false,Clicks:true};
+const ROAS_PLATS=[{key:"TikTok",label:"TikTok",color:"var(--ink)"},{key:"Shopee",label:"Shopee",color:"var(--s2)"},{key:"Lazada",label:"Lazada",color:"var(--s1)"}];
+const ROAS_VIS={TikTok:true,Shopee:true,Lazada:false};
+const TRAF_CMP_ON={v:false};
+function trafSeries(mk,brand,bucket){
+  const T=store.traf[mk]; if(!T)return null;
+  const sh=T.sh&&T.sh[brand], tk=T.tk&&T.tk[brand]; if(!sh&&!tk)return {keys:[],map:{}};
+  const map={},ensure=k=>{if(!map[k])map[k]={Visitors:0,PageViews:0,Impressions:0,Clicks:0};return map[k];};
+  (tk&&tk.daily||[]).forEach(r=>{if(!r.date)return;const o=ensure(bkey(r.date,bucket));o.Visitors+=r.visitors||0;o.PageViews+=r.pageViews||0;o.Impressions+=r.impressions||0;o.Clicks+=r.clicks||0;});
+  (sh&&sh.daily||[]).forEach(r=>{if(!r.date)return;const o=ensure(bkey(r.date,bucket));o.Visitors+=r.visitors||0;o.Clicks+=r.clicks||0;});
+  return {keys:Object.keys(map).sort(),map};
+}
+function roasData(brand,mk,bucket){
+  const raw={};(store.daily[brand]||[]).forEach(r=>{if(r.date.slice(0,7)!==mk)return;const k=bkey(r.date,bucket);if(!raw[k])raw[k]={TikTok:{g:0,a:0},Shopee:{g:0,a:0},Lazada:{g:0,a:0}};
+    raw[k].TikTok.g+=r.tik;raw[k].TikTok.a+=r.tikAds;raw[k].Shopee.g+=r.shp;raw[k].Shopee.a+=r.shpAds;raw[k].Lazada.g+=r.laz;raw[k].Lazada.a+=r.lazAds;});
+  const keys=Object.keys(raw).sort(),map={};keys.forEach(k=>{map[k]={};ROAS_PLATS.forEach(p=>{const c=raw[k][p.key];map[k][p.key]=c.a>0?c.g/c.a:null;});});
+  return {keys,map,raw};
+}
+function renderTrafficSection(){
+  const brand=GLOBAL.brand,mk=$("selMonth").value,bucket=GLOBAL.gran;
   $("trafTag").textContent=mLabel(mk)+" · "+brand;
-  if(!T){$("trafArea"),tsvg.innerHTML="";$("trafLegend").innerHTML="";$("trafSummary").innerHTML=`<div class="empty">กำลังโหลด Traffic…</div>`;return;}
-  const sh=T.sh[brand], tk=T.tk[brand];
-  if(!sh&&!tk){tsvg.innerHTML="";$("trafLegend").innerHTML="";$("trafSummary").innerHTML=`<div class="empty">ไม่มีข้อมูล Traffic สำหรับ ${mLabel(mk)} · ${brand}<br>(Traffic มีเฉพาะ มิ.ย.–ส.ค.)</div>`;return;}
-  const byDate=(daily,f)=>{const m={};(daily||[]).forEach(r=>{if(r.date)m[r.date]=(m[r.date]||0)+(r[f]||0);});return m;};
-  const tkM=byDate(tk&&tk.daily, field==="pageViews"?"pageViews":field), shM=byDate(sh&&sh.daily, field==="pageViews"?"clicks":field);
-  const dates=[...new Set([...Object.keys(tkM),...Object.keys(shM)])].sort();
-  const series=[{name:"TikTok",color:"var(--ink)",data:dates.map(d=>tkM[d]??null)},{name:"Shopee",color:"var(--s2)",data:dates.map(d=>shM[d]??null)}];
-  $("trafLegend").innerHTML=series.map(s=>`<span><span style="display:inline-block;width:14px;height:3px;border-radius:2px;background:${s.color};margin-right:5px;vertical-align:middle"></span>${s.name}${field==="pageViews"?(s.name==="Shopee"?" (คลิก)":" (Page Views)"):""}</span>`).join("");
-  drawMultiLine(tsvg,ttip,dates.map(d=>({k:d})),series,v=>kOf(v),d=>{const x=new Date(d);return x.getDate()+"/"+(x.getMonth()+1);},{W:1180,H:260,m:{t:16,r:16,b:30,l:58}});
-  // summary totals
-  const sum=(daily,f)=>(daily||[]).reduce((a,r)=>a+(r[f]||0),0);
-  $("trafSummary").innerHTML=`<span class="hh">สรุปเดือน ${mShort(mk)}</span><ul>
-    <li>TikTok: ผู้เข้าชม ${kOf(sum(tk&&tk.daily,"visitors"))} · Page Views ${kOf(sum(tk&&tk.daily,"pageViews"))} · Orders ${kOf(sum(tk&&tk.daily,"orders"))}${tk&&tk.total&&tk.total.impressions?` · Impressions ${kOf(tk.total.impressions)}`:""}</li>
-    <li>Shopee: ผู้เยี่ยมชม ${kOf(sum(sh&&sh.daily,"visitors"))} · คลิก ${kOf(sum(sh&&sh.daily,"clicks"))} · Orders ${kOf(sum(sh&&sh.daily,"orders"))}</li></ul>`;
+  renderTrafLeft(brand,mk,bucket); renderRoasRight(brand,mk,bucket);
+}
+function renderTrafLeft(brand,mk,bucket){
+  const T=trafSeries(mk,brand,bucket);
+  if(!T){$("trafLegend").innerHTML="";$("trafCompare").innerHTML="";tsvg.innerHTML="";$("trafEmpty").textContent="กำลังโหลด Traffic…";$("trafEmpty").hidden=false;return;}
+  if(!T.keys.length){$("trafLegend").innerHTML="";$("trafCompare").innerHTML="";tsvg.innerHTML="";$("trafEmpty").innerHTML=`ไม่มีข้อมูล Traffic สำหรับ ${mLabel(mk)} · ${brand}<br>(Traffic มีเฉพาะ มิ.ย.–ส.ค.)`;$("trafEmpty").hidden=false;return;}
+  $("trafEmpty").hidden=true;
+  const tot={};TRAF_METRICS.forEach(s=>tot[s.key]=T.keys.reduce((a,k)=>a+T.map[k][s.key],0));
+  $("trafLegend").innerHTML=TRAF_METRICS.map(s=>`<button class="lgd${TRAF_VIS[s.key]?"":" off"}" data-k="${s.key}"><span class="sw" style="background:${s.color}"></span><span class="nm">${s.label}</span><span class="tv">${kOf(tot[s.key])}</span></button>`).join("");
+  const visK=TRAF_METRICS.filter(s=>TRAF_VIS[s.key]).map(s=>s.key);
+  const cur=T.keys.reduce((a,k)=>a+visK.reduce((b,key)=>b+T.map[k][key],0),0);
+  const pmk=addMonths(mk,-1),PT=trafSeries(pmk,brand,bucket);
+  let prv=null;if(PT&&PT.keys.length)prv=PT.keys.reduce((a,k)=>a+visK.reduce((b,key)=>b+PT.map[k][key],0),0);
+  const dl=(prv&&prv>0)?(cur-prv)/prv*100:null;
+  $("trafCompare").innerHTML=`<div style="font-size:11px;color:var(--muted)">รวมที่เลือก · ${mShort(mk)}</div><div style="font-size:19px;font-weight:800;font-variant-numeric:tabular-nums">${kOf(cur)}</div><div style="font-size:11px">${deltaHTML(dl)} <span style="color:var(--muted)">เทียบ ${prv?mShort(pmk):"—"}</span></div>`;
+  const series=TRAF_METRICS.filter(s=>TRAF_VIS[s.key]).map(s=>({name:s.label,color:s.color,width:2.2,data:T.keys.map(k=>T.map[k][s.key])}));
+  if(TRAF_CMP_ON.v&&PT&&PT.keys.length)series.push(...TRAF_METRICS.filter(s=>TRAF_VIS[s.key]).map(s=>({name:s.label+" (ก่อนหน้า)",color:s.color,ghost:true,data:T.keys.map((k,i)=>PT.keys[i]!=null?PT.map[PT.keys[i]][s.key]:null)})));
+  drawMultiLine(tsvg,ttip,T.keys.map(k=>({k})),series,v=>kOf(v),k=>lb(bucket,k,1),{W:580,H:300,m:{t:16,r:14,b:32,l:56},dot:T.keys.length<=31});
+}
+function renderRoasRight(brand,mk,bucket){
+  const R=roasData(brand,mk,bucket);
+  if(!R.keys.length){$("roasLegend").innerHTML="";$("roasCompare").innerHTML="";rsvg.innerHTML="";$("roasEmpty").innerHTML=`ไม่มีข้อมูลค่าแอด/ยอดขายสำหรับ ${mLabel(mk)}`;$("roasEmpty").hidden=false;return;}
+  $("roasEmpty").hidden=true;
+  const ov={};ROAS_PLATS.forEach(p=>{let g=0,a=0;R.keys.forEach(k=>{g+=R.raw[k][p.key].g;a+=R.raw[k][p.key].a;});ov[p.key]=a>0?g/a:null;});
+  $("roasLegend").innerHTML=ROAS_PLATS.map(p=>`<button class="lgd${ROAS_VIS[p.key]?"":" off"}" data-k="${p.key}"><span class="sw" style="background:${p.color}"></span><span class="nm">${p.label}</span><span class="tv">${ov[p.key]!=null?ov[p.key].toFixed(1)+"x":"—"}</span></button>`).join("");
+  const visK=ROAS_PLATS.filter(p=>ROAS_VIS[p.key]).map(p=>p.key);
+  let g=0,a=0;R.keys.forEach(k=>visK.forEach(pk=>{g+=R.raw[k][pk].g;a+=R.raw[k][pk].a;}));const curRoas=a>0?g/a:null;
+  const pmk=addMonths(mk,-1),PR=roasData(brand,pmk,bucket);let pg=0,pa=0;PR.keys.forEach(k=>visK.forEach(pk=>{pg+=PR.raw[k][pk].g;pa+=PR.raw[k][pk].a;}));const prvRoas=pa>0?pg/pa:null;
+  const dl=(prvRoas&&prvRoas>0&&curRoas!=null)?(curRoas-prvRoas)/prvRoas*100:null;
+  $("roasCompare").innerHTML=`<div style="font-size:11px;color:var(--muted)">ROAS รวม · ${mShort(mk)}</div><div style="font-size:19px;font-weight:800;font-variant-numeric:tabular-nums">${curRoas!=null?curRoas.toFixed(1)+"x":"—"}</div><div style="font-size:11px">${deltaHTML(dl)} <span style="color:var(--muted)">เทียบ ${prvRoas?mShort(pmk):"—"}</span></div>`;
+  const series=ROAS_PLATS.filter(p=>ROAS_VIS[p.key]).map(p=>({name:p.label,color:p.color,width:2.2,data:R.keys.map(k=>R.map[k][p.key])}));
+  if(TRAF_CMP_ON.v&&PR.keys.length)series.push(...ROAS_PLATS.filter(p=>ROAS_VIS[p.key]).map(p=>({name:p.label+" (ก่อนหน้า)",color:p.color,ghost:true,data:R.keys.map((k,i)=>PR.keys[i]!=null?PR.map[PR.keys[i]][p.key]:null)})));
+  drawMultiLine(rsvg,rtip,R.keys.map(k=>({k})),series,v=>v==null?"—":v.toFixed(1)+"x",k=>lb(bucket,k,1),{W:580,H:300,m:{t:16,r:14,b:32,l:46},dot:R.keys.length<=31});
 }
 /* generic multi-line drawer */
 function drawMultiLine(svg,tip,pts,series,fmtV,fmtX,opts){
@@ -590,11 +645,11 @@ function renderConfig(){
 }
 
 /* ===================== RENDER ALL ===================== */
-function renderAll(){renderKPI();renderGMV();renderChannel();renderTraffic();renderProducts();renderInsight();if(!$("viewConfig").hidden)renderConfig();}
+function renderAll(){renderKPI();renderGMV();renderChannel();renderTrafficSection();renderProducts();renderInsight();if(!$("viewConfig").hidden)renderConfig();}
 
 /* ===================== events ===================== */
 $("gBrand").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;GLOBAL.brand=b.dataset.b;buildBrandBar();renderAll();});
-$("gGran").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;GLOBAL.gran=b.dataset.b;$("gGran").querySelectorAll("button").forEach(x=>x.classList.remove("active"));b.classList.add("active");renderGMV();});
+$("gGran").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;GLOBAL.gran=b.dataset.b;$("gGran").querySelectorAll("button").forEach(x=>x.classList.remove("active"));b.classList.add("active");renderGMV();renderTrafficSection();});
 $("gmvMode").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;GMV_MODE.v=b.dataset.m;renderGMV();});
 function toggleSeries(e){const b=e.target.closest(".lgd");if(!b)return;const k=b.dataset.k,vis=GMV_VIS[GMV_MODE.v];if(vis[k]&&Object.values(vis).filter(Boolean).length<=1)return;vis[k]=!vis[k];renderGMV();}
 $("gmvLegend").addEventListener("click",toggleSeries);$("adsLegend").addEventListener("click",toggleSeries);
@@ -605,10 +660,12 @@ $("cmpToggle").addEventListener("click",()=>{GMV_CMP_ON.v=!GMV_CMP_ON.v;$("cmpTo
 $("cmpMode").addEventListener("change",()=>{GMV_RANGE.cmpMode=$("cmpMode").value;$("cmpCustom").hidden=GMV_RANGE.cmpMode!=="custom";computeCompare();renderGMV();});
 $("cStart").addEventListener("change",()=>{computeCompare();renderGMV();});
 $("cEnd").addEventListener("change",()=>{computeCompare();renderGMV();});
-$("selMonth").addEventListener("change",async()=>{const mk=$("selMonth").value;renderKPI();renderTraffic();renderProducts();await Promise.all([loadProducts(mk),loadTraffic(mk)]);renderProducts();renderTraffic();});
+$("selMonth").addEventListener("change",async()=>{const mk=$("selMonth").value;renderKPI();renderTrafficSection();renderProducts();await Promise.all([loadProducts(mk),loadTraffic(mk),loadTraffic(addMonths(mk,-1))]);renderProducts();renderTrafficSection();});
 $("chA").addEventListener("change",renderChannel);$("chB").addEventListener("change",renderChannel);
-$("trafMetric").addEventListener("change",renderTraffic);
-async function doRefresh(){const mk=$("selMonth").value;store.prod={};store.traf={};await loadCore();populate();initRange();await Promise.all([loadProducts($("selMonth").value),loadTraffic($("selMonth").value)]);renderAll();}
+$("trafCmpToggle").addEventListener("click",()=>{TRAF_CMP_ON.v=!TRAF_CMP_ON.v;$("trafCmpToggle").classList.toggle("active",TRAF_CMP_ON.v);renderTrafficSection();});
+$("trafLegend").addEventListener("click",e=>{const b=e.target.closest(".lgd");if(!b)return;const k=b.dataset.k;if(TRAF_VIS[k]&&Object.values(TRAF_VIS).filter(Boolean).length<=1)return;TRAF_VIS[k]=!TRAF_VIS[k];renderTrafLeft(GLOBAL.brand,$("selMonth").value,GLOBAL.gran);});
+$("roasLegend").addEventListener("click",e=>{const b=e.target.closest(".lgd");if(!b)return;const k=b.dataset.k;if(ROAS_VIS[k]&&Object.values(ROAS_VIS).filter(Boolean).length<=1)return;ROAS_VIS[k]=!ROAS_VIS[k];renderRoasRight(GLOBAL.brand,$("selMonth").value,GLOBAL.gran);});
+async function doRefresh(){const mk=$("selMonth").value;store.prod={};store.traf={};await loadCore();populate();initRange();await Promise.all([loadProducts(mk),loadTraffic(mk),loadTraffic(addMonths(mk,-1))]);renderAll();}
 $("btnRefresh").addEventListener("click",doRefresh);$("btnRefresh2").addEventListener("click",doRefresh);
 function showConfig(on){$("viewConfig").hidden=!on;$("viewDash").hidden=on;$("dashOnly1").style.display=on?"none":"";if(on)renderConfig();}
 $("btnCfg").addEventListener("click",()=>showConfig($("viewConfig").hidden));
@@ -619,7 +676,7 @@ tb.addEventListener("click",()=>{const dk=document.documentElement.getAttribute(
 
 /* ===================== init ===================== */
 buildBrandBar();
-(async function(){ await loadCore(); populate(); initRange(); renderAll(); const mk=$("selMonth").value; await Promise.all([loadProducts(mk),loadTraffic(mk)]); renderProducts(); renderTraffic(); renderInsight(); })();
+(async function(){ await loadCore(); populate(); initRange(); renderAll(); const mk=$("selMonth").value; await Promise.all([loadProducts(mk),loadTraffic(mk),loadTraffic(addMonths(mk,-1))]); renderProducts(); renderTrafficSection(); renderInsight(); })();
 </script>
 </body>
 </html>
