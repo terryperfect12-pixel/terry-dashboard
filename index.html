@@ -263,7 +263,7 @@ const BRAND_C={Benutra:"var(--s1)",Terry:"var(--s3)",Gala:"var(--s4)"};
 const TARGET_BRAND={Benutra:16229000,Terry:19000000,Gala:10000000,ALL:45229000};
 const SUB_ORDER=["Live-Self","Live-Aff","VDO-Self","VDO-Aff","Product Card"];
 const SUB_C={"Live-Self":"var(--s1)","Live-Aff":"var(--s2)","VDO-Self":"var(--s3)","VDO-Aff":"var(--s4)","Product Card":"var(--s5)"};
-const PLAT_C={Shopee:"var(--s2)",TikTok:"var(--s3)",Lazada:"var(--s1)"};
+const PLAT_C={Shopee:"var(--s2)",TikTok:"var(--ink)",Lazada:"var(--s1)"};
 const MABBR=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const PROD_TAB={6:"Jun",7:"July",8:"Aug",5:"May",9:"Sep"};
 const THAI_M={"ม.ค.":1,"ก.พ.":2,"มี.ค.":3,"เม.ย.":4,"พ.ค.":5,"มิ.ย.":6,"ก.ค.":7,"ส.ค.":8,"ก.ย.":9,"ต.ค.":10,"พ.ย.":11,"ธ.ค.":12};
@@ -397,9 +397,9 @@ function renderKPI(){
 /* ===================== GMV TREND (2 modes: by platform / by brand) ===================== */
 const GMV_MODE={v:"plat"};
 const PLAT_SERIES=[
-  {key:"TikTok",label:"TikTok",color:"var(--s3)"},
+  {key:"TikTok",label:"TikTok",color:"var(--ink)"},
   {key:"Shopee",label:"Shopee",color:"var(--s2)"},
-  {key:"Lazada",label:"Lazada",color:"var(--s4)"},
+  {key:"Lazada",label:"Lazada",color:"var(--s1)"},
 ];
 const BRAND_SERIES=[
   {key:"Benutra",label:"Benutra",color:"var(--s1)"},
@@ -503,7 +503,7 @@ function renderTraffic(){
   const byDate=(daily,f)=>{const m={};(daily||[]).forEach(r=>{if(r.date)m[r.date]=(m[r.date]||0)+(r[f]||0);});return m;};
   const tkM=byDate(tk&&tk.daily, field==="pageViews"?"pageViews":field), shM=byDate(sh&&sh.daily, field==="pageViews"?"clicks":field);
   const dates=[...new Set([...Object.keys(tkM),...Object.keys(shM)])].sort();
-  const series=[{name:"TikTok",color:"var(--s3)",data:dates.map(d=>tkM[d]??null)},{name:"Shopee",color:"var(--s2)",data:dates.map(d=>shM[d]??null)}];
+  const series=[{name:"TikTok",color:"var(--ink)",data:dates.map(d=>tkM[d]??null)},{name:"Shopee",color:"var(--s2)",data:dates.map(d=>shM[d]??null)}];
   $("trafLegend").innerHTML=series.map(s=>`<span><span style="display:inline-block;width:14px;height:3px;border-radius:2px;background:${s.color};margin-right:5px;vertical-align:middle"></span>${s.name}${field==="pageViews"?(s.name==="Shopee"?" (คลิก)":" (Page Views)"):""}</span>`).join("");
   drawMultiLine(tsvg,ttip,dates.map(d=>({k:d})),series,v=>kOf(v),d=>{const x=new Date(d);return x.getDate()+"/"+(x.getMonth()+1);},{W:1180,H:260,m:{t:16,r:16,b:30,l:58}});
   // summary totals
