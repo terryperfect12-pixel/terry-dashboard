@@ -63,6 +63,8 @@
   select.mini{font-family:inherit;font-size:12px;padding:6px 9px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;}
   input.mini{font-family:inherit;font-size:12px;padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;color-scheme:light dark;}
   .seg.sm button{padding:6px 11px;font-size:11.5px;}
+  .tglbtn{border:1px solid var(--line);background:var(--surface);color:var(--ink2);font-family:inherit;font-size:12px;padding:7px 14px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;} .tglbtn:hover{border-color:var(--muted);} .tglbtn.active{background:var(--s1);color:#fff;font-weight:600;border-color:var(--s1);}
+  .lc-line.ghost{stroke-width:1.4;opacity:.42;stroke-dasharray:4 3;}
   .sec-label{font-size:13px;font-weight:700;letter-spacing:.02em;color:var(--ink2);text-transform:uppercase;margin:0 2px 11px;}
   .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);} .card.pad{padding:18px 20px;}
   .card-h{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink2);margin:0 0 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
@@ -160,6 +162,7 @@
               <select class="mini" id="cmpMode"><option value="prev">ช่วงก่อนหน้า (เท่ากัน)</option><option value="custom">กำหนดเอง</option></select>
               <span id="cmpCustom" hidden><input type="date" id="cStart" class="mini"> – <input type="date" id="cEnd" class="mini"></span>
             </span>
+            <button id="cmpToggle" class="tglbtn" title="แสดงเส้นช่วงก่อนหน้าซ้อนด้านหลัง">⇄ เปรียบเทียบ</button>
           </div>
           <div class="split2">
             <div>
@@ -404,6 +407,7 @@ const BRAND_SERIES=[
   {key:"Gala",label:"Gala",color:"var(--s5)"},
 ];
 const GMV_VIS={plat:{TikTok:true,Shopee:true,Lazada:true},brand:{Benutra:true,Terry:true,Gala:true}};
+const GMV_CMP_ON={v:false};
 function bkey(date,bucket){if(bucket==="week"){const d=new Date(date);const mo=new Date(d);mo.setDate(d.getDate()-((d.getDay()+6)%7));return mo.toISOString().slice(0,10);}if(bucket==="month")return date.slice(0,7);return date;}
 const inR=(d,s,e)=>(!s||d>=s)&&(!e||d<=e);
 function trendPlat(brand,bucket,s,e,metric){const A=metric==="ads";const map={};(store.daily[brand]||[]).forEach(r=>{if(!inR(r.date,s,e))return;const k=bkey(r.date,bucket);if(!map[k])map[k]={TikTok:0,Shopee:0,Lazada:0};map[k].TikTok+=A?r.tikAds:r.tik;map[k].Shopee+=A?r.shpAds:r.shp;map[k].Lazada+=A?r.lazAds:r.laz;});return {keys:Object.keys(map).sort(),map};}
@@ -455,7 +459,9 @@ function renderMetricChart(metric,svgEl,tip,legendId,compareId,neutral){
   $(compareId).innerHTML=`<div style="font-size:11px;color:var(--muted)">ช่วง ${fmtD(R.start)}–${fmtD(R.end)}</div>`+
     `<div style="font-size:19px;font-weight:800;font-variant-numeric:tabular-nums">${thb(cur)}</div>`+
     `<div style="font-size:11px">${dHTML} <span style="color:var(--muted)">เทียบ ${prv?fmtD(R.cmpStart)+"–"+fmtD(R.cmpEnd):"—"}</span></div>`;
-  const series=SER.filter(s=>VIS[s.key]).map(s=>({name:s.label,color:s.color,width:2.2,data:keys.map(k=>map[k][s.key])}));
+  const vis=SER.filter(s=>VIS[s.key]);
+  const series=vis.map(s=>({name:s.label,color:s.color,width:2.2,data:keys.map(k=>map[k][s.key])}));
+  if(GMV_CMP_ON.v&&CMP.keys.length){series.push(...vis.map(s=>({name:s.label+" (ก่อนหน้า)",color:s.color,ghost:true,data:keys.map((k,i)=>CMP.keys[i]!=null?CMP.map[CMP.keys[i]][s.key]:null)})));}
   drawMultiLine(svgEl,tip,keys.map(k=>({k})),series,v=>thb(v),k=>lb(bucket,k,1),{W:580,H:320,m:{t:16,r:14,b:32,l:58},dot:keys.length<=31});
 }
 function lb(b,k,short){if(b==="month")return short?mShort(k):mLabel(k);const d=new Date(k);return d.getDate()+"/"+(d.getMonth()+1);}
@@ -518,8 +524,10 @@ function drawMultiLine(svg,tip,pts,series,fmtV,fmtX,opts){
   let out=`<g class="cx-grid">`;for(let t=0;t<=4;t++){const yy=yOf(yMax/4*t);out+=`<line x1="${m.l}" y1="${yy.toFixed(1)}" x2="${m.l+iw}" y2="${yy.toFixed(1)}"></line>`;}out+=`</g><g class="cx-axis">`;
   for(let t=0;t<=4;t++){const val=yMax/4*t,yy=yOf(val);out+=`<text class="tab" x="${m.l-8}" y="${(yy+4).toFixed(1)}" text-anchor="end">${kOf(val)}</text>`;}
   const step=Math.ceil(n/8);pts.forEach((p,i)=>{if(i%step===0||i===n-1)out+=`<text x="${xOf(i).toFixed(1)}" y="${m.t+ih+18}" text-anchor="middle">${fmtX(p.k)}</text>`;});out+=`</g>`;
-  series.forEach(s=>{let d="",pen=false;s.data.forEach((v,i)=>{if(v==null){pen=false;return;}d+=(pen?"L":"M")+xOf(i).toFixed(1)+" "+yOf(v).toFixed(1)+" ";pen=true;});out+=`<path class="lc-line" d="${d.trim()}" style="stroke:${s.color}${s.width?";stroke-width:"+s.width:""}"></path>`;});
-  if(showDot)series.forEach(s=>s.data.forEach((v,i)=>{if(v==null)return;out+=`<circle class="lc-dot" cx="${xOf(i).toFixed(1)}" cy="${yOf(v).toFixed(1)}" r="${n>40?2:3}" style="fill:${s.color}"></circle>`;}));
+  const drawLine=s=>{let d="",pen=false;s.data.forEach((v,i)=>{if(v==null){pen=false;return;}d+=(pen?"L":"M")+xOf(i).toFixed(1)+" "+yOf(v).toFixed(1)+" ";pen=true;});return `<path class="lc-line${s.ghost?" ghost":""}" d="${d.trim()}" style="stroke:${s.color}${(!s.ghost&&s.width)?";stroke-width:"+s.width:""}"></path>`;};
+  series.filter(s=>s.ghost).forEach(s=>out+=drawLine(s));
+  series.filter(s=>!s.ghost).forEach(s=>out+=drawLine(s));
+  if(showDot)series.filter(s=>!s.ghost).forEach(s=>s.data.forEach((v,i)=>{if(v==null)return;out+=`<circle class="lc-dot" cx="${xOf(i).toFixed(1)}" cy="${yOf(v).toFixed(1)}" r="${n>40?2:3}" style="fill:${s.color}"></circle>`;}));
   out+=`<line class="lc-cross" id="tCross" x1="0" y1="${m.t}" x2="0" y2="${m.t+ih}"></line>`;
   const band=n<=1?iw:iw/(n-1);pts.forEach((p,i)=>out+=`<rect class="lc-hit" data-i="${i}" x="${(xOf(i)-band/2).toFixed(1)}" y="${m.t}" width="${band.toFixed(1)}" height="${ih}"></rect>`);
   svg.innerHTML=out;const cross=svg.querySelector("#tCross"),wrap=svg.parentElement;
@@ -593,6 +601,7 @@ $("gmvLegend").addEventListener("click",toggleSeries);$("adsLegend").addEventLis
 $("gmvPreset").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$("gmvPreset").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));applyPreset(b.dataset.p);renderGMV();});
 function onRangeInput(){GMV_RANGE.preset="";$("gmvPreset").querySelectorAll("button").forEach(x=>x.classList.remove("active"));let s=$("rStart").value,e=$("rEnd").value;if(s&&e&&s>e){[s,e]=[e,s];$("rStart").value=s;$("rEnd").value=e;}GMV_RANGE.start=s;GMV_RANGE.end=e;computeCompare();renderGMV();}
 $("rStart").addEventListener("change",onRangeInput);$("rEnd").addEventListener("change",onRangeInput);
+$("cmpToggle").addEventListener("click",()=>{GMV_CMP_ON.v=!GMV_CMP_ON.v;$("cmpToggle").classList.toggle("active",GMV_CMP_ON.v);renderGMV();});
 $("cmpMode").addEventListener("change",()=>{GMV_RANGE.cmpMode=$("cmpMode").value;$("cmpCustom").hidden=GMV_RANGE.cmpMode!=="custom";computeCompare();renderGMV();});
 $("cStart").addEventListener("change",()=>{computeCompare();renderGMV();});
 $("cEnd").addEventListener("change",()=>{computeCompare();renderGMV();});
