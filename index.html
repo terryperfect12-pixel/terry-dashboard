@@ -503,8 +503,10 @@ function renderTrafficSection(){
   renderVisitors(); renderRoas2();
 }
 function renderVisitors(){
-  const mode=GMV_MODE.v,bucket=GLOBAL.gran,R=GMV_RANGE,SER=mode==="plat"?VISIT_PLATS:BRAND_SERIES;
+  const mode=GMV_MODE.v,bucket=GLOBAL.gran,R=GMV_RANGE,VIS=GMV_VIS[mode];
+  const SER=(mode==="plat"?VISIT_PLATS:BRAND_SERIES).filter(s=>VIS[s.key]);
   const D=mode==="plat"?visitByPlat(GLOBAL.brand,bucket,R.start,R.end):visitByBrand(bucket,R.start,R.end);
+  if(!SER.length){$("trafLegend").innerHTML="";$("trafCompare").innerHTML="";tsvg.innerHTML="";$("trafEmpty").innerHTML="แพลตฟอร์มที่เลือกด้านบนไม่มีข้อมูลผู้เข้าชม";$("trafEmpty").hidden=false;return;}
   if(!D.keys.length){$("trafLegend").innerHTML="";$("trafCompare").innerHTML="";tsvg.innerHTML="";$("trafEmpty").innerHTML="ไม่มีข้อมูลผู้เข้าชมในช่วงที่เลือก<br>(Traffic มีเฉพาะ มิ.ย.–ส.ค.)";$("trafEmpty").hidden=false;return;}
   $("trafEmpty").hidden=true;
   const tot={};SER.forEach(s=>tot[s.key]=D.keys.reduce((a,k)=>a+(D.map[k][s.key]||0),0));
@@ -519,9 +521,11 @@ function renderVisitors(){
   drawMultiLine(tsvg,ttip,D.keys.map(k=>({k})),series,v=>kOf(v),k=>lb(bucket,k,1),{W:580,H:300,m:{t:16,r:14,b:32,l:52},dot:D.keys.length<=31});
 }
 function renderRoas2(){
-  const mode=GMV_MODE.v,bucket=GLOBAL.gran,R=GMV_RANGE,SER=mode==="plat"?ROAS_PLATS2:BRAND_SERIES;
+  const mode=GMV_MODE.v,bucket=GLOBAL.gran,R=GMV_RANGE,VIS=GMV_VIS[mode];
+  const SER=(mode==="plat"?ROAS_PLATS2:BRAND_SERIES).filter(s=>VIS[s.key]);
   const raw=mode==="plat"?roasByPlat(GLOBAL.brand,bucket,R.start,R.end):roasByBrand(bucket,R.start,R.end);
   const keys=Object.keys(raw).sort();
+  if(!SER.length){$("roasLegend").innerHTML="";$("roasCompare").innerHTML="";rsvg.innerHTML="";$("roasEmpty").innerHTML="แพลตฟอร์มที่เลือกด้านบนไม่มีข้อมูล ROAS";$("roasEmpty").hidden=false;return;}
   if(!keys.length){$("roasLegend").innerHTML="";$("roasCompare").innerHTML="";rsvg.innerHTML="";$("roasEmpty").innerHTML="ไม่มีข้อมูลในช่วงที่เลือก";$("roasEmpty").hidden=false;return;}
   $("roasEmpty").hidden=true;
   const rmap={};keys.forEach(k=>{rmap[k]={};SER.forEach(s=>{const c=raw[k][s.key];rmap[k][s.key]=c&&c.a>0?c.g/c.a:null;});});
