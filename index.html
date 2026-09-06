@@ -79,6 +79,7 @@
   .info-banner .bi{width:26px;height:26px;border-radius:50%;background:var(--info);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;flex:none;}
   .info-banner .bt{font-weight:700;color:var(--info);font-size:14px;margin-bottom:4px;} .info-banner .bd{font-size:12.5px;color:var(--ink2);line-height:1.55;}
   .row{display:grid;gap:14px;margin-bottom:22px;} .row-2{grid-template-columns:1.5fr 1fr;} .row-mid{grid-template-columns:1.4fr 1.15fr 1fr;}
+  .split2{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:8px;} @media (max-width:900px){.split2{grid-template-columns:1fr;}}
   svg.chart{display:block;width:100%;height:auto;font-family:inherit;}
   .cx-grid line{stroke:var(--line);stroke-width:1;} .cx-axis text{fill:var(--muted);font-size:10.5px;} .cx-axis text.tab{font-variant-numeric:tabular-nums;}
   .lc-line{fill:none;stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round;} .lc-area{opacity:.10;}
@@ -146,7 +147,7 @@
       <!-- HERO: GMV multi-line (Total + 3 platforms, toggleable) -->
       <div class="row" style="grid-template-columns:1fr">
         <div class="card pad">
-          <div class="card-h"><span>GMV Trend</span>
+          <div class="card-h"><span>GMV &amp; ค่าโฆษณา · ดูควบคู่</span>
             <span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
               <span class="seg" id="gmvMode"><button data-m="plat" class="active">แยกแพลตฟอร์ม</button><button data-m="brand">เทียบแบรนด์</button></span>
               <span class="tag" id="trBrandTag"></span>
@@ -160,12 +161,25 @@
               <span id="cmpCustom" hidden><input type="date" id="cStart" class="mini"> – <input type="date" id="cEnd" class="mini"></span>
             </span>
           </div>
-          <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin:6px 0 12px;flex-wrap:wrap">
-            <div class="chart-legend" id="gmvLegend" style="display:flex;flex-wrap:wrap;gap:8px"></div>
-            <div id="gmvCompare" style="text-align:right;white-space:nowrap;line-height:1.25"></div>
+          <div class="split2">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:var(--ink);border-left:3px solid var(--s1);padding-left:8px">ยอดขาย GMV</div>
+              <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin:6px 0 10px;flex-wrap:wrap">
+                <div class="chart-legend" id="gmvLegend" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+                <div id="gmvCompare" style="text-align:right;white-space:nowrap;line-height:1.25"></div>
+              </div>
+              <div style="position:relative"><svg class="chart" id="lineChart" viewBox="0 0 580 320" preserveAspectRatio="xMidYMid meet"></svg><div class="lc-tip" id="lcTip"></div></div>
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:13px;color:var(--ink);border-left:3px solid var(--warn);padding-left:8px">ค่าโฆษณา (Ads)</div>
+              <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin:6px 0 10px;flex-wrap:wrap">
+                <div class="chart-legend" id="adsLegend" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+                <div id="adsCompare" style="text-align:right;white-space:nowrap;line-height:1.25"></div>
+              </div>
+              <div style="position:relative"><svg class="chart" id="adsChart" viewBox="0 0 580 320" preserveAspectRatio="xMidYMid meet"></svg><div class="lc-tip" id="adsTip"></div></div>
+            </div>
           </div>
-          <div style="position:relative"><svg class="chart" id="lineChart" viewBox="0 0 1180 340" preserveAspectRatio="xMidYMid meet"></svg><div class="lc-tip" id="lcTip"></div></div>
-          <div class="tag" style="font-size:10.5px;color:var(--muted);margin-top:6px">ที่มา: Data ads gmv (รายวัน) · คลิกที่ปุ่มสีเพื่อเปิด/ปิดเส้น · เลือกช่วงเวลา 1วัน/7วัน/1เดือน ด้านบน</div>
+          <div class="tag" style="font-size:10.5px;color:var(--muted);margin-top:8px">ที่มา: Data ads gmv (รายวัน) · ซ้าย = ยอดขาย · ขวา = ค่าโฆษณา · ช่วงเวลา/แบรนด์/โหมด/เส้นที่ติ๊ก คุมทั้ง 2 กราฟพร้อมกัน</div>
         </div>
       </div>
 
@@ -268,7 +282,7 @@ function parseThaiDate(s){const m=String(s).trim().match(/^(\d{1,2})\s+(\S+)\s+(
 function parseDMY(s){const m=String(s).trim().match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);if(!m)return null;return m[3]+"-"+String(+m[2]).padStart(2,"0")+"-"+String(+m[1]).padStart(2,"0");}
 
 /* ===================== PARSERS ===================== */
-function parseAdsDaily(grid){const out=[];for(const row of grid){const d=parseThaiDate(row[1]);if(!d)continue;const lz=num(row[7]),sp=num(row[8]),tk=num(row[9]);out.push({date:d,gmv:lz+sp+tk,laz:lz,shp:sp,tik:tk,ads:num(row[2])+num(row[3])+num(row[4])+num(row[5])});}return out;}
+function parseAdsDaily(grid){const out=[];for(const row of grid){const d=parseThaiDate(row[1]);if(!d)continue;const lz=num(row[7]),sp=num(row[8]),tk=num(row[9]);const tkA=num(row[2])+num(row[3]),spA=num(row[4]),lzA=num(row[5]);out.push({date:d,gmv:lz+sp+tk,laz:lz,shp:sp,tik:tk,ads:tkA+spA+lzA,tikAds:tkA,shpAds:spA,lazAds:lzA});}return out;}
 function parsePerforman(grid,anchor){
   let hr=-1;for(let i=0;i<Math.min(grid.length,6);i++){if(grid[i].some(c=>parseMonthYear(c))){hr=i;break;}}
   let monthCol={};
@@ -392,8 +406,8 @@ const BRAND_SERIES=[
 const GMV_VIS={plat:{TikTok:true,Shopee:true,Lazada:true},brand:{Benutra:true,Terry:true,Gala:true}};
 function bkey(date,bucket){if(bucket==="week"){const d=new Date(date);const mo=new Date(d);mo.setDate(d.getDate()-((d.getDay()+6)%7));return mo.toISOString().slice(0,10);}if(bucket==="month")return date.slice(0,7);return date;}
 const inR=(d,s,e)=>(!s||d>=s)&&(!e||d<=e);
-function trendByPlatform(brand,bucket,s,e){const map={};(store.daily[brand]||[]).forEach(r=>{if(!inR(r.date,s,e))return;const k=bkey(r.date,bucket);if(!map[k])map[k]={TikTok:0,Shopee:0,Lazada:0};map[k].TikTok+=r.tik;map[k].Shopee+=r.shp;map[k].Lazada+=r.laz;});return {keys:Object.keys(map).sort(),map};}
-function trendByBrand(bucket,s,e){const map={};BRANDS.forEach(b=>(store.daily[b]||[]).forEach(r=>{if(!inR(r.date,s,e))return;const k=bkey(r.date,bucket);if(!map[k])map[k]={Benutra:0,Terry:0,Gala:0};map[k][b]+=r.gmv;}));return {keys:Object.keys(map).sort(),map};}
+function trendPlat(brand,bucket,s,e,metric){const A=metric==="ads";const map={};(store.daily[brand]||[]).forEach(r=>{if(!inR(r.date,s,e))return;const k=bkey(r.date,bucket);if(!map[k])map[k]={TikTok:0,Shopee:0,Lazada:0};map[k].TikTok+=A?r.tikAds:r.tik;map[k].Shopee+=A?r.shpAds:r.shp;map[k].Lazada+=A?r.lazAds:r.laz;});return {keys:Object.keys(map).sort(),map};}
+function trendBrand(bucket,s,e,metric){const A=metric==="ads";const map={};BRANDS.forEach(b=>(store.daily[b]||[]).forEach(r=>{if(!inR(r.date,s,e))return;const k=bkey(r.date,bucket);if(!map[k])map[k]={Benutra:0,Terry:0,Gala:0};map[k][b]+=A?r.ads:r.gmv;}));return {keys:Object.keys(map).sort(),map};}
 /* ---- date-range state ---- */
 const GMV_RANGE={start:null,end:null,cmpStart:null,cmpEnd:null,cmpMode:"prev",preset:"month"};
 function dataDates(){const s=new Set();BRANDS.forEach(b=>(store.daily[b]||[]).forEach(r=>s.add(r.date)));return [...s].sort();}
@@ -417,28 +431,32 @@ function initRange(){const d=dataDates();if(!d.length)return;const min=d[0],max=
   ["rStart","rEnd","cStart","cEnd"].forEach(id=>{if($(id)){$(id).min=min;$(id).max=max;}});
   applyPreset(GMV_RANGE.preset);
 }
-const lsvg=$("lineChart"),ltip=$("lcTip");
+const lsvg=$("lineChart"),ltip=$("lcTip"),asvg=$("adsChart"),atip=$("adsTip");
 function granLabel(b){return b==="day"?"รายวัน":b==="week"?"ราย 7 วัน":"รายเดือน";}
 function renderGMV(){
-  const bucket=GLOBAL.gran,mode=GMV_MODE.v,SER=mode==="plat"?PLAT_SERIES:BRAND_SERIES,VIS=GMV_VIS[mode];
-  const R=GMV_RANGE;
-  const {keys,map}=mode==="plat"?trendByPlatform(GLOBAL.brand,bucket,R.start,R.end):trendByBrand(bucket,R.start,R.end);
+  const mode=GMV_MODE.v;
   $("gmvMode").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x.dataset.m===mode));
-  $("trBrandTag").textContent=(mode==="plat"?GLOBAL.brand:"เทียบ 3 แบรนด์")+" · "+granLabel(bucket);
-  if(!keys.length){$("gmvLegend").innerHTML="";$("gmvCompare").innerHTML=`<div style="color:var(--muted);font-size:12px">ไม่มีข้อมูลในช่วงที่เลือก</div>`;lsvg.innerHTML="";return;}
+  $("trBrandTag").textContent=(mode==="plat"?GLOBAL.brand:"เทียบ 3 แบรนด์")+" · "+granLabel(GLOBAL.gran);
+  renderMetricChart("gmv",lsvg,ltip,"gmvLegend","gmvCompare",false);
+  renderMetricChart("ads",asvg,atip,"adsLegend","adsCompare",true);
+}
+function renderMetricChart(metric,svgEl,tip,legendId,compareId,neutral){
+  const bucket=GLOBAL.gran,mode=GMV_MODE.v,SER=mode==="plat"?PLAT_SERIES:BRAND_SERIES,VIS=GMV_VIS[mode],R=GMV_RANGE;
+  const {keys,map}=mode==="plat"?trendPlat(GLOBAL.brand,bucket,R.start,R.end,metric):trendBrand(bucket,R.start,R.end,metric);
+  if(!keys.length){$(legendId).innerHTML="";$(compareId).innerHTML=`<div style="color:var(--muted);font-size:12px">ไม่มีข้อมูลในช่วงที่เลือก</div>`;svgEl.innerHTML="";return;}
   const tot={};SER.forEach(s=>tot[s.key]=keys.reduce((a,k)=>a+map[k][s.key],0));
-  $("gmvLegend").innerHTML=SER.map(s=>`<button class="lgd${VIS[s.key]?"":" off"}" data-k="${s.key}"><span class="sw" style="background:${s.color}"></span><span class="nm">${s.label}</span><span class="tv">${thb(tot[s.key])}</span></button>`).join("");
-  // compare selected range vs comparison range (sum of visible lines)
+  $(legendId).innerHTML=SER.map(s=>`<button class="lgd${VIS[s.key]?"":" off"}" data-k="${s.key}"><span class="sw" style="background:${s.color}"></span><span class="nm">${s.label}</span><span class="tv">${thb(tot[s.key])}</span></button>`).join("");
   const visK=SER.filter(s=>VIS[s.key]).map(s=>s.key);
   const cur=keys.reduce((a,k)=>a+visK.reduce((b,key)=>b+(map[k][key]||0),0),0);
-  const CMP=mode==="plat"?trendByPlatform(GLOBAL.brand,bucket,R.cmpStart,R.cmpEnd):trendByBrand(bucket,R.cmpStart,R.cmpEnd);
+  const CMP=mode==="plat"?trendPlat(GLOBAL.brand,bucket,R.cmpStart,R.cmpEnd,metric):trendBrand(bucket,R.cmpStart,R.cmpEnd,metric);
   const prv=CMP.keys.reduce((a,k)=>a+visK.reduce((b,key)=>b+(CMP.map[k][key]||0),0),0);
   const dl=(prv&&prv>0)?(cur-prv)/prv*100:null;
-  $("gmvCompare").innerHTML=`<div style="font-size:11px;color:var(--muted)">ช่วง ${fmtD(R.start)}–${fmtD(R.end)}</div>`+
-    `<div style="font-size:21px;font-weight:800;font-variant-numeric:tabular-nums">${thb(cur)}</div>`+
-    `<div style="font-size:11.5px">${deltaHTML(dl)} <span style="color:var(--muted)">เทียบ ${prv?fmtD(R.cmpStart)+"–"+fmtD(R.cmpEnd):"— (ไม่มีข้อมูลช่วงเทียบ)"}</span></div>`;
-  const series=SER.filter(s=>VIS[s.key]).map(s=>({name:s.label,color:s.color,width:2.4,data:keys.map(k=>map[k][s.key])}));
-  drawMultiLine(lsvg,ltip,keys.map(k=>({k})),series,v=>thb(v),k=>lb(bucket,k,1),{W:1180,H:340,m:{t:18,r:18,b:34,l:66},dot:keys.length<=45});
+  const dHTML=(dl==null)?deltaHTML(null):(neutral?`<span style="color:var(--ink2);font-weight:700;font-variant-numeric:tabular-nums">${deltaText(dl)}</span>`:deltaHTML(dl));
+  $(compareId).innerHTML=`<div style="font-size:11px;color:var(--muted)">ช่วง ${fmtD(R.start)}–${fmtD(R.end)}</div>`+
+    `<div style="font-size:19px;font-weight:800;font-variant-numeric:tabular-nums">${thb(cur)}</div>`+
+    `<div style="font-size:11px">${dHTML} <span style="color:var(--muted)">เทียบ ${prv?fmtD(R.cmpStart)+"–"+fmtD(R.cmpEnd):"—"}</span></div>`;
+  const series=SER.filter(s=>VIS[s.key]).map(s=>({name:s.label,color:s.color,width:2.2,data:keys.map(k=>map[k][s.key])}));
+  drawMultiLine(svgEl,tip,keys.map(k=>({k})),series,v=>thb(v),k=>lb(bucket,k,1),{W:580,H:320,m:{t:16,r:14,b:32,l:58},dot:keys.length<=31});
 }
 function lb(b,k,short){if(b==="month")return short?mShort(k):mLabel(k);const d=new Date(k);return d.getDate()+"/"+(d.getMonth()+1);}
 
@@ -570,7 +588,8 @@ function renderAll(){renderKPI();renderGMV();renderChannel();renderTraffic();ren
 $("gBrand").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;GLOBAL.brand=b.dataset.b;buildBrandBar();renderAll();});
 $("gGran").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;GLOBAL.gran=b.dataset.b;$("gGran").querySelectorAll("button").forEach(x=>x.classList.remove("active"));b.classList.add("active");renderGMV();});
 $("gmvMode").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;GMV_MODE.v=b.dataset.m;renderGMV();});
-$("gmvLegend").addEventListener("click",e=>{const b=e.target.closest(".lgd");if(!b)return;const k=b.dataset.k,vis=GMV_VIS[GMV_MODE.v];if(vis[k]&&Object.values(vis).filter(Boolean).length<=1)return;vis[k]=!vis[k];renderGMV();});
+function toggleSeries(e){const b=e.target.closest(".lgd");if(!b)return;const k=b.dataset.k,vis=GMV_VIS[GMV_MODE.v];if(vis[k]&&Object.values(vis).filter(Boolean).length<=1)return;vis[k]=!vis[k];renderGMV();}
+$("gmvLegend").addEventListener("click",toggleSeries);$("adsLegend").addEventListener("click",toggleSeries);
 $("gmvPreset").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$("gmvPreset").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));applyPreset(b.dataset.p);renderGMV();});
 function onRangeInput(){GMV_RANGE.preset="";$("gmvPreset").querySelectorAll("button").forEach(x=>x.classList.remove("active"));let s=$("rStart").value,e=$("rEnd").value;if(s&&e&&s>e){[s,e]=[e,s];$("rStart").value=s;$("rEnd").value=e;}GMV_RANGE.start=s;GMV_RANGE.end=e;computeCompare();renderGMV();}
 $("rStart").addEventListener("change",onRangeInput);$("rEnd").addEventListener("change",onRangeInput);
