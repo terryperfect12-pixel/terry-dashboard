@@ -142,7 +142,12 @@
       <!-- HERO: GMV multi-line (Total + 3 platforms, toggleable) -->
       <div class="row" style="grid-template-columns:1fr">
         <div class="card pad">
-          <div class="card-h"><span>GMV Trend · แยกแพลตฟอร์ม</span><span class="tag" id="trBrandTag"></span></div>
+          <div class="card-h"><span>GMV Trend</span>
+            <span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <span class="seg" id="gmvMode"><button data-m="plat" class="active">แยกแพลตฟอร์ม</button><button data-m="brand">เทียบแบรนด์</button></span>
+              <span class="tag" id="trBrandTag"></span>
+            </span>
+          </div>
           <div class="chart-legend" id="gmvLegend" style="display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px"></div>
           <div style="position:relative"><svg class="chart" id="lineChart" viewBox="0 0 1180 340" preserveAspectRatio="xMidYMid meet"></svg><div class="lc-tip" id="lcTip"></div></div>
           <div class="tag" style="font-size:10.5px;color:var(--muted);margin-top:6px">ที่มา: Data ads gmv (รายวัน) · คลิกที่ปุ่มสีเพื่อเปิด/ปิดเส้น · เลือกช่วงเวลา 1วัน/7วัน/1เดือน ด้านบน</div>
@@ -356,29 +361,33 @@ function renderKPI(){
     `<div class="info-banner"><div class="bi">i</div><div><div class="bt">${open?"September 2026 — Data Not Available Yet":mLabel(mk)+" · "+brand}</div><div class="bd">${open?"ยังไม่มีข้อมูลในชีตสำหรับเดือนนี้ (Open Month Safety) · การวิเคราะห์ด้านล่างอิงเดือนล่าสุดที่มีข้อมูล":"GMV "+MM(gmv)+" · Achievement "+ach.toFixed(1)+"% · Gap ฿"+Math.round(gap).toLocaleString()}</div></div></div>`;
 }
 
-/* ===================== GMV TREND ===================== */
-const GMV_SERIES=[
-  {key:"Total",label:"GMV รวม",color:"var(--s1)",wide:3.2},
-  {key:"TikTok",label:"TikTok",color:"var(--s3)",wide:2.2},
-  {key:"Shopee",label:"Shopee",color:"var(--s2)",wide:2.2},
-  {key:"Lazada",label:"Lazada",color:"var(--s4)",wide:2.2},
+/* ===================== GMV TREND (2 modes: by platform / by brand) ===================== */
+const GMV_MODE={v:"plat"};
+const PLAT_SERIES=[
+  {key:"TikTok",label:"TikTok",color:"var(--s3)"},
+  {key:"Shopee",label:"Shopee",color:"var(--s2)"},
+  {key:"Lazada",label:"Lazada",color:"var(--s4)"},
 ];
-const GMV_VIS={Total:true,TikTok:true,Shopee:true,Lazada:true};
-function trendMulti(brand,bucket){
-  const map={};(brand==="ALL"?BRANDS:[brand]).forEach(b=>(store.daily[b]||[]).forEach(r=>{
-    let k=r.date;if(bucket==="week"){const d=new Date(r.date);const mo=new Date(d);mo.setDate(d.getDate()-((d.getDay()+6)%7));k=mo.toISOString().slice(0,10);}else if(bucket==="month")k=r.date.slice(0,7);
-    if(!map[k])map[k]={Total:0,TikTok:0,Shopee:0,Lazada:0};
-    map[k].Total+=r.gmv;map[k].TikTok+=r.tik;map[k].Shopee+=r.shp;map[k].Lazada+=r.laz;}));
-  const keys=Object.keys(map).sort();return {keys,map};
-}
+const BRAND_SERIES=[
+  {key:"Benutra",label:"Benutra",color:"var(--s1)"},
+  {key:"Terry",label:"Terry",color:"var(--s3)"},
+  {key:"Gala",label:"Gala",color:"var(--s5)"},
+];
+const GMV_VIS={plat:{TikTok:true,Shopee:true,Lazada:true},brand:{Benutra:true,Terry:true,Gala:true}};
+function bkey(date,bucket){if(bucket==="week"){const d=new Date(date);const mo=new Date(d);mo.setDate(d.getDate()-((d.getDay()+6)%7));return mo.toISOString().slice(0,10);}if(bucket==="month")return date.slice(0,7);return date;}
+function trendByPlatform(brand,bucket){const map={};(store.daily[brand]||[]).forEach(r=>{const k=bkey(r.date,bucket);if(!map[k])map[k]={TikTok:0,Shopee:0,Lazada:0};map[k].TikTok+=r.tik;map[k].Shopee+=r.shp;map[k].Lazada+=r.laz;});return {keys:Object.keys(map).sort(),map};}
+function trendByBrand(bucket){const map={};BRANDS.forEach(b=>(store.daily[b]||[]).forEach(r=>{const k=bkey(r.date,bucket);if(!map[k])map[k]={Benutra:0,Terry:0,Gala:0};map[k][b]+=r.gmv;}));return {keys:Object.keys(map).sort(),map};}
 const lsvg=$("lineChart"),ltip=$("lcTip");
+function granLabel(b){return b==="day"?"รายวัน":b==="week"?"ราย 7 วัน":"รายเดือน";}
 function renderGMV(){
-  const brand=GLOBAL.brand,bucket=GLOBAL.gran,{keys,map}=trendMulti(brand,bucket);
-  $("trBrandTag").textContent=brand+" · "+(bucket==="day"?"รายวัน":bucket==="week"?"ราย 7 วัน":"รายเดือน");
+  const bucket=GLOBAL.gran,mode=GMV_MODE.v,SER=mode==="plat"?PLAT_SERIES:BRAND_SERIES,VIS=GMV_VIS[mode];
+  const {keys,map}=mode==="plat"?trendByPlatform(GLOBAL.brand,bucket):trendByBrand(bucket);
+  $("gmvMode").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x.dataset.m===mode));
+  $("trBrandTag").textContent=(mode==="plat"?GLOBAL.brand:"เทียบ 3 แบรนด์")+" · "+granLabel(bucket);
   if(!keys.length){$("gmvLegend").innerHTML="";lsvg.innerHTML="";return;}
-  const tot={};GMV_SERIES.forEach(s=>tot[s.key]=keys.reduce((a,k)=>a+map[k][s.key],0));
-  $("gmvLegend").innerHTML=GMV_SERIES.map(s=>`<button class="lgd${GMV_VIS[s.key]?"":" off"}" data-k="${s.key}"><span class="sw" style="background:${s.color}"></span><span class="nm">${s.label}</span><span class="tv">${thb(tot[s.key])}</span></button>`).join("");
-  const series=GMV_SERIES.filter(s=>GMV_VIS[s.key]).map(s=>({name:s.label,color:s.color,width:s.wide,data:keys.map(k=>map[k][s.key])}));
+  const tot={};SER.forEach(s=>tot[s.key]=keys.reduce((a,k)=>a+map[k][s.key],0));
+  $("gmvLegend").innerHTML=SER.map(s=>`<button class="lgd${VIS[s.key]?"":" off"}" data-k="${s.key}"><span class="sw" style="background:${s.color}"></span><span class="nm">${s.label}</span><span class="tv">${thb(tot[s.key])}</span></button>`).join("");
+  const series=SER.filter(s=>VIS[s.key]).map(s=>({name:s.label,color:s.color,width:2.4,data:keys.map(k=>map[k][s.key])}));
   drawMultiLine(lsvg,ltip,keys.map(k=>({k})),series,v=>thb(v),k=>lb(bucket,k,1),{W:1180,H:340,m:{t:18,r:18,b:34,l:66},dot:keys.length<=45});
 }
 function lb(b,k,short){if(b==="month")return short?mShort(k):mLabel(k);const d=new Date(k);return d.getDate()+"/"+(d.getMonth()+1);}
@@ -508,7 +517,8 @@ function renderAll(){renderKPI();renderGMV();renderChannel();renderTraffic();ren
 /* ===================== events ===================== */
 $("gBrand").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;GLOBAL.brand=b.dataset.b;buildBrandBar();renderAll();});
 $("gGran").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;GLOBAL.gran=b.dataset.b;$("gGran").querySelectorAll("button").forEach(x=>x.classList.remove("active"));b.classList.add("active");renderGMV();});
-$("gmvLegend").addEventListener("click",e=>{const b=e.target.closest(".lgd");if(!b)return;const k=b.dataset.k;if(GMV_VIS[k]&&GMV_SERIES.filter(s=>GMV_VIS[s.key]).length<=1)return;GMV_VIS[k]=!GMV_VIS[k];renderGMV();});
+$("gmvMode").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;GMV_MODE.v=b.dataset.m;renderGMV();});
+$("gmvLegend").addEventListener("click",e=>{const b=e.target.closest(".lgd");if(!b)return;const k=b.dataset.k,vis=GMV_VIS[GMV_MODE.v];if(vis[k]&&Object.values(vis).filter(Boolean).length<=1)return;vis[k]=!vis[k];renderGMV();});
 $("selMonth").addEventListener("change",async()=>{const mk=$("selMonth").value;renderKPI();renderTraffic();renderProducts();await Promise.all([loadProducts(mk),loadTraffic(mk)]);renderProducts();renderTraffic();});
 $("chA").addEventListener("change",renderChannel);$("chB").addEventListener("change",renderChannel);
 $("trafMetric").addEventListener("change",renderTraffic);
