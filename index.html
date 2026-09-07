@@ -437,7 +437,7 @@ function trendPlat(brand,bucket,s,e,metric){const A=metric==="ads";const map={};
 function trendBrand(bucket,s,e,metric){const A=metric==="ads";const map={};BRANDS.forEach(b=>(store.daily[b]||[]).forEach(r=>{if(!inR(r.date,s,e))return;const k=bkey(r.date,bucket);if(!map[k])map[k]={Benutra:0,Terry:0,Gala:0};map[k][b]+=A?r.ads:r.gmv;}));return {keys:Object.keys(map).sort(),map};}
 /* ---- date-range state ---- */
 const GMV_RANGE={start:null,end:null,cmpStart:null,cmpEnd:null,cmpMode:"prev",preset:"month"};
-function dataDates(){const s=new Set();BRANDS.forEach(b=>(store.daily[b]||[]).forEach(r=>s.add(r.date)));return [...s].sort();}
+function dataDates(){const s=new Set();BRANDS.forEach(b=>(store.daily[b]||[]).forEach(r=>{if(r.gmv>0)s.add(r.date);}));return [...s].sort();}
 function shiftDate(iso,days){const d=new Date(iso+"T00:00:00");d.setDate(d.getDate()+days);return d.toISOString().slice(0,10);}
 function daysBetween(a,b){return Math.round((new Date(b+"T00:00:00")-new Date(a+"T00:00:00"))/86400000);}
 function fmtD(iso){const d=new Date(iso+"T00:00:00");return d.getDate()+"/"+(d.getMonth()+1);}
@@ -466,12 +466,13 @@ const lsvg=$("lineChart"),ltip=$("lcTip"),asvg=$("adsChart"),atip=$("adsTip");
 function granLabel(b){return b==="day"?"รายวัน":b==="week"?"ราย 7 วัน":"รายเดือน";}
 function winLabel(){const R=GMV_RANGE;if(R.preset==="month")return mLabel(R.start.slice(0,7));if(R.preset==="all")return "ทั้งหมด";if(R.preset==="1")return "วันล่าสุด "+fmtD(R.end);return fmtD(R.start)+"–"+fmtD(R.end);}
 /* shared clear comparison block: selected period vs previous period, labeled */
-function cmpBlock(curLabel,cur,prevLabel,prev,fmt,neutral){
+function cmpBlock(curLabel,cur,prevLabel,prev,fmt){
   const has=prev&&prev>0,dl=has?(cur-prev)/prev*100:null;
-  const d=dl==null?`<span class="delta fl">—</span>`:(neutral?`<span style="color:var(--ink2);font-weight:700;font-variant-numeric:tabular-nums">${deltaText(dl)}</span>`:deltaHTML(dl));
-  return `<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">ช่วงที่เลือก · ${curLabel}</div>`+
-    `<div style="font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.15">${fmt(cur)}</div>`+
-    `<div style="font-size:11px;margin-top:1px">${d} <span style="color:var(--muted)">vs ก่อนหน้า ${has?"("+prevLabel+") "+fmt(prev):"— ไม่มีข้อมูล"}</span></div>`;
+  const dcol=dl==null?"var(--muted)":(dl>=0?"var(--good)":"var(--danger)");
+  const dtxt=dl==null?"—":((dl>=0?"▲ +":"▼ ")+dl.toFixed(1)+"%");
+  return `<div style="font-size:11px;color:var(--muted);letter-spacing:.02em">ช่วงที่เลือก · ${curLabel}</div>`+
+    `<div style="font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.12;letter-spacing:-.01em">${fmt(cur)}</div>`+
+    `<div style="font-size:12px;margin-top:3px"><b style="color:${dcol};font-variant-numeric:tabular-nums">${dtxt}</b> <span style="color:var(--muted)">vs ก่อนหน้า ${has?"("+prevLabel+") "+fmt(prev):"— ไม่มีข้อมูล"}</span></div>`;
 }
 function renderGMV(){
   renderKPI();
@@ -490,7 +491,7 @@ function renderMetricChart(metric,svgEl,tip,legendId,compareId,neutral){
   const cur=keys.reduce((a,k)=>a+visK.reduce((b,key)=>b+(map[k][key]||0),0),0);
   const CMP=trendPlat(GLOBAL.brand,bucket,R.cmpStart,R.cmpEnd,metric);
   const prv=CMP.keys.reduce((a,k)=>a+visK.reduce((b,key)=>b+(CMP.map[k][key]||0),0),0);
-  $(compareId).innerHTML=cmpBlock(fmtD(R.start)+"–"+fmtD(R.end),cur,fmtD(R.cmpStart)+"–"+fmtD(R.cmpEnd),prv,thb,neutral);
+  $(compareId).innerHTML=cmpBlock(fmtD(R.start)+"–"+fmtD(R.end),cur,fmtD(R.cmpStart)+"–"+fmtD(R.cmpEnd),prv,n=>Math.round(n).toLocaleString("en-US"));
   const vis=SER.filter(s=>VIS[s.key]);
   const series=vis.map(s=>({name:s.label,color:s.color,width:2.2,data:keys.map(k=>map[k][s.key])}));
   if(GMV_CMP_ON.v&&CMP.keys.length){series.push(...vis.map(s=>({name:s.label+" (ก่อนหน้า)",color:s.color,ghost:true,data:keys.map((k,i)=>CMP.keys[i]!=null?CMP.map[CMP.keys[i]][s.key]:null)})));}
