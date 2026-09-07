@@ -335,7 +335,7 @@ function parseShopeeSKU(grid){
     const m={ch:"Shopee",sales:gmv,gmv,visits:num(row[10]),clicks:num(row[11]),ctr:num(row[12]),conv:num(row[14])};
     if(opt===""||opt==="-"){out.push({...m,level:"parent",name:pname});}          /* ตะกร้า/รายการสินค้า */
     else{const on=String(row[4]||"").trim();                                          /* SKU ย่อย (ตัวเลือก) — ไม่ใส่รหัส */
-      out.push({...m,level:"sku",name:pname+(on&&on!=="-"?" · "+on:"")});}}
+      out.push({...m,level:"sku",pname,name:pname+(on&&on!=="-"?" · "+on:"")});}}
   return out;
 }
 function parseTiktokSKU(grid){
@@ -631,17 +631,26 @@ function renderProducts2(){
   const brand=GLOBAL.brand,mk=$("selMonth").value,pmk=addMonths(mk,-1),lvl=PROD_LEVEL.v;
   $("prBrand").textContent=brand+" · "+mLabel(mk);
   const P=store.prod[mk],PP=store.prod[pmk];
-  const build=(ch,elId,sortKey,cols)=>{
+  const pct=v=>(+v).toFixed(1)+"%";
+  const build=(ch,elId,sortSel)=>{
     if(!P){$(elId).innerHTML=`<div class="empty">กำลังโหลดสินค้า…</div>`;return;}
     let useLvl=lvl,note="";
     if(ch==="TikTok"&&lvl==="sku"){useLvl="parent";note=`<div class="tag" style="font-size:10px;color:var(--muted);margin-bottom:6px">TikTok ไม่มีข้อมูล SKU ย่อย · แสดงระดับสินค้า</div>`;}
-    const list=(P[brand]||[]).filter(x=>x.ch===ch&&x.level===useLvl).slice().sort((a,b)=>(b[sortKey]||0)-(a[sortKey]||0)).slice(0,10);
+    let list=(P[brand]||[]).filter(x=>x.ch===ch&&x.level===useLvl).slice();
     if(!list.length){$(elId).innerHTML=`<div class="empty">ไม่มีข้อมูลสินค้า ${ch} · ${mLabel(mk)} · ${brand}<br>(SKU มีเฉพาะ มิ.ย.–ส.ค. 2026)</div>`;return;}
+    let cols,sortKey=sortSel||"gmv";
+    if(ch==="TikTok"){cols=[{key:"gmv",label:"GMV",fmt:thb},{key:"impressions",label:"แสดงผล",fmt:kOf},{key:"clicks",label:"คลิก",fmt:kOf},{key:"ctr",label:"CTR",fmt:pct}];}
+    else if(useLvl==="sku"){ // Shopee sub-item: engagement is listing-level only → sales + share of its basket
+      const ptot={};list.forEach(x=>ptot[x.pname]=(ptot[x.pname]||0)+(x.gmv||0));list.forEach(x=>x._share=ptot[x.pname]>0?x.gmv/ptot[x.pname]*100:0);
+      cols=[{key:"gmv",label:"ยอดขาย",fmt:thb},{key:"_share",label:"สัดส่วนตะกร้า",fmt:pct}];sortKey="gmv";
+      note=`<div class="tag" style="font-size:10px;color:var(--muted);margin-bottom:6px">ตัวย่อยมีเฉพาะ "ยอดขาย" · เข้าชม/คลิก/Conv. มีเฉพาะระดับตะกร้า</div>`;
+    } else {cols=[{key:"gmv",label:"ยอดขาย",fmt:thb},{key:"visits",label:"เข้าชม",fmt:kOf},{key:"clicks",label:"คลิก",fmt:kOf},{key:"conv",label:"Conv.",fmt:pct}];}
+    list=list.sort((a,b)=>(b[sortKey]||0)-(a[sortKey]||0)).slice(0,10);
     const prevList=PP?((PP[brand]||[]).filter(x=>x.ch===ch&&x.level===useLvl).slice().sort((a,b)=>(b.gmv||0)-(a.gmv||0))):[];
     $(elId).innerHTML=note+prodRankTable(list,prevList,cols);
   };
-  build("TikTok","tkProd",$("tkSort").value,[{key:"gmv",label:"GMV",fmt:thb},{key:"impressions",label:"แสดงผล",fmt:kOf},{key:"clicks",label:"คลิก",fmt:kOf},{key:"ctr",label:"CTR",fmt:v=>(+v).toFixed(1)+"%"}]);
-  build("Shopee","shProd",$("shSort").value,[{key:"gmv",label:"ยอดขาย",fmt:thb},{key:"visits",label:"เข้าชม",fmt:kOf},{key:"clicks",label:"คลิก",fmt:kOf},{key:"conv",label:"Conv.",fmt:v=>(+v).toFixed(1)+"%"}]);
+  build("TikTok","tkProd",$("tkSort").value);
+  build("Shopee","shProd",$("shSort").value);
 }
 
 /* ===================== INSIGHT / PRIORITY / ACTION ===================== */
