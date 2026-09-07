@@ -226,19 +226,16 @@
       <div class="sec-label" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
         <span>อันดับสินค้า · <span id="prBrand" style="color:var(--s1)"></span> <span style="font-weight:400;text-transform:none;color:var(--muted)">(Top 10 · แยก TikTok / Shopee)</span></span>
         <span class="seg sm" id="prLevel" style="text-transform:none"><button data-lv="parent" class="active">ตะกร้า (รายการ)</button><button data-lv="sku">SKU ย่อย</button></span>
+        <span style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);text-transform:none;font-weight:400">เรียงตาม <select class="mini" id="prSort"><option value="gmv">ยอดขาย / GMV</option><option value="reach">การเข้าชม / แสดงผล</option><option value="clicks">คลิก</option></select></span>
       </div>
       <div class="row row-2" style="grid-template-columns:1fr 1fr">
         <div class="card pad">
-          <div class="card-h"><span style="border-left:3px solid var(--ink);padding-left:8px">TikTok — อันดับสินค้า</span>
-            <span style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--muted)">เรียงตาม <select class="mini" id="tkSort"><option value="gmv">GMV</option><option value="impressions">ยอดแสดงผล</option><option value="clicks">คลิก</option></select></span>
-          </div>
+          <div class="card-h"><span style="border-left:3px solid var(--ink);padding-left:8px">TikTok — อันดับสินค้า</span></div>
           <div id="tkProd"><div class="empty">กำลังโหลดสินค้า…</div></div>
           <div class="tag" style="font-size:10px;color:var(--muted);margin-top:8px">ที่มา: Tiktok Sku Revenue · ลูกศร = อันดับเทียบเดือนก่อน</div>
         </div>
         <div class="card pad">
-          <div class="card-h"><span style="border-left:3px solid var(--s2);padding-left:8px">Shopee — อันดับสินค้า</span>
-            <span style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--muted)">เรียงตาม <select class="mini" id="shSort"><option value="gmv">ยอดขาย</option><option value="visits">เข้าชม</option><option value="clicks">คลิก</option></select></span>
-          </div>
+          <div class="card-h"><span style="border-left:3px solid var(--s2);padding-left:8px">Shopee — อันดับสินค้า</span></div>
           <div id="shProd"><div class="empty">กำลังโหลดสินค้า…</div></div>
           <div class="tag" style="font-size:10px;color:var(--muted);margin-top:8px">ที่มา: Shopee Sku Revenue (ยอดขายยืนยันแล้ว) · ลูกศร = อันดับเทียบเดือนก่อน</div>
         </div>
@@ -657,8 +654,9 @@ function renderProducts2(){
     const prevList=PP?((PP[brand]||[]).filter(x=>x.ch===ch&&x.level===useLvl).slice().sort((a,b)=>(b.gmv||0)-(a.gmv||0))):[];
     $(elId).innerHTML=note+prodRankTable(list,prevList,cols);
   };
-  build("TikTok","tkProd",$("tkSort").value);
-  build("Shopee","shProd",$("shSort").value);
+  const sv=($("prSort")&&$("prSort").value)||"gmv";
+  build("TikTok","tkProd",sv==="reach"?"impressions":sv==="clicks"?"clicks":"gmv");
+  build("Shopee","shProd",sv==="reach"?"visits":sv==="clicks"?"clicks":"gmv");
 }
 
 /* ===================== INSIGHT / PRIORITY / ACTION ===================== */
@@ -716,7 +714,7 @@ $("cmpMode").addEventListener("change",()=>{GMV_RANGE.cmpMode=$("cmpMode").value
 $("cStart").addEventListener("change",()=>{computeCompare();renderGMV();});
 $("cEnd").addEventListener("change",()=>{computeCompare();renderGMV();});
 $("selMonth").addEventListener("change",async()=>{$("gmvPreset").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x.dataset.p==="month"));applyPreset("month");renderGMV();const mk=$("selMonth").value;await Promise.all([loadProducts(mk),loadProducts(addMonths(mk,-1))]);renderProducts2();});
-$("tkSort").addEventListener("change",renderProducts2);$("shSort").addEventListener("change",renderProducts2);
+$("prSort").addEventListener("change",renderProducts2);
 $("prLevel").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;PROD_LEVEL.v=b.dataset.lv;$("prLevel").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));renderProducts2();});
 async function loadAllTraffic(){await Promise.all(store.months.filter(mk=>[6,7,8].includes(+mk.split("-")[1])).map(loadTraffic));}
 async function doRefresh(){store.prod={};store.traf={};await loadCore();populate();initRange();const mk=$("selMonth").value;await Promise.all([loadAllTraffic(),loadProducts(mk),loadProducts(addMonths(mk,-1))]);renderAll();renderProducts2();}
