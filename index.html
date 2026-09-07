@@ -610,7 +610,7 @@ function drawMultiLine(svg,tip,pts,series,fmtV,fmtX,opts){
   let out=`<g class="cx-grid">`;for(let t=0;t<=4;t++){const yy=yOf(yMax/4*t);out+=`<line x1="${m.l}" y1="${yy.toFixed(1)}" x2="${m.l+iw}" y2="${yy.toFixed(1)}"></line>`;}out+=`</g><g class="cx-axis">`;
   for(let t=0;t<=4;t++){const val=yMax/4*t,yy=yOf(val);out+=`<text class="tab" x="${m.l-8}" y="${(yy+4).toFixed(1)}" text-anchor="end">${kOf(val)}</text>`;}
   const step=Math.ceil(n/8);pts.forEach((p,i)=>{if(i%step===0||i===n-1)out+=`<text x="${xOf(i).toFixed(1)}" y="${m.t+ih+18}" text-anchor="middle">${fmtX(p.k)}</text>`;});out+=`</g>`;
-  const drawLine=s=>{let d="",pen=false;s.data.forEach((v,i)=>{if(v==null){pen=false;return;}d+=(pen?"L":"M")+xOf(i).toFixed(1)+" "+yOf(v).toFixed(1)+" ";pen=true;});return `<path class="lc-line${s.ghost?" ghost":""}" d="${d.trim()}" style="stroke:${s.color}${(!s.ghost&&s.width)?";stroke-width:"+s.width:""}"></path>`;};
+  const drawLine=s=>{let d="",pen=false;s.data.forEach((v,i)=>{if(v==null)return;d+=(pen?"L":"M")+xOf(i).toFixed(1)+" "+yOf(v).toFixed(1)+" ";pen=true;});return `<path class="lc-line${s.ghost?" ghost":""}" d="${d.trim()}" style="stroke:${s.color}${(!s.ghost&&s.width)?";stroke-width:"+s.width:""}"></path>`;};
   series.filter(s=>s.ghost).forEach(s=>out+=drawLine(s));
   series.filter(s=>!s.ghost).forEach(s=>out+=drawLine(s));
   if(showDot)series.filter(s=>!s.ghost).forEach(s=>s.data.forEach((v,i)=>{if(v==null)return;out+=`<circle class="lc-dot" cx="${xOf(i).toFixed(1)}" cy="${yOf(v).toFixed(1)}" r="${n>40?2:3}" style="fill:${s.color}"></circle>`;}));
