@@ -220,7 +220,10 @@
         </div>
       </div>
 
-      <div class="sec-label">อันดับสินค้า · <span id="prBrand" style="color:var(--s1)"></span> <span style="font-weight:400;text-transform:none;color:var(--muted)">(Top 10 · ตามเดือนที่เลือก · แยก TikTok / Shopee)</span></div>
+      <div class="sec-label" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <span>อันดับสินค้า · <span id="prBrand" style="color:var(--s1)"></span> <span style="font-weight:400;text-transform:none;color:var(--muted)">(Top 10 · แยก TikTok / Shopee)</span></span>
+        <span class="seg sm" id="prLevel" style="text-transform:none"><button data-lv="parent" class="active">ตะกร้า (รายการ)</button><button data-lv="sku">SKU ย่อย</button></span>
+      </div>
       <div class="row row-2" style="grid-template-columns:1fr 1fr">
         <div class="card pad">
           <div class="card-h"><span style="border-left:3px solid var(--ink);padding-left:8px">TikTok — อันดับสินค้า</span>
@@ -328,8 +331,11 @@ function parseTiktokTraffic(grid){
 }
 function parseShopeeSKU(grid){
   const hr=findHeaderRow(grid,c=>String(c).trim()==="รหัสสินค้า");if(hr<0)return [];
-  const out=[];for(let i=hr+1;i<grid.length;i++){const row=grid[i];const opt=String(row[3]||"").trim();if(opt!==""&&opt!=="-")continue; /* summary rows only */ const name=String(row[1]||"").trim();if(!name)continue;const gmv=num(row[9])||num(row[8]);if(gmv<=0)continue;
-    out.push({ch:"Shopee",name,sales:gmv,gmv,visits:num(row[10]),clicks:num(row[11]),ctr:num(row[12]),conv:num(row[14])});}
+  const out=[];for(let i=hr+1;i<grid.length;i++){const row=grid[i];const pname=String(row[1]||"").trim();if(!pname)continue;const opt=String(row[3]||"").trim();const gmv=num(row[9])||num(row[8]);if(gmv<=0)continue;
+    const m={ch:"Shopee",sales:gmv,gmv,visits:num(row[10]),clicks:num(row[11]),ctr:num(row[12]),conv:num(row[14])};
+    if(opt===""||opt==="-"){out.push({...m,level:"parent",name:pname});}          /* ตะกร้า/รายการสินค้า */
+    else{const on=String(row[4]||"").trim(),sku=String(row[6]||"").trim();          /* SKU ย่อย (ตัวเลือก) */
+      out.push({...m,level:"sku",name:pname+(on&&on!=="-"?" · "+on:"")+(sku&&sku!=="-"?" ["+sku+"]":"")});}}
   return out;
 }
 function parseTiktokSKU(grid){
@@ -338,7 +344,7 @@ function parseTiktokSKU(grid){
   const col=(re,def)=>{const i=hdr.findIndex(c=>re.test(c));return i<0?def:i;};
   const gmvCol=col(/^(ทั้งหมด\s*)?GMV$/,4),imprCol=col(/^ทั้งหมด ยอดการแสดงผลสินค้า$/,24),clkCol=col(/^ทั้งหมด ยอดคลิกสินค้า$/,25),ctrCol=col(/^ทั้งหมด CTR$/,26),ordCol=col(/^ทั้งหมด คำสั่งซื้อ$/,19);
   const out=[];for(let i=hrow+1;i<grid.length;i++){const row=grid[i];const name=String(row[0]||"").trim();if(!name||/วันที่วิเคราะห์/.test(name))continue;const gmv=num(row[gmvCol]);if(gmv<=0)continue;
-    out.push({ch:"TikTok",name,sales:gmv,gmv,impressions:num(row[imprCol]),clicks:num(row[clkCol]),ctr:num(row[ctrCol]),orders:num(row[ordCol])});}
+    out.push({ch:"TikTok",level:"parent",name,sales:gmv,gmv,impressions:num(row[imprCol]),clicks:num(row[clkCol]),ctr:num(row[ctrCol]),orders:num(row[ordCol])});}
   return out;
 }
 
@@ -367,7 +373,7 @@ async function loadProducts(mk){
   }));
   // classify each product by the brand IN ITS NAME (robust to mislabeled tabs) + dedupe by ช่องทาง+ชื่อ (keep max gmv)
   const res={Benutra:[],Terry:[],Gala:[]},seen={Benutra:{},Terry:{},Gala:{}};
-  pool.forEach(p=>{const b=brandOf(p.name);if(!b)return;const key=p.ch+"|"+p.name,prev=seen[b][key];if(prev){if((p.gmv||0)>(prev.gmv||0))Object.assign(prev,p,{brand:b});return;}const o={...p,brand:b};seen[b][key]=o;res[b].push(o);});
+  pool.forEach(p=>{const b=brandOf(p.name);if(!b)return;const key=p.ch+"|"+p.level+"|"+p.name,prev=seen[b][key];if(prev){if((p.gmv||0)>(prev.gmv||0))Object.assign(prev,p,{brand:b});return;}const o={...p,brand:b};seen[b][key]=o;res[b].push(o);});
   store.prod[mk]=res;
 }
 
@@ -620,16 +626,19 @@ function prodRankTable(list,prevList,cols){
       return `<tr><td style="white-space:nowrap"><span class="rk ${i<3?'g':''}">${i+1}</span> ${badge}</td><td style="white-space:normal;max-width:260px;line-height:1.3;font-size:11.5px">${p.name}</td>${cols.map(c=>`<td class="num">${c.fmt(p[c.key]||0)}</td>`).join("")}</tr>`;}).join("")+
     `</tbody></table></div>`;
 }
+const PROD_LEVEL={v:"parent"};
 function renderProducts2(){
-  const brand=GLOBAL.brand,mk=$("selMonth").value,pmk=addMonths(mk,-1);
+  const brand=GLOBAL.brand,mk=$("selMonth").value,pmk=addMonths(mk,-1),lvl=PROD_LEVEL.v;
   $("prBrand").textContent=brand+" · "+mLabel(mk);
   const P=store.prod[mk],PP=store.prod[pmk];
   const build=(ch,elId,sortKey,cols)=>{
     if(!P){$(elId).innerHTML=`<div class="empty">กำลังโหลดสินค้า…</div>`;return;}
-    const list=(P[brand]||[]).filter(x=>x.ch===ch).slice().sort((a,b)=>(b[sortKey]||0)-(a[sortKey]||0)).slice(0,10);
+    let useLvl=lvl,note="";
+    if(ch==="TikTok"&&lvl==="sku"){useLvl="parent";note=`<div class="tag" style="font-size:10px;color:var(--muted);margin-bottom:6px">TikTok ไม่มีข้อมูล SKU ย่อย · แสดงระดับสินค้า</div>`;}
+    const list=(P[brand]||[]).filter(x=>x.ch===ch&&x.level===useLvl).slice().sort((a,b)=>(b[sortKey]||0)-(a[sortKey]||0)).slice(0,10);
     if(!list.length){$(elId).innerHTML=`<div class="empty">ไม่มีข้อมูลสินค้า ${ch} · ${mLabel(mk)} · ${brand}<br>(SKU มีเฉพาะ มิ.ย.–ส.ค. 2026)</div>`;return;}
-    const prevList=PP?((PP[brand]||[]).filter(x=>x.ch===ch).slice().sort((a,b)=>(b.gmv||0)-(a.gmv||0))):[];
-    $(elId).innerHTML=prodRankTable(list,prevList,cols);
+    const prevList=PP?((PP[brand]||[]).filter(x=>x.ch===ch&&x.level===useLvl).slice().sort((a,b)=>(b.gmv||0)-(a.gmv||0))):[];
+    $(elId).innerHTML=note+prodRankTable(list,prevList,cols);
   };
   build("TikTok","tkProd",$("tkSort").value,[{key:"gmv",label:"GMV",fmt:thb},{key:"impressions",label:"แสดงผล",fmt:kOf},{key:"clicks",label:"คลิก",fmt:kOf},{key:"ctr",label:"CTR",fmt:v=>(+v).toFixed(1)+"%"}]);
   build("Shopee","shProd",$("shSort").value,[{key:"gmv",label:"ยอดขาย",fmt:thb},{key:"visits",label:"เข้าชม",fmt:kOf},{key:"clicks",label:"คลิก",fmt:kOf},{key:"conv",label:"Conv.",fmt:v=>(+v).toFixed(1)+"%"}]);
@@ -691,6 +700,7 @@ $("cStart").addEventListener("change",()=>{computeCompare();renderGMV();});
 $("cEnd").addEventListener("change",()=>{computeCompare();renderGMV();});
 $("selMonth").addEventListener("change",async()=>{$("gmvPreset").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x.dataset.p==="month"));applyPreset("month");renderGMV();const mk=$("selMonth").value;await Promise.all([loadProducts(mk),loadProducts(addMonths(mk,-1))]);renderProducts2();});
 $("tkSort").addEventListener("change",renderProducts2);$("shSort").addEventListener("change",renderProducts2);
+$("prLevel").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;PROD_LEVEL.v=b.dataset.lv;$("prLevel").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));renderProducts2();});
 async function loadAllTraffic(){await Promise.all(store.months.filter(mk=>[6,7,8].includes(+mk.split("-")[1])).map(loadTraffic));}
 async function doRefresh(){store.prod={};store.traf={};await loadCore();populate();initRange();const mk=$("selMonth").value;await Promise.all([loadAllTraffic(),loadProducts(mk),loadProducts(addMonths(mk,-1))]);renderAll();renderProducts2();}
 $("btnRefresh").addEventListener("click",doRefresh);$("btnRefresh2").addEventListener("click",doRefresh);
