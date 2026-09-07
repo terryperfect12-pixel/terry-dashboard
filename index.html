@@ -334,8 +334,8 @@ function parseShopeeSKU(grid){
   const out=[];for(let i=hr+1;i<grid.length;i++){const row=grid[i];const pname=String(row[1]||"").trim();if(!pname)continue;const opt=String(row[3]||"").trim();const gmv=num(row[9])||num(row[8]);if(gmv<=0)continue;
     const m={ch:"Shopee",sales:gmv,gmv,visits:num(row[10]),clicks:num(row[11]),ctr:num(row[12]),conv:num(row[14])};
     if(opt===""||opt==="-"){out.push({...m,level:"parent",name:pname});}          /* ตะกร้า/รายการสินค้า */
-    else{const on=String(row[4]||"").trim(),sku=String(row[6]||"").trim();          /* SKU ย่อย (ตัวเลือก) */
-      out.push({...m,level:"sku",name:pname+(on&&on!=="-"?" · "+on:"")+(sku&&sku!=="-"?" ["+sku+"]":"")});}}
+    else{const on=String(row[4]||"").trim();                                          /* SKU ย่อย (ตัวเลือก) — ไม่ใส่รหัส */
+      out.push({...m,level:"sku",name:pname+(on&&on!=="-"?" · "+on:"")});}}
   return out;
 }
 function parseTiktokSKU(grid){
@@ -623,7 +623,7 @@ function prodRankTable(list,prevList,cols){
   return `<div class="table-scroll"><table><thead><tr><th>#</th><th>สินค้า</th>${cols.map(c=>`<th class="num">${c.label}</th>`).join("")}</tr></thead><tbody>`+
     list.map((p,i)=>{const pr=prevRank[p.name],chg=pr?pr-(i+1):null;
       const badge=pr==null?`<span style="font-size:9px;font-weight:800;color:#fff;background:var(--s1);border-radius:4px;padding:1px 4px">NEW</span>`:(chg>0?`<span style="color:var(--good);font-size:11px;font-weight:700">▲${chg}</span>`:chg<0?`<span style="color:var(--danger);font-size:11px;font-weight:700">▼${-chg}</span>`:`<span style="color:var(--muted)">–</span>`);
-      return `<tr><td style="white-space:nowrap"><span class="rk ${i<3?'g':''}">${i+1}</span> ${badge}</td><td style="white-space:normal;max-width:260px;line-height:1.3;font-size:11.5px">${p.name}</td>${cols.map(c=>`<td class="num">${c.fmt(p[c.key]||0)}</td>`).join("")}</tr>`;}).join("")+
+      return `<tr><td style="white-space:nowrap"><span class="rk ${i<3?'g':''}">${i+1}</span> ${badge}</td><td title="${String(p.name).replace(/"/g,'&quot;')}" style="max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11.5px">${p.name}</td>${cols.map(c=>`<td class="num">${c.fmt(p[c.key]||0)}</td>`).join("")}</tr>`;}).join("")+
     `</tbody></table></div>`;
 }
 const PROD_LEVEL={v:"parent"};
