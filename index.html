@@ -220,7 +220,7 @@
               <div style="position:relative"><svg class="chart" id="roasChart" viewBox="0 0 580 300" preserveAspectRatio="xMidYMid meet"></svg><div class="lc-tip" id="roasTip"></div><div id="roasEmpty" class="empty" hidden></div></div>
             </div>
           </div>
-          <div class="tag" style="font-size:10.5px;color:var(--muted);margin-top:8px">ซ้าย = ผู้เข้าชม (Shopee/TikTok Traffic) · ขวา = ROAS จาก Data ads gmv · คุมด้วยช่วงเวลา/แบรนด์/โหมด/เปรียบเทียบ ชุดเดียวกับกราฟบน · ROAS ยิ่งสูงยิ่งคุ้ม (Traffic มีเฉพาะ มิ.ย.–ส.ค.)</div>
+          <div class="tag" style="font-size:10.5px;color:var(--muted);margin-top:8px">ซ้าย = ผู้เข้าชม (Shopee/TikTok Traffic) · ขวา = ROAS จาก Data ads gmv · คุมด้วยช่วงเวลา/แบรนด์/โหมด/เปรียบเทียบ ชุดเดียวกับกราฟบน · ROAS ยิ่งสูงยิ่งคุ้ม <span id="trafMonNote"></span></div>
         </div>
       </div>
 
@@ -361,7 +361,7 @@ async function loadCore(){
   await Promise.all(BRANDS.map(async b=>{try{store.chan[b]=parsePerforman(await fetchSheet(F_PERF,b),anchor);}catch(e){store.err.push("perf/"+b);}}));
   const mset=new Set();BRANDS.forEach(b=>{if(store.chan[b])Object.keys(store.chan[b]).forEach(m=>mset.add(m));(store.daily[b]||[]).forEach(r=>mset.add(r.date.slice(0,7)));});
   store.months=[...mset].sort();store.loaded=true;store.lastFetch=new Date();
-  store.prodMonths=await enumProdMonths();
+  [store.prodMonths,store.trafMonths]=await Promise.all([enumMonths(F_TKSKU),enumMonths(F_TKTRAF)]);
   const okD=BRANDS.filter(b=>store.daily[b]&&store.daily[b].length).length;
   $("status").className=store.err.length&&okD===0?"online err":"online";$("status").textContent=store.err.length?"Live (บางส่วน)":"Live Data";
 }
@@ -379,9 +379,9 @@ async function loadProducts(mk){
   store.prod[mk]=res;
 }
 const MONTH_NUM={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,july:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12};
-async function enumProdMonths(){ // which months actually have SKU tabs (avoid gviz fallback on missing months)
+async function enumMonths(id){ // which months actually have per-month tabs in a sheet (avoid gviz fallback on missing months)
   const yr=(store.months.slice(-1)[0]||"2026-08").slice(0,4);
-  try{const t=await (await fetch(`https://docs.google.com/spreadsheets/d/${F_TKSKU}/htmlview`)).text();
+  try{const t=await (await fetch(`https://docs.google.com/spreadsheets/d/${id}/htmlview`)).text();
     const re=/items\.push\(\{name:\s*"([^"]+)"/g,set=new Set();let m;
     while((m=re.exec(t))){const n=MONTH_NUM[m[1].trim().split(/\s+/)[0].toLowerCase()];if(n)set.add(yr+"-"+String(n).padStart(2,"0"));}
     return set.size?[...set].sort():[yr+"-06",yr+"-07",yr+"-08"];
@@ -551,6 +551,7 @@ function roasByPlat(brand,bucket,s,e){const raw={};(store.daily[brand]||[]).forE
 function roasByBrand(bucket,s,e){const raw={};BRANDS.forEach(b=>(store.daily[b]||[]).forEach(r=>{if(!inR(r.date,s,e))return;const k=bkey(r.date,bucket);const o=raw[k]=raw[k]||{Benutra:{g:0,a:0},Terry:{g:0,a:0},Gala:{g:0,a:0}};o[b].g+=r.gmv;o[b].a+=r.ads;}));return raw;}
 function renderTrafficSection(){
   $("trafTag").textContent=GLOBAL.brand+" · "+winLabel();
+  {const n=$("trafMonNote");if(n)n.textContent="(Traffic มีเฉพาะ "+(store.trafMonths||[]).map(mShort).join(" / ")+")";}
   renderStats(); renderVisitors(); renderRoas2();
 }
 /* ตัวชี้วัดหลัก per brand over range (from traffic + daily gmv) */
@@ -571,7 +572,7 @@ function renderStats(){
     {l:"ผู้เข้าชม (Visitors)",v:c.visitors,pv:p.visitors,f:kOf},
     {l:"AOV (ต่อออเดอร์)",v:aov,pv:paov,f:x=>"฿"+Math.round(x).toLocaleString("en-US")},
   ];
-  if((c.orders+c.visitors+c.impressions)===0){$("statsRow").innerHTML=`<div class="card pad empty" style="grid-column:1/-1">ช่วงที่เลือกไม่มีข้อมูล Traffic (มีเฉพาะ มิ.ย.–ส.ค. 2026)</div>`;return;}
+  if((c.orders+c.visitors+c.impressions)===0){$("statsRow").innerHTML=`<div class="card pad empty" style="grid-column:1/-1">ช่วงที่เลือกไม่มีข้อมูล Traffic (มีเฉพาะ ${(store.trafMonths||[]).map(mShort).join(" / ")})</div>`;return;}
   $("statsRow").innerHTML=items.map(it=>{const dl=it.pv>0?(it.v-it.pv)/it.pv*100:null;return `<div class="card pad" style="padding:14px 16px"><div style="font-size:11px;color:var(--muted);font-weight:600">${it.l}</div><div style="font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;margin:3px 0;line-height:1.1">${it.f(it.v)}</div><div style="font-size:11px">${deltaHTML(dl)} <span style="color:var(--muted)">vs ก่อนหน้า</span></div></div>`;}).join("");
 }
 function renderVisitors(){
@@ -579,7 +580,7 @@ function renderVisitors(){
   const SER=VISIT_PLATS.filter(s=>VIS[s.key]);
   const D=visitByPlat(GLOBAL.brand,bucket,R.start,R.end);
   if(!SER.length){$("trafLegend").innerHTML="";$("trafCompare").innerHTML="";tsvg.innerHTML="";$("trafEmpty").innerHTML="แพลตฟอร์มที่เลือกไม่มีข้อมูลผู้เข้าชม";$("trafEmpty").hidden=false;return;}
-  if(!D.keys.length){$("trafLegend").innerHTML="";$("trafCompare").innerHTML="";tsvg.innerHTML="";$("trafEmpty").innerHTML="ไม่มีข้อมูลผู้เข้าชมในช่วงที่เลือก<br>(Traffic มีเฉพาะ มิ.ย.–ส.ค.)";$("trafEmpty").hidden=false;return;}
+  if(!D.keys.length){$("trafLegend").innerHTML="";$("trafCompare").innerHTML="";tsvg.innerHTML="";$("trafEmpty").innerHTML="ไม่มีข้อมูลผู้เข้าชมในช่วงที่เลือก<br>(Traffic มีเฉพาะ "+(store.trafMonths||[]).map(mShort).join(" / ")+")";$("trafEmpty").hidden=false;return;}
   $("trafEmpty").hidden=true;
   $("trafLegend").innerHTML=SER.map(s=>`<span class="lgd" style="cursor:default"><span class="sw" style="background:${s.color}"></span><span class="nm">${s.label}</span></span>`).join("");
   const cur=D.keys.reduce((a,k)=>a+SER.reduce((b,s)=>b+(D.map[k][s.key]||0),0),0);
@@ -733,7 +734,7 @@ $("cEnd").addEventListener("change",()=>{computeCompare();renderGMV();});
 $("selMonth").addEventListener("change",()=>{$("gmvPreset").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x.dataset.p==="month"));applyPreset("month");renderGMV();});
 $("prSort").addEventListener("change",renderProducts2);
 $("prLevel").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;PROD_LEVEL.v=b.dataset.lv;$("prLevel").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));renderProducts2();});
-async function loadAllTraffic(){await Promise.all(store.months.filter(mk=>[6,7,8].includes(+mk.split("-")[1])).map(loadTraffic));}
+async function loadAllTraffic(){await Promise.all((store.trafMonths||[]).map(loadTraffic));}
 async function doRefresh(){store.prod={};store.traf={};await loadCore();populate();initRange();await Promise.all([loadAllTraffic(),loadAllProducts()]);renderAll();renderProducts2();}
 $("btnRefresh").addEventListener("click",doRefresh);$("btnRefresh2").addEventListener("click",doRefresh);
 function showConfig(on){$("viewConfig").hidden=!on;$("viewDash").hidden=on;$("dashOnly1").style.display=on?"none":"";if(on)renderConfig();}
