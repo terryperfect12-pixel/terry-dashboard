@@ -106,6 +106,18 @@
   .lc-tip{position:absolute;pointer-events:none;opacity:0;transform:translate(-50%,-108%);background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:12px;box-shadow:0 6px 20px rgba(0,0,0,.16);min-width:150px;z-index:9;}
   .lc-tip .m{font-weight:700;margin-bottom:5px;} .lc-tip .r{display:flex;justify-content:space-between;gap:14px;color:var(--ink2);} .lc-tip .r .v{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;}
   .delta{font-weight:700;font-variant-numeric:tabular-nums;font-size:12px;} .dn{color:var(--danger);} .up{color:var(--good);} .fl{color:var(--ink2);}
+  /* expand-to-fullscreen chart */
+  .expand-btn{position:absolute;top:4px;right:4px;z-index:6;width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink2);cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.07);transition:background .12s,color .12s;opacity:.75;}
+  .expand-btn:hover{background:var(--s1);color:#fff;border-color:var(--s1);opacity:1;}
+  .cmodal{position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(2px);}
+  .cmodal[hidden]{display:none!important;}
+  .cmodal-inner{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.4);width:min(1200px,95vw);max-height:93vh;overflow:auto;padding:26px 30px 30px;position:relative;}
+  .cmodal-close{position:absolute;top:14px;right:16px;width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink2);cursor:pointer;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;z-index:3;}
+  .cmodal-close:hover{background:#fee2e2;color:#b91c1c;border-color:#fca5a5;}
+  .cmodal-body{padding-top:4px;}
+  .cmodal-body .expand-btn{display:none;}
+  .cmodal-body>div>div:first-child{font-size:16px;} /* enlarge chart title */
+  .cmodal-body .lc-tip{font-size:13px;}
   .big-delta{display:flex;align-items:baseline;gap:10px;margin:2px 0 12px;} .big-delta .n{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;}
   .plat-block{margin-bottom:16px;} .plat-block:last-child{margin-bottom:0;}
   .plat-title{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;margin-bottom:8px;} .plat-title .pt-tot{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--ink2);font-weight:700;}
@@ -259,6 +271,13 @@
       </div>
     </div>
   </main>
+</div>
+
+<div class="cmodal" id="cmodal" hidden>
+  <div class="cmodal-inner">
+    <button class="cmodal-close" id="cmodalClose" type="button" title="ปิด (Esc)">✕</button>
+    <div class="cmodal-body" id="cmodalBody"></div>
+  </div>
 </div>
 
 <script>
@@ -744,10 +763,40 @@ function applyTheme(t){if(t)document.documentElement.setAttribute("data-theme",t
 let sv=null;try{sv=localStorage.getItem("exec-theme");}catch(e){}if(sv)applyTheme(sv);
 tb.addEventListener("click",()=>{const dk=document.documentElement.getAttribute("data-theme")==="dark"||(!document.documentElement.getAttribute("data-theme")&&matchMedia("(prefers-color-scheme: dark)").matches);const nx=dk?"light":"dark";applyTheme(nx);try{localStorage.setItem("exec-theme",nx);}catch(e){}renderAll();});
 
+/* ===================== expand chart to fullscreen ===================== */
+let _cph=null,_cpar=null;
+function setupExpand(){
+  document.querySelectorAll("svg.chart").forEach(svg=>{
+    const wrap=svg.parentElement; if(!wrap||wrap.querySelector(".expand-btn"))return;
+    if(getComputedStyle(wrap).position==="static")wrap.style.position="relative";
+    const b=document.createElement("button");
+    b.className="expand-btn";b.type="button";b.title="ขยายกราฟ";b.setAttribute("aria-label","ขยายกราฟ");b.textContent="⤢";
+    b.addEventListener("click",e=>{e.stopPropagation();openChart(svg.parentElement.parentElement);});
+    wrap.appendChild(b);
+  });
+}
+function openChart(block){
+  const modal=$("cmodal"),body=$("cmodalBody");
+  if(!block||!modal)return;
+  if(_cph)closeChart(); // restore any previously open chart first
+  _cpar=block.parentNode;_cph=document.createComment("cx");_cpar.insertBefore(_cph,block);
+  body.innerHTML="";body.appendChild(block);
+  modal.hidden=false;document.body.style.overflow="hidden";
+}
+function closeChart(){
+  const modal=$("cmodal"),body=$("cmodalBody");const block=body&&body.firstElementChild;
+  if(block&&_cph&&_cpar){_cpar.replaceChild(block,_cph);}
+  _cph=null;_cpar=null; if(modal)modal.hidden=true; document.body.style.overflow="";
+}
+$("cmodalClose").addEventListener("click",closeChart);
+$("cmodal").addEventListener("click",e=>{if(e.target===$("cmodal"))closeChart();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("cmodal").hidden)closeChart();});
+
 /* ===================== init ===================== */
 function stickChk(){const g=$("dashOnly1");if(g)g.classList.toggle("stuck",g.getBoundingClientRect().top<=1);}
 document.addEventListener("scroll",stickChk,true);window.addEventListener("resize",stickChk);
 buildBrandBar();
+setupExpand();
 (async function(){ await loadCore(); populate(); initRange(); renderAll(); await Promise.all([loadAllTraffic(),loadAllProducts()]); renderTrafficSection(); renderProducts2(); })();
 </script>
 </body>
