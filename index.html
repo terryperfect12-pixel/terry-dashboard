@@ -52,11 +52,13 @@
   @keyframes pulse{50%{opacity:.3;}}
   button.tgl,.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink2);border-radius:10px;padding:7px 12px;font-size:12px;cursor:pointer;font-family:inherit;box-shadow:var(--shadow);}
   /* global filter bar */
-  .gbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:20px;box-shadow:var(--shadow);}
+  .gbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:20px;box-shadow:var(--shadow);position:sticky;top:0;z-index:60;}
+  .gbar.stuck{border-radius:0 0 12px 12px;box-shadow:0 6px 18px rgba(0,0,0,.13);}
   .gbar .gl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-right:2px;}
-  .gbar .brands{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;}
-  .gbar .brands button{border:none;background:var(--surface);color:var(--ink2);font-size:12.5px;font-family:inherit;padding:7px 14px;cursor:pointer;}
-  .gbar .brands button.active{background:var(--brandnavy);color:#fff;font-weight:600;} :root:not([data-theme="light"]) .gbar .brands button.active{background:var(--s1);}
+  .gbar .brands{display:inline-flex;border:2px solid var(--brandnavy);border-radius:11px;overflow:hidden;} :root:not([data-theme="light"]) .gbar .brands{border-color:var(--s1);}
+  .gbar .brands button{border:none;background:var(--surface);color:var(--ink2);font-size:15px;font-family:inherit;font-weight:600;padding:10px 22px;cursor:pointer;}
+  .gbar .brands button.active{background:var(--brandnavy);color:#fff;font-weight:800;} :root:not([data-theme="light"]) .gbar .brands button.active{background:var(--s1);}
+  .gbar .brand-lead{font-size:12px;font-weight:800;color:var(--brandnavy);text-transform:uppercase;letter-spacing:.05em;margin-right:2px;} :root:not([data-theme="light"]) .gbar .brand-lead{color:var(--s1);}
   .gbar .sp{flex:1;}
   [hidden]{display:none!important;}
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;}
@@ -135,8 +137,9 @@
 
     <!-- GLOBAL FILTER BAR -->
     <div class="gbar" id="dashOnly1">
-      <span class="gl">Brand</span>
+      <span class="brand-lead">แบรนด์</span>
       <span class="brands" id="gBrand"></span>
+      <span class="sp"></span>
       <span class="gl" style="margin-left:6px">ช่วงเวลา</span>
       <span class="seg" id="gmvPreset"><button data-p="1">1 วัน</button><button data-p="7">7 วัน</button><button data-p="month" class="active">1 เดือน</button><button data-p="all">ทั้งหมด</button></span>
       <span style="display:flex;gap:5px;align-items:center;font-size:12px;color:var(--muted)"><span style="color:var(--muted)">หรือ</span><input type="date" id="rStart" class="mini"> – <input type="date" id="rEnd" class="mini"></span>
@@ -359,7 +362,7 @@ async function loadProducts(mk){
 
 /* ===================== derived ===================== */
 function hasMonth(mk){return BRANDS.some(b=>(store.daily[b]||[]).some(r=>r.date.slice(0,7)===mk))||BRANDS.some(b=>store.chan[b]&&store.chan[b][mk]);}
-function latestMonth(){const m=store.months.filter(hasMonth);return m[m.length-1];}
+function latestMonth(){let mx=null;BRANDS.forEach(b=>(store.daily[b]||[]).forEach(r=>{const mk=r.date.slice(0,7);if(!mx||mk>mx)mx=mk;}));return mx||store.months.filter(hasMonth).slice(-1)[0];}
 function monthlyGMV(brand,mk){let s=0;(brand==="ALL"?BRANDS:[brand]).forEach(b=>(store.daily[b]||[]).forEach(r=>{if(r.date.slice(0,7)===mk)s+=r.gmv;}));return s;}
 
 /* ===================== POPULATE ===================== */
@@ -426,7 +429,7 @@ function applyPreset(p){const d=dataDates();if(!d.length)return;const min=d[0],m
   else if(p==="1")start=max;
   else if(p==="7")start=shiftDate(max,-6);
   else if(p==="30")start=shiftDate(max,-29);
-  else{const anchor=($("selMonth")&&$("selMonth").value)?$("selMonth").value:max.slice(0,7);start=anchor+"-01";end=new Date(+anchor.slice(0,4),+anchor.slice(5,7),0).toISOString().slice(0,10);}
+  else{const anchor=($("selMonth")&&$("selMonth").value)?$("selMonth").value:max.slice(0,7);start=anchor+"-01";const dim=new Date(+anchor.slice(0,4),+anchor.slice(5,7),0).getDate();end=anchor+"-"+String(dim).padStart(2,"0");}
   if(p!=="month"&&start<min)start=min;GMV_RANGE.start=start;GMV_RANGE.end=end;GMV_RANGE.preset=p;
   if($("rStart")){$("rStart").value=start;$("rEnd").value=end;}
   computeCompare();
@@ -675,6 +678,8 @@ let sv=null;try{sv=localStorage.getItem("exec-theme");}catch(e){}if(sv)applyThem
 tb.addEventListener("click",()=>{const dk=document.documentElement.getAttribute("data-theme")==="dark"||(!document.documentElement.getAttribute("data-theme")&&matchMedia("(prefers-color-scheme: dark)").matches);const nx=dk?"light":"dark";applyTheme(nx);try{localStorage.setItem("exec-theme",nx);}catch(e){}renderAll();});
 
 /* ===================== init ===================== */
+function stickChk(){const g=$("dashOnly1");if(g)g.classList.toggle("stuck",g.getBoundingClientRect().top<=1);}
+document.addEventListener("scroll",stickChk,true);window.addEventListener("resize",stickChk);
 buildBrandBar();
 (async function(){ await loadCore(); populate(); initRange(); renderAll(); await loadAllTraffic(); renderTrafficSection(); renderInsight(); })();
 </script>
