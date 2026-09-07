@@ -357,13 +357,17 @@ async function loadCore(){
   const okD=BRANDS.filter(b=>store.daily[b]&&store.daily[b].length).length;
   $("status").className=store.err.length&&okD===0?"online err":"online";$("status").textContent=store.err.length?"Live (บางส่วน)":"Live Data";
 }
+function brandOf(name){const n=String(name).toLowerCase();if(/benutra/.test(n))return "Benutra";if(/terry/.test(n))return "Terry";if(/gala|camille/.test(n))return "Gala";return null;}
 async function loadProducts(mk){
   if(store.prod[mk])return; const tab=PROD_TAB[+mk.split("-")[1]];if(!tab){store.prod[mk]={};return;}
-  const res={};
-  await Promise.all(BRANDS.map(async b=>{res[b]=[];
-    try{res[b]=res[b].concat(parseShopeeSKU(await fetchSheet(F_SHSKU,tab+" "+b)).map(x=>({...x,brand:b})));}catch(e){}
-    try{res[b]=res[b].concat(parseTiktokSKU(await fetchSheet(F_TKSKU,tab+" "+b)).map(x=>({...x,brand:b})));}catch(e){}
+  const pool=[];
+  await Promise.all(BRANDS.map(async b=>{
+    try{pool.push(...parseShopeeSKU(await fetchSheet(F_SHSKU,tab+" "+b)));}catch(e){}
+    try{pool.push(...parseTiktokSKU(await fetchSheet(F_TKSKU,tab+" "+b)));}catch(e){}
   }));
+  // classify each product by the brand IN ITS NAME (robust to mislabeled tabs) + dedupe by ช่องทาง+ชื่อ (keep max gmv)
+  const res={Benutra:[],Terry:[],Gala:[]},seen={Benutra:{},Terry:{},Gala:{}};
+  pool.forEach(p=>{const b=brandOf(p.name);if(!b)return;const key=p.ch+"|"+p.name,prev=seen[b][key];if(prev){if((p.gmv||0)>(prev.gmv||0))Object.assign(prev,p,{brand:b});return;}const o={...p,brand:b};seen[b][key]=o;res[b].push(o);});
   store.prod[mk]=res;
 }
 
