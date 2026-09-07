@@ -360,6 +360,7 @@ async function loadCore(){
   await Promise.all(BRANDS.map(async b=>{try{store.chan[b]=parsePerforman(await fetchSheet(F_PERF,b),anchor);}catch(e){store.err.push("perf/"+b);}}));
   const mset=new Set();BRANDS.forEach(b=>{if(store.chan[b])Object.keys(store.chan[b]).forEach(m=>mset.add(m));(store.daily[b]||[]).forEach(r=>mset.add(r.date.slice(0,7)));});
   store.months=[...mset].sort();store.loaded=true;store.lastFetch=new Date();
+  store.prodMonths=await enumProdMonths();
   const okD=BRANDS.filter(b=>store.daily[b]&&store.daily[b].length).length;
   $("status").className=store.err.length&&okD===0?"online err":"online";$("status").textContent=store.err.length?"Live (บางส่วน)":"Live Data";
 }
@@ -376,6 +377,18 @@ async function loadProducts(mk){
   pool.forEach(p=>{const b=brandOf(p.name);if(!b)return;const key=p.ch+"|"+p.level+"|"+p.name,prev=seen[b][key];if(prev){if((p.gmv||0)>(prev.gmv||0))Object.assign(prev,p,{brand:b});return;}const o={...p,brand:b};seen[b][key]=o;res[b].push(o);});
   store.prod[mk]=res;
 }
+const MONTH_NUM={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,july:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12};
+async function enumProdMonths(){ // which months actually have SKU tabs (avoid gviz fallback on missing months)
+  const yr=(store.months.slice(-1)[0]||"2026-08").slice(0,4);
+  try{const t=await (await fetch(`https://docs.google.com/spreadsheets/d/${F_TKSKU}/htmlview`)).text();
+    const re=/items\.push\(\{name:\s*"([^"]+)"/g,set=new Set();let m;
+    while((m=re.exec(t))){const n=MONTH_NUM[m[1].trim().split(/\s+/)[0].toLowerCase()];if(n)set.add(yr+"-"+String(n).padStart(2,"0"));}
+    return set.size?[...set].sort():[yr+"-06",yr+"-07",yr+"-08"];
+  }catch(e){return [yr+"-06",yr+"-07",yr+"-08"];}
+}
+async function loadAllProducts(){await Promise.all((store.prodMonths||[]).map(loadProducts));}
+function rangeMonths(s,e){if(!s||!e)return [];const out=[];let y=+s.slice(0,4),m=+s.slice(5,7);const ey=+e.slice(0,4),em=+e.slice(5,7);while(y<ey||(y===ey&&m<=em)){out.push(y+"-"+String(m).padStart(2,"0"));if(++m>12){m=1;y++;}}return out;}
+function productMonth(){const cov=rangeMonths(GMV_RANGE.start,GMV_RANGE.end),av=(store.prodMonths||[]).filter(x=>cov.includes(x));return av.length?av[av.length-1]:null;}
 
 /* ===================== derived ===================== */
 function hasMonth(mk){return BRANDS.some(b=>(store.daily[b]||[]).some(r=>r.date.slice(0,7)===mk))||BRANDS.some(b=>store.chan[b]&&store.chan[b][mk]);}
@@ -633,9 +646,12 @@ function prodRankTable(list,prevList,cols){
 }
 const PROD_LEVEL={v:"parent"};
 function renderProducts2(){
-  const brand=GLOBAL.brand,mk=$("selMonth").value,pmk=addMonths(mk,-1),lvl=PROD_LEVEL.v;
-  $("prBrand").textContent=brand+" · "+mLabel(mk);
-  const P=store.prod[mk],PP=store.prod[pmk];
+  const brand=GLOBAL.brand,lvl=PROD_LEVEL.v,mk=productMonth();
+  const pmi=mk?(store.prodMonths||[]).indexOf(mk):-1,pmk=pmi>0?store.prodMonths[pmi-1]:null;
+  const spanMulti=rangeMonths(GMV_RANGE.start,GMV_RANGE.end).length>1;
+  if(!mk){$("prBrand").textContent=brand;const msg=`<div class="empty">ช่วงที่เลือกไม่มีข้อมูลสินค้า<br>(SKU รายเดือน · มีเฉพาะ ${(store.prodMonths||[]).map(mShort).join(" / ")})</div>`;$("tkProd").innerHTML=msg;$("shProd").innerHTML=msg;return;}
+  $("prBrand").textContent=brand+" · "+mLabel(mk)+(spanMulti?" (ช่วงคร่อมหลายเดือน · SKU รายเดือน)":"");
+  const P=store.prod[mk],PP=pmk?store.prod[pmk]:null;
   const pct=v=>(+v).toFixed(1)+"%";
   const build=(ch,elId,sortSel)=>{
     if(!P){$(elId).innerHTML=`<div class="empty">กำลังโหลดสินค้า…</div>`;return;}
@@ -713,11 +729,11 @@ $("cmpToggle").addEventListener("click",()=>{GMV_CMP_ON.v=!GMV_CMP_ON.v;$("cmpTo
 $("cmpMode").addEventListener("change",()=>{GMV_RANGE.cmpMode=$("cmpMode").value;$("cmpCustom").hidden=GMV_RANGE.cmpMode!=="custom";computeCompare();renderGMV();});
 $("cStart").addEventListener("change",()=>{computeCompare();renderGMV();});
 $("cEnd").addEventListener("change",()=>{computeCompare();renderGMV();});
-$("selMonth").addEventListener("change",async()=>{$("gmvPreset").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x.dataset.p==="month"));applyPreset("month");renderGMV();const mk=$("selMonth").value;await Promise.all([loadProducts(mk),loadProducts(addMonths(mk,-1))]);renderProducts2();});
+$("selMonth").addEventListener("change",()=>{$("gmvPreset").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x.dataset.p==="month"));applyPreset("month");renderGMV();});
 $("prSort").addEventListener("change",renderProducts2);
 $("prLevel").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;PROD_LEVEL.v=b.dataset.lv;$("prLevel").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));renderProducts2();});
 async function loadAllTraffic(){await Promise.all(store.months.filter(mk=>[6,7,8].includes(+mk.split("-")[1])).map(loadTraffic));}
-async function doRefresh(){store.prod={};store.traf={};await loadCore();populate();initRange();const mk=$("selMonth").value;await Promise.all([loadAllTraffic(),loadProducts(mk),loadProducts(addMonths(mk,-1))]);renderAll();renderProducts2();}
+async function doRefresh(){store.prod={};store.traf={};await loadCore();populate();initRange();await Promise.all([loadAllTraffic(),loadAllProducts()]);renderAll();renderProducts2();}
 $("btnRefresh").addEventListener("click",doRefresh);$("btnRefresh2").addEventListener("click",doRefresh);
 function showConfig(on){$("viewConfig").hidden=!on;$("viewDash").hidden=on;$("dashOnly1").style.display=on?"none":"";if(on)renderConfig();}
 $("btnCfg").addEventListener("click",()=>showConfig($("viewConfig").hidden));
@@ -730,7 +746,7 @@ tb.addEventListener("click",()=>{const dk=document.documentElement.getAttribute(
 function stickChk(){const g=$("dashOnly1");if(g)g.classList.toggle("stuck",g.getBoundingClientRect().top<=1);}
 document.addEventListener("scroll",stickChk,true);window.addEventListener("resize",stickChk);
 buildBrandBar();
-(async function(){ await loadCore(); populate(); initRange(); renderAll(); const mk=$("selMonth").value; await Promise.all([loadAllTraffic(),loadProducts(mk),loadProducts(addMonths(mk,-1))]); renderTrafficSection(); renderProducts2(); })();
+(async function(){ await loadCore(); populate(); initRange(); renderAll(); await Promise.all([loadAllTraffic(),loadAllProducts()]); renderTrafficSection(); renderProducts2(); })();
 </script>
 </body>
 </html>
