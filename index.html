@@ -107,8 +107,11 @@
   .lc-tip .m{font-weight:700;margin-bottom:5px;} .lc-tip .r{display:flex;justify-content:space-between;gap:14px;color:var(--ink2);} .lc-tip .r .v{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;}
   .delta{font-weight:700;font-variant-numeric:tabular-nums;font-size:12px;} .dn{color:var(--danger);} .up{color:var(--good);} .fl{color:var(--ink2);}
   /* channel sales mix (donut + comparison table + content breakdown) */
-  .mix-top{display:grid;grid-template-columns:180px auto minmax(300px,1fr);gap:28px;align-items:center;} @media (max-width:900px){.mix-top{grid-template-columns:1fr;justify-items:stretch;gap:22px;}}
-  .mix-donut-box{position:relative;width:180px;justify-self:center;} .mix-donut-box svg{display:block;width:100%;height:auto;}
+  .mix-top{display:grid;grid-template-columns:auto minmax(320px,1fr);gap:32px;align-items:start;} @media (max-width:900px){.mix-top{grid-template-columns:1fr;gap:22px;}}
+  .mix-left{display:flex;align-items:center;gap:26px;} @media (max-width:560px){.mix-left{flex-direction:column;align-items:stretch;gap:16px;}}
+  .mix-right{display:grid;gap:18px;border-left:1px solid var(--line);padding-left:32px;} @media (max-width:900px){.mix-right{border-left:none;padding-left:0;border-top:1px solid var(--line);padding-top:18px;}}
+  .mix-ccard+.mix-ccard{border-top:1px solid var(--line2);padding-top:16px;}
+  .mix-donut-box{position:relative;width:180px;flex:none;} .mix-donut-box svg{display:block;width:100%;height:auto;}
   .mix-chan{width:auto;}
   .mono,.mix-pct{font-variant-numeric:tabular-nums;}
   .mix-chan-h,.mix-crow{display:grid;grid-template-columns:14px 74px 92px 58px 70px;align-items:center;gap:10px;}
@@ -123,10 +126,10 @@
   .mix-pct{font-weight:800;color:var(--ink);}
   .mix-val{font-weight:700;color:var(--ink);}
   .mix-prev{color:var(--muted);}
-  /* content sub-breakdown (TikTok, sits at top-right next to donut) */
-  .mix-tkcard{border-left:1px solid var(--line);padding-left:26px;align-self:stretch;} @media (max-width:900px){.mix-tkcard{border-left:none;padding-left:0;border-top:1px solid var(--line);padding-top:16px;}}
+  /* content sub-breakdown (TikTok + Shopee stacked on the right) */
   .mix-subh{font-weight:700;font-size:13px;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:10px;}
   .mix-subh .dotk{width:11px;height:11px;border-radius:3px;background:var(--ink);}
+  .mix-subh .dots{width:11px;height:11px;border-radius:3px;background:#F5551D;}
   .mix-sub-h,.mix-srow{display:grid;grid-template-columns:1fr 58px 78px;gap:10px;align-items:center;}
   .mix-sub-h{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;font-weight:700;padding-bottom:7px;border-bottom:1px solid var(--line2);}
   .mix-srow{padding:9px 0;border-bottom:1px solid var(--line2);font-size:13px;}
@@ -263,9 +266,14 @@
       <div class="row" style="grid-template-columns:1fr">
         <div class="card pad">
           <div class="mix-top">
-            <div class="mix-donut-box"><svg id="mixDonut" viewBox="0 0 240 240" preserveAspectRatio="xMidYMid meet"></svg></div>
-            <div id="mixChanTable" class="mix-chan"></div>
-            <div class="mix-tkcard"><div class="mix-subh"><span class="dotk"></span>TikTok — แยกคอนเทนต์</div><div id="mixTk"></div></div>
+            <div class="mix-left">
+              <div class="mix-donut-box"><svg id="mixDonut" viewBox="0 0 240 240" preserveAspectRatio="xMidYMid meet"></svg></div>
+              <div id="mixChanTable" class="mix-chan"></div>
+            </div>
+            <div class="mix-right">
+              <div class="mix-ccard"><div class="mix-subh"><span class="dotk"></span>TikTok — แยกคอนเทนต์</div><div id="mixTk"></div></div>
+              <div class="mix-ccard"><div class="mix-subh"><span class="dots"></span>Shopee — แยกคอนเทนต์</div><div id="mixSh"></div></div>
+            </div>
           </div>
           <div class="tag" style="font-size:10.5px;color:var(--muted);margin-top:14px">ที่มา: performan all brand (รายเดือน) · สัดส่วน % = สัดส่วนยอดขายของช่องทาง/คอนเทนต์นั้น · เปลี่ยน = เทียบเดือนก่อน · Facebook มีเฉพาะ Benutra</div>
         </div>
@@ -605,7 +613,7 @@ function renderChannelMix(){
   if($("mixMonth"))$("mixMonth").textContent=mk?mLabel(mk):"—";
   const svg=$("mixDonut"),host=$("mixChanTable");if(!svg||!host)return;
   const mix=channelMix(brand,mk);
-  if(!mix){svg.innerHTML="";host.innerHTML='<div class="empty">ไม่มีข้อมูลสัดส่วนช่องทางในเดือนนี้</div>';if($("mixTk"))$("mixTk").innerHTML="";return;}
+  if(!mix){svg.innerHTML="";host.innerHTML='<div class="empty">ไม่มีข้อมูลสัดส่วนช่องทางในเดือนนี้</div>';if($("mixTk"))$("mixTk").innerHTML="";if($("mixSh"))$("mixSh").innerHTML="";return;}
   const items=CHAN_MIX.map(x=>({...x,v:mix[x.k]||0})).filter(x=>x.v>0);
   const total=items.reduce((a,x)=>a+x.v,0)||1;
   const cx=120,cy=120,r=92,rin=58;let g="";
@@ -619,6 +627,7 @@ function renderChannelMix(){
     return `<div class="mix-crow"><span class="mix-sw" style="background:${x.c}"></span><span class="mix-nm">${x.k}</span><span class="mix-bar"><span style="width:${pct.toFixed(1)}%;background:${x.c}"></span></span><span class="mix-pct r">${pct.toFixed(1)}%</span><span class="r">${deltaHTML(dl)}</span></div>`;}).join("");
   host.innerHTML=ch;
   renderContentTable("mixTk","TikTok",brand,mk);
+  renderContentTable("mixSh","Shopee",brand,mk);
 }
 function perfPrevMonth(mk){const ch=Object.keys(store.chan[GLOBAL.brand]||{}).sort();const i=ch.indexOf(mk);return i>0?ch[i-1]:null;}
 function contentRows(brand,mk,plat){
