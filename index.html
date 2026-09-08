@@ -422,7 +422,7 @@ function parsePerforman(grid,anchor){
     if(/^income/i.test(label))isInc=true;else if(/^lazada/i.test(label))isLz=true;else if(/^facebook/i.test(label))isFb=true;else if(/^shopee/i.test(label)){section="Shopee";continue;}else if(low==="tiktok"){section="TikTok";continue;}
     else if(/^tiktok-/i.test(label)){plat="TikTok";sub=label.replace(/tiktok-/i,"").trim();}
     else if(SUB_ORDER.includes(label)){if(!section)continue;plat=section;sub=label;}else continue;
-    for(const mk in monthCol){const ac=monthCol[mk];const v=num(grid[i][ac]);const tv=ac>=3?num(grid[i][ac-3]):0;/* TARGET column sits 3 cols before ACTUAL (PORTION,TARGET,DIFF,%ACH,ACTUAL) */
+    for(const mk in monthCol){const ac=monthCol[mk];const v=num(grid[i][ac]);const tv=num(grid[i][ac+3]);/* block = [ACTUAL, GROWTH, PORTION, TARGET(+3), DIFF, %ACH] */
       if(isInc){res[mk].income=v;res[mk].incomeTgt=tv;}
       else if(isLz){res[mk].chan["Lazada|Lazada"]=v;res[mk].tgt["Lazada|Lazada"]=tv;}
       else if(isFb){res[mk].chan["Facebook|Facebook"]=v;res[mk].tgt["Facebook|Facebook"]=tv;}
@@ -672,7 +672,7 @@ function channelTgt(brand,mk){
   for(const key in c.tgt){const plat=key.split("|")[0];if(agg[plat]!=null)agg[plat]+=c.tgt[key]||0;}
   return agg;
 }
-function achHTML(a){if(a==null||!isFinite(a))return '<span style="color:var(--muted)">—</span>';const c=a>=100?"var(--good)":(a>=80?"var(--warn)":"var(--danger)");return `<b style="color:${c};font-variant-numeric:tabular-nums">${Math.round(a)}%</b>`;}
+function achHTML(a){if(a==null||!isFinite(a))return '<span style="color:var(--muted)">—</span>';const c=a>=100?"var(--good)":(a>=80?"var(--warn)":"var(--danger)");const txt=a<10?a.toFixed(1):Math.round(a);return `<b style="color:${c};font-variant-numeric:tabular-nums">${txt}%</b>`;}
 function renderChannelMix(){
   const brand=GLOBAL.brand,mk=perfMonth();
   if($("mixBrand"))$("mixBrand").textContent=brand;
