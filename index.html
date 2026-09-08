@@ -295,8 +295,8 @@
               <div id="mixChanTable" class="mix-chan"></div>
             </div>
             <div class="mix-right">
-              <div class="mix-ccard"><div class="mix-subh"><span class="dotk"></span>TikTok — แยกคอนเทนต์</div><div id="mixTk"></div></div>
-              <div class="mix-ccard"><div class="mix-subh"><span class="dots"></span>Shopee — แยกคอนเทนต์</div><div id="mixSh"></div></div>
+              <div class="mix-ccard"><div class="mix-subh"><span class="dotk"></span>TikTok</div><div id="mixTk"></div></div>
+              <div class="mix-ccard"><div class="mix-subh"><span class="dots"></span>Shopee</div><div id="mixSh"></div></div>
             </div>
           </div>
           <div class="tag" style="font-size:10.5px;color:var(--muted);margin-top:14px">ที่มา: performan all brand (รายเดือน) · ตัวเลข M=ล้าน K=พัน · ทำได้ = ยอดขายจริง (สีเขียว = ถึงเป้า, ส้ม/แดง = ต่ำกว่าเป้า) · เป้า = target · เดือนก่อน + เปลี่ยน% = เทียบเดือนก่อนหน้า · Facebook มีเฉพาะ Benutra</div>
@@ -778,14 +778,14 @@ function renderStats(){
   const c=statRange(brand,R.start,R.end),p=statRange(brand,R.cmpStart,R.cmpEnd);
   const aov=c.orders>0?gmvRange(brand,R.start,R.end)/c.orders:0, paov=p.orders>0?gmvRange(brand,R.cmpStart,R.cmpEnd)/p.orders:0;
   const items=[
-    {l:"คำสั่งซื้อ",v:c.orders,pv:p.orders,f:kOf},
-    {l:"ลูกค้า",v:c.customers,pv:p.customers,f:kOf},
-    {l:"การแสดงผล (Impressions)",v:c.impressions,pv:p.impressions,f:kOf},
-    {l:"ผู้เข้าชม (Visitors)",v:c.visitors,pv:p.visitors,f:kOf},
+    {l:"คำสั่งซื้อ",v:c.orders,pv:p.orders,f:nFull},
+    {l:"ลูกค้า",v:c.customers,pv:p.customers,f:nFull},
+    {l:"การแสดงผล (Impressions)",v:c.impressions,pv:p.impressions,f:nFull},
+    {l:"ผู้เข้าชม (Visitors)",v:c.visitors,pv:p.visitors,f:nFull},
     {l:"AOV (ต่อออเดอร์)",v:aov,pv:paov,f:x=>"฿"+Math.round(x).toLocaleString("en-US")},
   ];
   if((c.orders+c.visitors+c.impressions)===0){$("statsRow").innerHTML=`<div class="card pad empty" style="grid-column:1/-1">ช่วงที่เลือกไม่มีข้อมูล Traffic (มีเฉพาะ ${(store.trafMonths||[]).map(mShort).join(" / ")})</div>`;return;}
-  $("statsRow").innerHTML=items.map(it=>{const dl=it.pv>0?(it.v-it.pv)/it.pv*100:null;return `<div class="card pad" style="padding:14px 16px"><div style="font-size:11px;color:var(--muted);font-weight:600">${it.l}</div><div style="font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;margin:3px 0;line-height:1.1">${it.f(it.v)}</div><div style="font-size:11px">${deltaHTML(dl)} <span style="color:var(--muted)">vs ก่อนหน้า</span></div></div>`;}).join("");
+  $("statsRow").innerHTML=items.map(it=>{const dl=it.pv>0?(it.v-it.pv)/it.pv*100:null;return `<div class="card pad" style="padding:14px 16px"><div style="font-size:11px;color:var(--muted);font-weight:600">${it.l}</div><div style="font-size:21px;font-weight:800;font-variant-numeric:tabular-nums;margin:4px 0 6px;line-height:1.1">${it.f(it.v)}</div><div style="font-size:11px;line-height:1.55">${deltaHTML(dl)} <span style="color:var(--muted)">vs ก่อนหน้า</span><br><span style="color:var(--muted)">ก่อนหน้า </span><span style="color:var(--ink2);font-weight:600;font-variant-numeric:tabular-nums">${it.pv>0?it.f(it.pv):"—"}</span></div></div>`;}).join("");
 }
 function renderVisitors(){
   const bucket=GLOBAL.gran,R=GMV_RANGE,VIS=GMV_VIS.plat;
