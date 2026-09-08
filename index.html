@@ -107,7 +107,7 @@
   .lc-tip .m{font-weight:700;margin-bottom:5px;} .lc-tip .r{display:flex;justify-content:space-between;gap:14px;color:var(--ink2);} .lc-tip .r .v{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;}
   .delta{font-weight:700;font-variant-numeric:tabular-nums;font-size:12px;} .dn{color:var(--danger);} .up{color:var(--good);} .fl{color:var(--ink2);}
   /* expand-to-fullscreen chart */
-  .expand-btn{position:absolute;top:4px;right:4px;z-index:6;width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink2);cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.07);transition:background .12s,color .12s;opacity:.75;}
+  .expand-btn{flex:none;margin-left:auto;width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink2);cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(0,0,0,.06);transition:background .12s,color .12s;opacity:.85;}
   .expand-btn:hover{background:var(--s1);color:#fff;border-color:var(--s1);opacity:1;}
   .cmodal{position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(2px);}
   .cmodal[hidden]{display:none!important;}
@@ -205,7 +205,7 @@
       <!-- HERO: GMV multi-line (Total + 3 platforms, toggleable) -->
       <div class="row" style="grid-template-columns:1fr">
         <div class="card pad">
-          <div class="card-h"><span>GMV &amp; ค่าโฆษณา · ดูควบคู่</span><span class="tag" id="trBrandTag"></span></div>
+          <div class="card-h"><span>GMV &amp; ค่าโฆษณา · ดูควบคู่</span></div>
           <div class="split2">
             <div>
               <div style="font-weight:700;font-size:13px;color:var(--ink);border-left:3px solid var(--s1);padding-left:8px">ยอดขาย GMV</div>
@@ -533,7 +533,6 @@ function cmpBlock(curLabel,cur,prevLabel,prev,fmt){
 function renderPlatLegend(){const el=$("gPlat");if(!el)return;el.innerHTML=PLAT_SERIES.map(s=>`<button class="lgd${GMV_VIS.plat[s.key]?"":" off"}" data-k="${s.key}"><span class="sw" style="background:${s.color}"></span><span class="nm">${s.label}</span></button>`).join("");}
 function renderGMV(){
   renderKPI();renderPlatLegend();
-  $("trBrandTag").textContent=GLOBAL.brand+" · "+winLabel();
   renderMetricChart("gmv",lsvg,ltip,"gmvLegend","gmvCompare",false);
   renderMetricChart("ads",asvg,atip,"adsLegend","adsCompare",true);
   renderTrafficSection();
@@ -792,12 +791,14 @@ tb.addEventListener("click",()=>{const dk=document.documentElement.getAttribute(
 let _cph=null,_cpar=null,_gph=null,_gpar=null;
 function setupExpand(){
   document.querySelectorAll("svg.chart").forEach(svg=>{
-    const wrap=svg.parentElement; if(!wrap||wrap.querySelector(".expand-btn"))return;
-    if(getComputedStyle(wrap).position==="static")wrap.style.position="relative";
+    const block=svg.parentElement&&svg.parentElement.parentElement;   // the sub-chart block
+    const titleDiv=block&&block.firstElementChild;                     // its title row
+    if(!titleDiv||titleDiv.querySelector(".expand-btn"))return;
+    titleDiv.style.display="flex";titleDiv.style.alignItems="center";titleDiv.style.gap="8px";
     const b=document.createElement("button");
     b.className="expand-btn";b.type="button";b.title="ขยายกราฟ";b.setAttribute("aria-label","ขยายกราฟ");b.textContent="⤢";
-    b.addEventListener("click",e=>{e.stopPropagation();openChart(svg.parentElement.parentElement);});
-    wrap.appendChild(b);
+    b.addEventListener("click",e=>{e.stopPropagation();openChart(block);});
+    titleDiv.appendChild(b);
   });
 }
 function openChart(block){
