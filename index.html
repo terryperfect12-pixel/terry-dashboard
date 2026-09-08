@@ -120,8 +120,15 @@
   .cmodal-controls .gbar.stuck{border-radius:10px;box-shadow:none;}
   .cmodal-body{padding-top:2px;}
   .cmodal-body .expand-btn{display:none;}
-  .cmodal-body>div>div:first-child{font-size:16px;} /* enlarge chart title */
   .cmodal-body .lc-tip{font-size:13px;}
+  /* expanded: prominent header band across the top (not cramped in the corner) */
+  .cmodal-body>div{display:flex;flex-direction:column;}
+  .cmodal-body>div>div:first-child{font-size:21px!important;font-weight:700;margin-bottom:8px;}
+  .cmodal-body>div>div:nth-child(2){justify-content:flex-start!important;align-items:baseline!important;gap:28px!important;width:100%;border-bottom:1px solid var(--line);padding-bottom:14px;margin:0 0 14px!important;}
+  .cmodal-body [id$="Compare"]{display:flex!important;align-items:baseline;flex-wrap:wrap;gap:4px 22px;text-align:left!important;white-space:normal!important;line-height:1.1!important;}
+  .cmodal-body [id$="Compare"]>div:nth-child(1){font-size:15px!important;color:var(--muted);align-self:center;}
+  .cmodal-body [id$="Compare"]>div:nth-child(2){font-size:42px!important;line-height:1!important;letter-spacing:-.015em;}
+  .cmodal-body [id$="Compare"]>div:nth-child(3){font-size:16px!important;margin-top:0!important;align-self:center;}
   .big-delta{display:flex;align-items:baseline;gap:10px;margin:2px 0 12px;} .big-delta .n{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;}
   .plat-block{margin-bottom:16px;} .plat-block:last-child{margin-bottom:0;}
   .plat-title{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;margin-bottom:8px;} .plat-title .pt-tot{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--ink2);font-weight:700;}
