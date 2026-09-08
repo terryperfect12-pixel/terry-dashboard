@@ -11,18 +11,18 @@
     --ink:#0f172a; --ink2:#475569; --muted:#94a3b8; --line:#e5e9f0; --brandnavy:#1e293b;
     --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#8b5cf6;
     --good:#16a34a; --danger:#dc2626; --warn:#d97706; --info:#2563eb;
-    --track:#eef1f5; --shadow:0 1px 3px rgba(15,23,42,.06),0 1px 2px rgba(15,23,42,.04);
+    --track:#eef1f5; --line2:#eef1f6; --surface2:#f7f9fc; --shadow:0 1px 3px rgba(15,23,42,.06),0 1px 2px rgba(15,23,42,.04);
   }
   @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
     color-scheme:dark; --page:#0b1120; --surface:#131a2b; --sidebar:#0f1626;
     --ink:#f1f5f9; --ink2:#cbd5e1; --muted:#7c8aa3; --line:#243049; --brandnavy:#0b1120;
     --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#a78bfa;
-    --good:#22c55e; --danger:#f87171; --warn:#fbbf24; --info:#60a5fa; --track:#1c2740; --shadow:0 1px 3px rgba(0,0,0,.4);}}
+    --good:#22c55e; --danger:#f87171; --warn:#fbbf24; --info:#60a5fa; --track:#1c2740; --line2:#233048; --surface2:#1a2236; --shadow:0 1px 3px rgba(0,0,0,.4);}}
   :root[data-theme="dark"]{
     color-scheme:dark; --page:#0b1120; --surface:#131a2b; --sidebar:#0f1626;
     --ink:#f1f5f9; --ink2:#cbd5e1; --muted:#7c8aa3; --line:#243049; --brandnavy:#0b1120;
     --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#a78bfa;
-    --good:#22c55e; --danger:#f87171; --warn:#fbbf24; --info:#60a5fa; --track:#1c2740; --shadow:0 1px 3px rgba(0,0,0,.4);}
+    --good:#22c55e; --danger:#f87171; --warn:#fbbf24; --info:#60a5fa; --track:#1c2740; --line2:#233048; --surface2:#1a2236; --shadow:0 1px 3px rgba(0,0,0,.4);}
   *{box-sizing:border-box;}
   body{margin:0;background:var(--page);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;font-size:14px;}
   .app{display:grid;grid-template-columns:220px 1fr;min-height:100vh;}
@@ -103,6 +103,7 @@
   .kpi{border-radius:14px;padding:16px 17px;box-shadow:var(--shadow);border:1px solid var(--line);}
   .kpi .kl{font-size:12px;font-weight:600;opacity:.85;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;} .kpi .kicon{font-size:18px;opacity:.6;}
   .kpi .kv{font-size:30px;font-weight:800;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;line-height:1.05;} .kpi .ks{font-size:11.5px;margin-top:7px;opacity:.85;}
+  .kpi .kc{font-size:11px;margin-top:8px;padding-top:8px;border-top:1px solid color-mix(in srgb,currentColor 12%,transparent);opacity:.82;font-variant-numeric:tabular-nums;} .kpi .kc b{font-weight:800;opacity:1;}
   .kpi-badge{font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;border:1.5px solid;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1;background:color-mix(in srgb,currentColor 12%,var(--surface));}
   .kpi.dark .kpi-badge{background:rgba(255,255,255,.12);}
   .kpi.dark{background:var(--brandnavy);color:#fff;border-color:transparent;}
@@ -129,15 +130,15 @@
   .cal-btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:9px;padding:9px 13px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
   .cal-btn::before{content:"📅";font-size:13px;}
   .cal-btn:hover{border-color:var(--s1);}
-  .cal-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:300;background:var(--surface);border:1px solid var(--line);border-radius:13px;box-shadow:0 14px 38px rgba(0,0,0,.24);padding:13px;width:286px;}
+  .cal-pop{position:absolute;top:calc(100% + 8px);left:0;z-index:300;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 44px rgba(0,0,0,.26);padding:16px;width:308px;}
   .cal-pop[hidden]{display:none!important;}
-  .cal-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;font-weight:700;font-size:14px;color:var(--ink);}
-  .cal-h button{border:none;background:var(--surface2);color:var(--ink2);width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:15px;line-height:1;}
+  .cal-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-weight:800;font-size:15px;color:var(--ink);}
+  .cal-h button{border:none;background:var(--surface2);color:var(--ink2);width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:15px;line-height:1;transition:background .12s,color .12s;}
   .cal-h button:hover{background:var(--s1);color:#fff;}
-  .cal-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;}
-  .cal-dow span{text-align:center;font-size:11px;color:var(--muted);font-weight:700;padding:3px 0;}
+  .cal-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:6px;}
+  .cal-dow span{text-align:center;font-size:10.5px;color:var(--muted);font-weight:700;padding:4px 0;letter-spacing:.02em;}
   .cal-days{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
-  .cal-d{border:none;background:transparent;color:var(--ink);height:33px;border-radius:8px;cursor:pointer;font-size:12.5px;font-family:inherit;font-variant-numeric:tabular-nums;}
+  .cal-d{border:none;background:transparent;color:var(--ink);height:36px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit;font-variant-numeric:tabular-nums;transition:background .1s;}
   .cal-d.empty{visibility:hidden;pointer-events:none;}
   .cal-d:hover:not(:disabled){background:var(--line2);}
   .cal-d:disabled{color:var(--line);cursor:default;}
@@ -578,15 +579,17 @@ function renderKPI(){
   const tgtMom=prevTgt>0?(tgt-prevTgt)/prevTgt*100:null;
   const achMom=(open||!prevAch)?null:(ach-prevAch)/prevAch*100;
   const gapMom=(open||tgt<=0)?null:(prevGap-gap)/Math.abs(tgt)*100;/* + = ปิดช่องว่างได้ (ดีขึ้น) เป็น % ของเป้า */
-  const rangeLbl=fmtD(R.start)+"–"+fmtD(R.end);
+  const rangeLbl=fmtD(R.start)+"–"+fmtD(R.end), cmpLbl=fmtD(R.cmpStart)+"–"+fmtD(R.cmpEnd);
+  const nf=n=>Math.round(n).toLocaleString("en-US");
+  const cmp=(pv,fmt)=>open?"":`<div class="kc">เทียบช่วงก่อน (${cmpLbl}): <b>${fmt?fmt(pv):nf(pv)}</b></div>`;
   const cards=[
-    {cls:"dark",l:"GMV (THB)",v:open?"0":Math.round(gmv).toLocaleString("en-US"),s:open?"ไม่มีข้อมูลในช่วงนี้":"ช่วง "+rangeLbl,badge:open?null:kpiBadge(mom,true)},
-    {cls:"green",l:"Target (THB)",v:Math.round(tgt).toLocaleString("en-US"),s:brand+(fullMonth?" · ทั้งเดือน":" · "+nDays+" วัน"),badge:kpiBadge(tgtMom,true)},
-    {cls:"red",l:"Achievement",v:ach.toFixed(0)+"%",s:"vs. เป้า"+(fullMonth?"":" (สัดส่วนวัน)"),badge:open?null:kpiBadge(achMom,true)},
-    {cls:"amber",l:"Gap (THB)",v:Math.round(gap).toLocaleString("en-US"),s:"เหลือถึงเป้า",badge:open?null:kpiBadge(gapMom,true)},
+    {cls:"dark",l:"GMV (THB)",v:open?"0":nf(gmv),s:open?"ไม่มีข้อมูลในช่วงนี้":"ช่วงที่เลือก "+rangeLbl,badge:open?null:kpiBadge(mom,true),cmp:cmp(prev)},
+    {cls:"green",l:"Target (THB)",v:nf(tgt),s:brand+(fullMonth?" · เป้าทั้งเดือน":" · เป้า "+nDays+" วัน"),badge:kpiBadge(tgtMom,true),cmp:cmp(prevTgt)},
+    {cls:"red",l:"Achievement",v:ach.toFixed(0)+"%",s:"ยอดจริง ÷ เป้า"+(fullMonth?"":" (สัดส่วนวัน)"),badge:open?null:kpiBadge(achMom,true),cmp:cmp(prevAch,x=>x.toFixed(0)+"%")},
+    {cls:"amber",l:"Gap (THB)",v:nf(gap),s:"เหลือถึงเป้า",badge:open?null:kpiBadge(gapMom,true),cmp:cmp(prevGap)},
   ];
   $("kpiRow").style.gridTemplateColumns=open?"repeat(4,1fr) 1.55fr":"repeat(4,1fr)";
-  $("kpiRow").innerHTML=cards.map(c=>`<div class="kpi ${c.cls}"><div class="kl"><span>${c.l}</span>${c.badge||""}</div><div class="kv">${c.v}</div><div class="ks">${c.s}</div></div>`).join("")+
+  $("kpiRow").innerHTML=cards.map(c=>`<div class="kpi ${c.cls}"><div class="kl"><span>${c.l}</span>${c.badge||""}</div><div class="kv">${c.v}</div><div class="ks">${c.s}</div>${c.cmp||""}</div>`).join("")+
     (open?`<div class="info-banner"><div class="bi">i</div><div><div class="bt">ช่วงที่เลือกยังไม่มีข้อมูล (${rangeLbl})</div><div class="bd">Open Month Safety · เลือกช่วงเวลาที่มีข้อมูล (พ.ค.–ส.ค. 2026) เพื่อดูตัวเลข</div></div></div>`:"");
 }
 
@@ -877,7 +880,12 @@ function drawMultiLine(svg,tip,pts,series,fmtV,fmtX,opts){
   let out=`<g class="cx-grid">`;for(let t=0;t<=4;t++){const yy=yOf(yMax/4*t);out+=`<line x1="${m.l}" y1="${yy.toFixed(1)}" x2="${m.l+iw}" y2="${yy.toFixed(1)}"></line>`;}out+=`</g><g class="cx-axis">`;
   for(let t=0;t<=4;t++){const val=yMax/4*t,yy=yOf(val);out+=`<text class="tab" x="${m.l-8}" y="${(yy+4).toFixed(1)}" text-anchor="end">${kOf(val)}</text>`;}
   const step=Math.ceil(n/8);pts.forEach((p,i)=>{if(i%step===0||i===n-1)out+=`<text x="${xOf(i).toFixed(1)}" y="${m.t+ih+18}" text-anchor="middle">${fmtX(p.k)}</text>`;});out+=`</g>`;
-  const drawLine=s=>{let d="",pen=false;s.data.forEach((v,i)=>{if(v==null)return;d+=(pen?"L":"M")+xOf(i).toFixed(1)+" "+yOf(v).toFixed(1)+" ";pen=true;});return `<path class="lc-line${s.ghost?" ghost":""}" d="${d.trim()}" style="stroke:${s.color}${(!s.ghost&&s.width)?";stroke-width:"+s.width:""}"></path>`;};
+  const baseY=(m.t+ih);
+  const segPts=data=>{const segs=[];let cur=[];data.forEach((v,i)=>{if(v==null){if(cur.length){segs.push(cur);cur=[];}}else cur.push({x:xOf(i),y:yOf(v)});});if(cur.length)segs.push(cur);return segs;};
+  const smooth=pts=>{if(!pts.length)return "";if(pts.length===1)return `M${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;let d=`M${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;for(let i=0;i<pts.length-1;i++){const p0=pts[i-1]||pts[i],p1=pts[i],p2=pts[i+1],p3=pts[i+2]||p2;const c1x=p1.x+(p2.x-p0.x)/6,c1y=p1.y+(p2.y-p0.y)/6,c2x=p2.x-(p3.x-p1.x)/6,c2y=p2.y-(p3.y-p1.y)/6;d+=` C${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;}return d;};
+  const drawLine=s=>{let out="";segPts(s.data).forEach(pts=>{const lp=smooth(pts);
+    if(!s.ghost&&pts.length>1){const area=lp+` L${pts[pts.length-1].x.toFixed(1)} ${baseY.toFixed(1)} L${pts[0].x.toFixed(1)} ${baseY.toFixed(1)} Z`;out+=`<path d="${area}" style="fill:${s.color};opacity:.09"></path>`;}
+    out+=`<path class="lc-line${s.ghost?" ghost":""}" d="${lp}" style="stroke:${s.color};fill:none${(!s.ghost&&s.width)?";stroke-width:"+s.width:""}"></path>`;});return out;};
   series.filter(s=>s.ghost).forEach(s=>out+=drawLine(s));
   series.filter(s=>!s.ghost).forEach(s=>out+=drawLine(s));
   if(showDot)series.filter(s=>!s.ghost).forEach(s=>s.data.forEach((v,i)=>{if(v==null)return;out+=`<circle class="lc-dot" cx="${xOf(i).toFixed(1)}" cy="${yOf(v).toFixed(1)}" r="${n>40?2:3}" style="fill:${s.color}"></circle>`;}));
