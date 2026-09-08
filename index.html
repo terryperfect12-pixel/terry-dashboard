@@ -241,7 +241,7 @@
   <main class="main">
     <!-- STICKY TIME BAR (full width) -->
     <div class="gbar" id="dashOnly1">
-      <span class="top-chip" style="padding:6px 12px;box-shadow:none"><span>🗓️</span><div><div class="lab">เดือน</div><select id="selMonth"></select></div></span>
+      <span class="top-chip" hidden style="padding:6px 12px;box-shadow:none"><span>🗓️</span><div><div class="lab">เดือน</div><select id="selMonth"></select></div></span>
       <span class="gl" style="margin-left:4px">ช่วงเวลา</span>
       <span class="seg lg" id="gmvPreset"><button data-p="day">วัน</button><button data-p="week">สัปดาห์</button><button data-p="month" class="active">เดือน</button><button data-p="all">ทั้งหมด</button></span>
       <span id="rangePick" style="position:relative;display:inline-flex;align-items:center"><button id="calBtn" type="button" class="cal-btn"></button><div id="calPop" class="cal-pop" hidden></div></span>
@@ -479,7 +479,6 @@ async function loadCore(){
   await Promise.all(BRANDS.map(async b=>{try{store.chan[b]=parsePerforman(await fetchSheet(F_PERF,b),anchor);}catch(e){store.err.push("perf/"+b);}}));
   const mset=new Set();BRANDS.forEach(b=>{if(store.chan[b])Object.keys(store.chan[b]).forEach(m=>mset.add(m));(store.daily[b]||[]).forEach(r=>mset.add(r.date.slice(0,7)));});
   store.months=[...mset].sort();store.loaded=true;store.lastFetch=new Date();
-  [store.prodMonths,store.trafMonths]=await Promise.all([enumMonths(F_TKSKU),enumMonths(F_TKTRAF)]);
   const okD=BRANDS.filter(b=>store.daily[b]&&store.daily[b].length).length;
   $("status").className=store.err.length&&okD===0?"online err":"online";$("status").textContent=store.err.length?"Live (บางส่วน)":"Live Data";
 }
@@ -499,13 +498,15 @@ async function loadProducts(mk){
 const MONTH_NUM={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,july:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12};
 async function enumMonths(id){ // which months actually have per-month tabs in a sheet (avoid gviz fallback on missing months)
   const yr=(store.months.slice(-1)[0]||"2026-08").slice(0,4);
-  try{const t=await (await fetch(`https://docs.google.com/spreadsheets/d/${id}/htmlview`)).text();
+  const fb=()=>{const all=(store.months||[]).filter(m=>m>=yr+"-06");return all.length?all:[yr+"-06",yr+"-07",yr+"-08"];};/* fallback: data months from Jun onward */
+  try{const ctrl=new AbortController();const to=setTimeout(()=>ctrl.abort(),8000);/* don't hang forever on htmlview */
+    const t=await (await fetch(`https://docs.google.com/spreadsheets/d/${id}/htmlview`,{signal:ctrl.signal})).text();clearTimeout(to);
     const re=/items\.push\(\{name:\s*"([^"]+)"/g,set=new Set();let m;
     while((m=re.exec(t))){const n=MONTH_NUM[m[1].trim().split(/\s+/)[0].toLowerCase()];if(n)set.add(yr+"-"+String(n).padStart(2,"0"));}
-    return set.size?[...set].sort():[yr+"-06",yr+"-07",yr+"-08"];
-  }catch(e){return [yr+"-06",yr+"-07",yr+"-08"];}
+    return set.size?[...set].sort():fb();
+  }catch(e){return fb();}
 }
-async function loadAllProducts(){await Promise.all((store.prodMonths||[]).map(loadProducts));}
+async function loadAllProducts(){if(!store.prodMonths)store.prodMonths=await enumMonths(F_TKSKU);await Promise.all((store.prodMonths||[]).map(loadProducts));}
 function rangeMonths(s,e){if(!s||!e)return [];const out=[];let y=+s.slice(0,4),m=+s.slice(5,7);const ey=+e.slice(0,4),em=+e.slice(5,7);while(y<ey||(y===ey&&m<=em)){out.push(y+"-"+String(m).padStart(2,"0"));if(++m>12){m=1;y++;}}return out;}
 function productMonth(){const cov=rangeMonths(GMV_RANGE.start,GMV_RANGE.end),av=(store.prodMonths||[]).filter(x=>cov.includes(x));return av.length?av[av.length-1]:null;}
 
@@ -958,7 +959,7 @@ $("cEnd").addEventListener("change",()=>{computeCompare();renderGMV();});
 $("selMonth").addEventListener("change",()=>{$("gmvPreset").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x.dataset.p==="month"));applyPreset("month");renderGMV();});
 $("prSort").addEventListener("change",renderProducts2);
 $("prLevel").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;PROD_LEVEL.v=b.dataset.lv;$("prLevel").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));renderProducts2();});
-async function loadAllTraffic(){await Promise.all((store.trafMonths||[]).map(loadTraffic));}
+async function loadAllTraffic(){if(!store.trafMonths)store.trafMonths=await enumMonths(F_TKTRAF);await Promise.all((store.trafMonths||[]).map(loadTraffic));}
 async function doRefresh(){store.prod={};store.traf={};await loadCore();populate();initRange();await Promise.all([loadAllTraffic(),loadAllProducts()]);renderAll();renderProducts2();}
 $("btnRefresh").addEventListener("click",doRefresh);$("btnRefresh2").addEventListener("click",doRefresh);
 function showConfig(on){$("viewConfig").hidden=!on;$("viewDash").hidden=on;$("dashOnly1").style.display=on?"none":"";if(on)renderConfig();}
