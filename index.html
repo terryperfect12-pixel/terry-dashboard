@@ -942,6 +942,7 @@ $("gPlat").addEventListener("click",toggleSeries);
 $("gmvPreset").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$("gmvPreset").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));applyPreset(b.dataset.p);renderGMV();if(b.dataset.p==="all")closeCal();else openCal(b.dataset.p);});
 $("calBtn").addEventListener("click",ev=>{ev.stopPropagation();if($("calPop").hidden)openCal(GMV_RANGE.preset==="all"?"month":GMV_RANGE.preset);else closeCal();});
 $("calPop").addEventListener("click",ev=>{
+  ev.stopPropagation();/* keep click inside — re-render detaches target, else document handler would close the popover */
   const nav=ev.target.closest("[data-nav]");
   if(nav){const v=nav.dataset.nav;if(v==="-1m"){if(--CAL.viewM<1){CAL.viewM=12;CAL.viewY--;}}else if(v==="+1m"){if(++CAL.viewM>12){CAL.viewM=1;CAL.viewY++;}}else if(v==="-1y")CAL.viewY--;else if(v==="+1y")CAL.viewY++;renderCal();return;}
   const day=ev.target.closest(".cal-d[data-d]");
