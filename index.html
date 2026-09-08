@@ -86,6 +86,8 @@
   .kpi{border-radius:14px;padding:16px 17px;box-shadow:var(--shadow);border:1px solid var(--line);}
   .kpi .kl{font-size:12px;font-weight:600;opacity:.85;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;} .kpi .kicon{font-size:18px;opacity:.6;}
   .kpi .kv{font-size:30px;font-weight:800;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;line-height:1.05;} .kpi .ks{font-size:11.5px;margin-top:7px;opacity:.85;}
+  .kpi-badge{font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;border:1.5px solid;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1;background:color-mix(in srgb,currentColor 12%,var(--surface));}
+  .kpi.dark .kpi-badge{background:rgba(255,255,255,.12);}
   .kpi.dark{background:var(--brandnavy);color:#fff;border-color:transparent;}
   .kpi.green{background:color-mix(in srgb,var(--good) 12%,var(--surface));} .kpi.green .kv{color:var(--good);}
   .kpi.red{background:color-mix(in srgb,var(--danger) 12%,var(--surface));} .kpi.red .kv{color:var(--danger);}
@@ -529,6 +531,7 @@ function populate(){
 }
 
 /* ===================== KPI ===================== */
+function kpiBadge(p,goodUp){if(p==null||!isFinite(p))return "";const near=Math.abs(p)<0.05;const up=p>=0;const good=goodUp?up:!up;const col=near?"var(--muted)":(good?"var(--good)":"var(--danger)");const ar=near?"→":(up?"↗":"↘");return `<span class="kpi-badge" style="color:${col};border-color:color-mix(in srgb,${col} 45%,transparent)">${ar} ${p>0?"+":""}${p.toFixed(1)}%</span>`;}
 function renderKPI(){
   const R=GMV_RANGE,brand=GLOBAL.brand;
   let gmv=0;const days=new Set();(store.daily[brand]||[]).forEach(r=>{if(inR(r.date,R.start,R.end)){gmv+=r.gmv;days.add(r.date);}});
@@ -538,15 +541,21 @@ function renderKPI(){
   const ach=open?0:gmv/tgt*100, gap=open?tgt:(tgt-gmv);
   let prev=0;(store.daily[brand]||[]).forEach(r=>{if(inR(r.date,R.cmpStart,R.cmpEnd))prev+=r.gmv;});
   const mom=(open||!prev)?null:(gmv-prev)/prev*100;
+  const prevNDays=Math.max(1,daysBetween(R.cmpStart,R.cmpEnd)+1);
+  const prevTgt=fullMonth?monthlyTgt:monthlyTgt*(prevNDays/30);
+  const prevAch=prev>0?prev/prevTgt*100:0, prevGap=prevTgt-prev;
+  const tgtMom=prevTgt>0?(tgt-prevTgt)/prevTgt*100:null;
+  const achMom=(open||!prevAch)?null:(ach-prevAch)/prevAch*100;
+  const gapMom=(open||tgt<=0)?null:(prevGap-gap)/Math.abs(tgt)*100;/* + = ปิดช่องว่างได้ (ดีขึ้น) เป็น % ของเป้า */
   const rangeLbl=fmtD(R.start)+"–"+fmtD(R.end);
   const cards=[
-    {cls:"dark",l:"GMV (THB)",v:open?"0":Math.round(gmv).toLocaleString("en-US"),s:open?"ไม่มีข้อมูลในช่วงนี้":(mom!=null?(mom>=0?"+":"")+mom.toFixed(1)+"% vs ก่อนหน้า":rangeLbl)},
-    {cls:"green",l:"Target (THB)",v:Math.round(tgt).toLocaleString("en-US"),s:brand+(fullMonth?" · ทั้งเดือน":" · "+nDays+" วัน")},
-    {cls:"red",l:"Achievement",v:ach.toFixed(0)+"%",s:"vs. เป้า"+(fullMonth?"":" (สัดส่วนวัน)")},
-    {cls:"amber",l:"Gap (THB)",v:Math.round(gap).toLocaleString("en-US"),s:"เหลือถึงเป้า"},
+    {cls:"dark",l:"GMV (THB)",v:open?"0":Math.round(gmv).toLocaleString("en-US"),s:open?"ไม่มีข้อมูลในช่วงนี้":"ช่วง "+rangeLbl,badge:open?null:kpiBadge(mom,true)},
+    {cls:"green",l:"Target (THB)",v:Math.round(tgt).toLocaleString("en-US"),s:brand+(fullMonth?" · ทั้งเดือน":" · "+nDays+" วัน"),badge:kpiBadge(tgtMom,true)},
+    {cls:"red",l:"Achievement",v:ach.toFixed(0)+"%",s:"vs. เป้า"+(fullMonth?"":" (สัดส่วนวัน)"),badge:open?null:kpiBadge(achMom,true)},
+    {cls:"amber",l:"Gap (THB)",v:Math.round(gap).toLocaleString("en-US"),s:"เหลือถึงเป้า",badge:open?null:kpiBadge(gapMom,true)},
   ];
   $("kpiRow").style.gridTemplateColumns=open?"repeat(4,1fr) 1.55fr":"repeat(4,1fr)";
-  $("kpiRow").innerHTML=cards.map(c=>`<div class="kpi ${c.cls}"><div class="kl"><span>${c.l}</span></div><div class="kv">${c.v}</div><div class="ks">${c.s}</div></div>`).join("")+
+  $("kpiRow").innerHTML=cards.map(c=>`<div class="kpi ${c.cls}"><div class="kl"><span>${c.l}</span>${c.badge||""}</div><div class="kv">${c.v}</div><div class="ks">${c.s}</div></div>`).join("")+
     (open?`<div class="info-banner"><div class="bi">i</div><div><div class="bt">ช่วงที่เลือกยังไม่มีข้อมูล (${rangeLbl})</div><div class="bd">Open Month Safety · เลือกช่วงเวลาที่มีข้อมูล (พ.ค.–ส.ค. 2026) เพื่อดูตัวเลข</div></div></div>`:"");
 }
 
