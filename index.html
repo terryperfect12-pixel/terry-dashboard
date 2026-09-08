@@ -648,7 +648,7 @@ function contentRows(brand,mk,plat){
 }
 function renderContentTable(elId,plat,brand,mk){
   const el=$(elId);if(!el)return;
-  const rows=contentRows(brand,mk,plat).sort((a,b)=>b.v-a.v);
+  const rows=contentRows(brand,mk,plat); // fixed order (Live-Self, Live-Aff, VDO-Self, VDO-Aff, Product Card) — not sorted by sales
   if(!rows.length){el.innerHTML='<div class="empty" style="padding:12px 0">— ไม่มีข้อมูล</div>';return;}
   const tot=rows.reduce((a,r)=>a+r.v,0)||1;
   let h=`<div class="mix-sub-h"><span>คอนเทนต์</span><span class="r">สัดส่วน</span><span class="r">ทำได้</span><span class="r">เป้า</span><span class="r">เดือนก่อน</span><span class="r">เปลี่ยน</span></div>`;
