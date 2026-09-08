@@ -121,14 +121,25 @@
   .cmodal-body{padding-top:2px;}
   .cmodal-body .expand-btn{display:none;}
   .cmodal-body .lc-tip{font-size:13px;}
-  /* expanded: prominent header band across the top (not cramped in the corner) */
+  /* --- compare block: base (normal top-right view) --- */
+  [id$="Compare"] .cb-tlab{display:none;}
+  [id$="Compare"] .cb-c1{font-size:11px;color:var(--muted);letter-spacing:.02em;}
+  [id$="Compare"] .cb-big{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.12;letter-spacing:-.01em;}
+  [id$="Compare"] .cb-c3{font-size:12px;margin-top:3px;}
+  [id$="Compare"] .cb-d{font-weight:800;font-variant-numeric:tabular-nums;}
+  [id$="Compare"] .cb-prev{color:var(--muted);}
+  /* --- expanded: prominent header, 3 equal-width tiles in a row --- */
   .cmodal-body>div{display:flex;flex-direction:column;}
   .cmodal-body>div>div:first-child{font-size:21px!important;font-weight:700;margin-bottom:8px;}
-  .cmodal-body>div>div:nth-child(2){justify-content:flex-start!important;align-items:baseline!important;gap:28px!important;width:100%;border-bottom:1px solid var(--line);padding-bottom:14px;margin:0 0 14px!important;}
-  .cmodal-body [id$="Compare"]{display:flex!important;align-items:baseline;flex-wrap:wrap;gap:4px 22px;text-align:left!important;white-space:normal!important;line-height:1.1!important;}
-  .cmodal-body [id$="Compare"]>div:nth-child(1){font-size:15px!important;color:var(--muted);align-self:center;}
-  .cmodal-body [id$="Compare"]>div:nth-child(2){font-size:42px!important;line-height:1!important;letter-spacing:-.015em;}
-  .cmodal-body [id$="Compare"]>div:nth-child(3){font-size:16px!important;margin-top:0!important;align-self:center;}
+  .cmodal-body>div>div:nth-child(2){justify-content:flex-start!important;align-items:stretch!important;width:100%;border-bottom:1px solid var(--line);padding-bottom:14px;margin:0 0 14px!important;}
+  .cmodal-body [id$="Compare"]{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:0!important;width:100%;text-align:left!important;white-space:normal!important;}
+  .cmodal-body [id$="Compare"] .cb-cell{display:flex;flex-direction:column;gap:6px;min-width:0;padding:2px 26px;border-left:1px solid var(--line);}
+  .cmodal-body [id$="Compare"] .cb-cell:first-child{padding-left:0;border-left:none;}
+  .cmodal-body [id$="Compare"] .cb-tlab,.cmodal-body [id$="Compare"] .cb-rlab{display:block!important;font-size:13px;font-weight:600;color:var(--muted);letter-spacing:.02em;}
+  .cmodal-body [id$="Compare"] .cb-sep{display:none;}
+  .cmodal-body [id$="Compare"] .cb-range,.cmodal-body [id$="Compare"] .cb-big,.cmodal-body [id$="Compare"] .cb-d{font-size:28px!important;font-weight:800;line-height:1.1!important;font-variant-numeric:tabular-nums;color:var(--ink);display:block;letter-spacing:-.01em;}
+  .cmodal-body [id$="Compare"] .cb-c3 .cb-d{color:inherit;}
+  .cmodal-body [id$="Compare"] .cb-prev{display:block;font-size:13px;color:var(--muted);margin-top:2px;}
   .big-delta{display:flex;align-items:baseline;gap:10px;margin:2px 0 12px;} .big-delta .n{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;}
   .plat-block{margin-bottom:16px;} .plat-block:last-child{margin-bottom:0;}
   .plat-title{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;margin-bottom:8px;} .plat-title .pt-tot{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--ink2);font-weight:700;}
@@ -515,9 +526,9 @@ function cmpBlock(curLabel,cur,prevLabel,prev,fmt){
   const has=prev&&prev>0,dl=has?(cur-prev)/prev*100:null;
   const dcol=dl==null?"var(--muted)":(dl>=0?"var(--good)":"var(--danger)");
   const dtxt=dl==null?"—":((dl>=0?"▲ +":"▼ ")+dl.toFixed(1)+"%");
-  return `<div style="font-size:11px;color:var(--muted);letter-spacing:.02em">ช่วงที่เลือก · ${curLabel}</div>`+
-    `<div style="font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.12;letter-spacing:-.01em">${fmt(cur)}</div>`+
-    `<div style="font-size:12px;margin-top:3px"><b style="color:${dcol};font-variant-numeric:tabular-nums">${dtxt}</b> <span style="color:var(--muted)">vs ก่อนหน้า ${has?"("+prevLabel+") "+fmt(prev):"— ไม่มีข้อมูล"}</span></div>`;
+  return `<div class="cb-cell cb-c1"><span class="cb-rlab">ช่วงที่เลือก</span><span class="cb-sep"> · </span><span class="cb-range">${curLabel}</span></div>`+
+    `<div class="cb-cell cb-c2"><span class="cb-tlab">รวมช่วงนี้</span><span class="cb-big">${fmt(cur)}</span></div>`+
+    `<div class="cb-cell cb-c3"><span class="cb-tlab">เทียบก่อนหน้า</span><b class="cb-d" style="color:${dcol}">${dtxt}</b> <span class="cb-prev">vs ก่อนหน้า ${has?"("+prevLabel+") "+fmt(prev):"— ไม่มีข้อมูล"}</span></div>`;
 }
 function renderPlatLegend(){const el=$("gPlat");if(!el)return;el.innerHTML=PLAT_SERIES.map(s=>`<button class="lgd${GMV_VIS.plat[s.key]?"":" off"}" data-k="${s.key}"><span class="sw" style="background:${s.color}"></span><span class="nm">${s.label}</span></button>`).join("");}
 function renderGMV(){
