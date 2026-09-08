@@ -107,11 +107,11 @@
   .lc-tip .m{font-weight:700;margin-bottom:5px;} .lc-tip .r{display:flex;justify-content:space-between;gap:14px;color:var(--ink2);} .lc-tip .r .v{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;}
   .delta{font-weight:700;font-variant-numeric:tabular-nums;font-size:12px;} .dn{color:var(--danger);} .up{color:var(--good);} .fl{color:var(--ink2);}
   /* channel sales mix (donut + comparison table + content breakdown) */
-  .mix-top{display:grid;grid-template-columns:200px auto;gap:30px;align-items:center;justify-content:start;} @media (max-width:800px){.mix-top{grid-template-columns:1fr;justify-items:start;gap:20px;}}
-  .mix-donut-box{position:relative;width:200px;} .mix-donut-box svg{display:block;width:100%;height:auto;}
+  .mix-top{display:grid;grid-template-columns:180px auto minmax(300px,1fr);gap:28px;align-items:center;} @media (max-width:900px){.mix-top{grid-template-columns:1fr;justify-items:stretch;gap:22px;}}
+  .mix-donut-box{position:relative;width:180px;justify-self:center;} .mix-donut-box svg{display:block;width:100%;height:auto;}
   .mix-chan{width:auto;}
-  .mono,.mix-val,.mix-prev,.mix-pct{font-variant-numeric:tabular-nums;}
-  .mix-chan-h,.mix-crow{display:grid;grid-template-columns:14px 70px 84px 46px 106px 106px 68px;align-items:center;gap:9px;}
+  .mono,.mix-pct{font-variant-numeric:tabular-nums;}
+  .mix-chan-h,.mix-crow{display:grid;grid-template-columns:14px 74px 92px 58px 70px;align-items:center;gap:10px;}
   .mix-chan-h{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;font-weight:700;padding-bottom:8px;border-bottom:1px solid var(--line);}
   .mix-crow{padding:11px 0;border-bottom:1px solid var(--line2);font-size:14px;}
   .mix-crow:last-child{border-bottom:none;}
@@ -123,18 +123,17 @@
   .mix-pct{font-weight:800;color:var(--ink);}
   .mix-val{font-weight:700;color:var(--ink);}
   .mix-prev{color:var(--muted);}
-  /* content sub-breakdown */
-  .mix-sub{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:22px;padding-top:20px;border-top:1px solid var(--line);} @media (max-width:800px){.mix-sub{grid-template-columns:1fr;}}
+  /* content sub-breakdown (TikTok, sits at top-right next to donut) */
+  .mix-tkcard{border-left:1px solid var(--line);padding-left:26px;align-self:stretch;} @media (max-width:900px){.mix-tkcard{border-left:none;padding-left:0;border-top:1px solid var(--line);padding-top:16px;}}
   .mix-subh{font-weight:700;font-size:13px;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:10px;}
   .mix-subh .dotk{width:11px;height:11px;border-radius:3px;background:var(--ink);}
-  .mix-subh .dots{width:11px;height:11px;border-radius:3px;background:#F5551D;}
-  .mix-sub-h,.mix-srow{display:grid;grid-template-columns:1fr 96px 52px 72px;gap:8px;align-items:center;}
+  .mix-sub-h,.mix-srow{display:grid;grid-template-columns:1fr 58px 78px;gap:10px;align-items:center;}
   .mix-sub-h{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;font-weight:700;padding-bottom:7px;border-bottom:1px solid var(--line2);}
-  .mix-srow{padding:8px 0;border-bottom:1px solid var(--line2);font-size:13px;}
+  .mix-srow{padding:9px 0;border-bottom:1px solid var(--line2);font-size:13px;}
   .mix-srow:last-child{border-bottom:none;}
   .mix-srow .r,.mix-sub-h .r{text-align:right;}
   .mix-snm{font-weight:600;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  @media (max-width:560px){.mix-chan-h,.mix-crow{grid-template-columns:13px 70px 1fr 64px;}.mix-bar,.mix-prev{display:none;}.mix-chan-h span:nth-child(3),.mix-chan-h span:nth-child(6){display:none;}}
+  @media (max-width:560px){.mix-chan-h,.mix-crow{grid-template-columns:13px 1fr 58px 64px;}.mix-bar{display:none;}.mix-chan-h span:nth-child(3){display:none;}}
   /* expand-to-fullscreen chart */
   .expand-btn{flex:none;margin-left:auto;width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink2);cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(0,0,0,.06);transition:background .12s,color .12s;opacity:.85;}
   .expand-btn:hover{background:var(--s1);color:#fff;border-color:var(--s1);opacity:1;}
@@ -266,12 +265,9 @@
           <div class="mix-top">
             <div class="mix-donut-box"><svg id="mixDonut" viewBox="0 0 240 240" preserveAspectRatio="xMidYMid meet"></svg></div>
             <div id="mixChanTable" class="mix-chan"></div>
+            <div class="mix-tkcard"><div class="mix-subh"><span class="dotk"></span>TikTok — แยกคอนเทนต์</div><div id="mixTk"></div></div>
           </div>
-          <div class="mix-sub">
-            <div class="mix-subcard"><div class="mix-subh"><span class="dotk"></span>TikTok — แยกคอนเทนต์</div><div id="mixTk"></div></div>
-            <div class="mix-subcard"><div class="mix-subh"><span class="dots"></span>Shopee — แยกคอนเทนต์</div><div id="mixSh"></div></div>
-          </div>
-          <div class="tag" style="font-size:10.5px;color:var(--muted);margin-top:14px">ที่มา: performan all brand (รายเดือน) · สัดส่วน % = ยอดขายช่องทางนั้น ÷ ยอดขายรวมทุกช่องทางของแบรนด์ · Δ = เทียบเดือนก่อน · คอนเทนต์: % = สัดส่วนภายในช่องทางนั้น · Facebook มีเฉพาะ Benutra</div>
+          <div class="tag" style="font-size:10.5px;color:var(--muted);margin-top:14px">ที่มา: performan all brand (รายเดือน) · สัดส่วน % = สัดส่วนยอดขายของช่องทาง/คอนเทนต์นั้น · เปลี่ยน = เทียบเดือนก่อน · Facebook มีเฉพาะ Benutra</div>
         </div>
       </div>
 
@@ -609,21 +605,20 @@ function renderChannelMix(){
   if($("mixMonth"))$("mixMonth").textContent=mk?mLabel(mk):"—";
   const svg=$("mixDonut"),host=$("mixChanTable");if(!svg||!host)return;
   const mix=channelMix(brand,mk);
-  if(!mix){svg.innerHTML="";host.innerHTML='<div class="empty">ไม่มีข้อมูลสัดส่วนช่องทางในเดือนนี้</div>';if($("mixTk"))$("mixTk").innerHTML="";if($("mixSh"))$("mixSh").innerHTML="";return;}
+  if(!mix){svg.innerHTML="";host.innerHTML='<div class="empty">ไม่มีข้อมูลสัดส่วนช่องทางในเดือนนี้</div>';if($("mixTk"))$("mixTk").innerHTML="";return;}
   const items=CHAN_MIX.map(x=>({...x,v:mix[x.k]||0})).filter(x=>x.v>0);
   const total=items.reduce((a,x)=>a+x.v,0)||1;
   const cx=120,cy=120,r=92,rin=58;let g="";
   if(items.length===1){g=`<circle cx="${cx}" cy="${cy}" r="${(r+rin)/2}" style="fill:none;stroke:${items[0].c};stroke-width:${r-rin}"/>`;}
   else{let a0=-Math.PI/2;items.forEach(x=>{const a1=a0+(x.v/total)*Math.PI*2;g+=donutArc(cx,cy,r,rin,a0,a1,x.c);a0=a1;});}
-  svg.innerHTML=g+`<text x="${cx}" y="${cy-4}" text-anchor="middle" style="fill:var(--muted);font-size:12px">ยอดขายรวม</text>`+
-    `<text x="${cx}" y="${cy+18}" text-anchor="middle" style="fill:var(--ink);font-size:20px;font-weight:800;font-variant-numeric:tabular-nums">${thbShort(total)}</text>`;
+  svg.innerHTML=g+`<text x="${cx}" y="${cy-3}" text-anchor="middle" style="fill:var(--muted);font-size:12px">สัดส่วน</text>`+
+    `<text x="${cx}" y="${cy+20}" text-anchor="middle" style="fill:var(--ink);font-size:22px;font-weight:800">100%</text>`;
   const pmk=perfPrevMonth(mk),mixPrev=pmk?channelMix(brand,pmk):null;
-  let ch=`<div class="mix-chan-h"><span></span><span>ช่องทาง</span><span></span><span class="r">สัดส่วน</span><span class="r">ยอดขาย</span><span class="r">เดือนก่อน</span><span class="r">เปลี่ยน</span></div>`;
+  let ch=`<div class="mix-chan-h"><span></span><span>ช่องทาง</span><span></span><span class="r">สัดส่วน</span><span class="r">เปลี่ยน</span></div>`;
   ch+=items.map(x=>{const pct=x.v/total*100;const pv=mixPrev?mixPrev[x.k]||0:0;const dl=pv>0?(x.v-pv)/pv*100:null;
-    return `<div class="mix-crow"><span class="mix-sw" style="background:${x.c}"></span><span class="mix-nm">${x.k}</span><span class="mix-bar"><span style="width:${pct.toFixed(1)}%;background:${x.c}"></span></span><span class="mix-pct r">${pct.toFixed(1)}%</span><span class="mix-val r">${thb(x.v)}</span><span class="mix-prev r">${pv?thb(pv):"—"}</span><span class="r">${deltaHTML(dl)}</span></div>`;}).join("");
+    return `<div class="mix-crow"><span class="mix-sw" style="background:${x.c}"></span><span class="mix-nm">${x.k}</span><span class="mix-bar"><span style="width:${pct.toFixed(1)}%;background:${x.c}"></span></span><span class="mix-pct r">${pct.toFixed(1)}%</span><span class="r">${deltaHTML(dl)}</span></div>`;}).join("");
   host.innerHTML=ch;
   renderContentTable("mixTk","TikTok",brand,mk);
-  renderContentTable("mixSh","Shopee",brand,mk);
 }
 function perfPrevMonth(mk){const ch=Object.keys(store.chan[GLOBAL.brand]||{}).sort();const i=ch.indexOf(mk);return i>0?ch[i-1]:null;}
 function contentRows(brand,mk,plat){
@@ -635,8 +630,8 @@ function renderContentTable(elId,plat,brand,mk){
   const rows=contentRows(brand,mk,plat).sort((a,b)=>b.v-a.v);
   if(!rows.length){el.innerHTML='<div class="empty" style="padding:12px 0">— ไม่มีข้อมูล</div>';return;}
   const tot=rows.reduce((a,r)=>a+r.v,0)||1;
-  let h=`<div class="mix-sub-h"><span>คอนเทนต์</span><span class="r">ยอดขาย</span><span class="r">สัดส่วน</span><span class="r">เทียบเดือนก่อน</span></div>`;
-  h+=rows.map(r=>{const pct=r.v/tot*100;const dl=r.pv>0?(r.v-r.pv)/r.pv*100:null;return `<div class="mix-srow"><span class="mix-snm">${r.sc}</span><span class="r mono">${thb(r.v)}</span><span class="r mono">${pct.toFixed(1)}%</span><span class="r">${deltaHTML(dl)}</span></div>`;}).join("");
+  let h=`<div class="mix-sub-h"><span>คอนเทนต์</span><span class="r">สัดส่วน</span><span class="r">เทียบเดือนก่อน</span></div>`;
+  h+=rows.map(r=>{const pct=r.v/tot*100;const dl=r.pv>0?(r.v-r.pv)/r.pv*100:null;return `<div class="mix-srow"><span class="mix-snm">${r.sc}</span><span class="r mono">${pct.toFixed(1)}%</span><span class="r">${deltaHTML(dl)}</span></div>`;}).join("");
   el.innerHTML=h;
 }
 function renderMetricChart(metric,svgEl,tip,legendId,compareId,neutral){
