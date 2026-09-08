@@ -217,8 +217,8 @@
     <div class="gbar" id="dashOnly1">
       <span class="top-chip" style="padding:6px 12px;box-shadow:none"><span>🗓️</span><div><div class="lab">เดือน</div><select id="selMonth"></select></div></span>
       <span class="gl" style="margin-left:4px">ช่วงเวลา</span>
-      <span class="seg lg" id="gmvPreset"><button data-p="1">1 วัน</button><button data-p="7">7 วัน</button><button data-p="month" class="active">1 เดือน</button><button data-p="all">ทั้งหมด</button></span>
-      <span style="display:flex;gap:5px;align-items:center;font-size:12.5px;color:var(--muted)"><span>หรือ</span><input type="date" id="rStart" class="mini"> – <input type="date" id="rEnd" class="mini"></span>
+      <span class="seg lg" id="gmvPreset"><button data-p="day">วัน</button><button data-p="week">สัปดาห์</button><button data-p="month" class="active">เดือน</button><button data-p="all">ทั้งหมด</button></span>
+      <span id="rangePick" style="display:flex;gap:5px;align-items:center;font-size:12.5px;color:var(--muted)"><span id="rLab">เลือกวัน</span><input type="date" id="rStart" class="mini"><span id="rDash"> – </span><input type="date" id="rEnd" class="mini"></span>
       <span class="sp"></span>
       <span class="chart-legend" id="gPlat" style="display:flex;gap:9px"></span>
       <span class="sp"></span>
@@ -544,18 +544,24 @@ function trendBrand(bucket,s,e,metric){const A=metric==="ads";const map={};BRAND
 /* ---- date-range state ---- */
 const GMV_RANGE={start:null,end:null,cmpStart:null,cmpEnd:null,cmpMode:"prev",preset:"month"};
 function dataDates(){const s=new Set();BRANDS.forEach(b=>(store.daily[b]||[]).forEach(r=>{if(r.gmv>0)s.add(r.date);}));return [...s].sort();}
-function shiftDate(iso,days){const d=new Date(iso+"T00:00:00");d.setDate(d.getDate()+days);return d.toISOString().slice(0,10);}
+function shiftDate(iso,days){const d=new Date(iso+"T00:00:00");d.setDate(d.getDate()+days);const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),dd=String(d.getDate()).padStart(2,"0");return y+"-"+m+"-"+dd;}/* local-safe (no UTC shift) */
 function daysBetween(a,b){return Math.round((new Date(b+"T00:00:00")-new Date(a+"T00:00:00"))/86400000);}
 function fmtD(iso){const d=new Date(iso+"T00:00:00");return d.getDate()+"/"+(d.getMonth()+1);}
+function weekRange(iso){const d=new Date(iso+"T00:00:00");const dow=d.getDay();/* 0=Sun..6=Sat */const offMon=(dow===0)?-6:(1-dow);const mon=shiftDate(iso,offMon);return [mon,shiftDate(mon,6)];}/* lock Monday–Sunday */
 function applyPreset(p){const d=dataDates();if(!d.length)return;const min=d[0],max=d[d.length-1];let start,end=max;
-  if(p==="all")start=min;
-  else if(p==="1")start=max;
-  else if(p==="7")start=shiftDate(max,-6);
-  else if(p==="30")start=shiftDate(max,-29);
+  const cur=(GMV_RANGE.end&&GMV_RANGE.end<=max&&GMV_RANGE.end>=min)?GMV_RANGE.end:max;/* keep current anchor day if valid */
+  if(p==="all"){start=min;end=max;}
+  else if(p==="day"){start=cur;end=cur;}
+  else if(p==="week"){const [mon,sun]=weekRange(cur);start=mon;end=sun;}
   else{const anchor=($("selMonth")&&$("selMonth").value)?$("selMonth").value:max.slice(0,7);start=anchor+"-01";const dim=new Date(+anchor.slice(0,4),+anchor.slice(5,7),0).getDate();end=anchor+"-"+String(dim).padStart(2,"0");}
-  if(p!=="month"&&start<min)start=min;GMV_RANGE.start=start;GMV_RANGE.end=end;GMV_RANGE.preset=p;
+  GMV_RANGE.start=start;GMV_RANGE.end=end;GMV_RANGE.preset=p;
   if($("rStart")){$("rStart").value=start;$("rEnd").value=end;}
-  computeCompare();
+  updateRangeUI();computeCompare();
+}
+function updateRangeUI(){const p=GMV_RANGE.preset,wrap=$("rangePick");if(!wrap)return;const re=$("rEnd"),rs=$("rStart"),dash=$("rDash"),lab=$("rLab");
+  if(p==="day"){wrap.hidden=false;if(re)re.hidden=true;if(dash)dash.hidden=true;if(lab)lab.textContent="เลือกวัน";if(rs)rs.readOnly=false;}
+  else if(p==="week"){wrap.hidden=false;if(re){re.hidden=false;re.readOnly=true;}if(dash)dash.hidden=false;if(lab)lab.textContent="เลือกวันในสัปดาห์ (จ–อา)";if(rs)rs.readOnly=false;}
+  else{wrap.hidden=true;}/* เดือน ใช้ตัวเลือกเดือน · ทั้งหมด = ทั้งช่วง */
 }
 function computeCompare(){const R=GMV_RANGE;
   if(R.cmpMode==="prev"){
@@ -570,7 +576,7 @@ function initRange(){const d=dataDates();if(!d.length)return;const min=d[0],max=
 }
 const lsvg=$("lineChart"),ltip=$("lcTip"),asvg=$("adsChart"),atip=$("adsTip");
 function granLabel(b){return b==="day"?"รายวัน":b==="week"?"ราย 7 วัน":"รายเดือน";}
-function winLabel(){const R=GMV_RANGE;if(R.preset==="month")return mLabel(R.start.slice(0,7));if(R.preset==="all")return "ทั้งหมด";if(R.preset==="1")return "วันล่าสุด "+fmtD(R.end);return fmtD(R.start)+"–"+fmtD(R.end);}
+function winLabel(){const R=GMV_RANGE;if(R.preset==="month")return mLabel(R.start.slice(0,7));if(R.preset==="all")return "ทั้งหมด";if(R.preset==="day")return "วันที่ "+fmtD(R.start);return fmtD(R.start)+"–"+fmtD(R.end);}
 /* shared clear comparison block: selected period vs previous period, labeled */
 function cmpBlock(curLabel,cur,prevLabel,prev,fmt){
   const has=prev&&prev>0,dl=has?(cur-prev)/prev*100:null;
@@ -885,7 +891,10 @@ $("gBrand").addEventListener("click",e=>{const b=e.target.closest("button");if(!
 function toggleSeries(e){const b=e.target.closest(".lgd");if(!b)return;const k=b.dataset.k,vis=GMV_VIS.plat;if(vis[k]&&Object.values(vis).filter(Boolean).length<=1)return;vis[k]=!vis[k];renderGMV();}
 $("gPlat").addEventListener("click",toggleSeries);
 $("gmvPreset").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$("gmvPreset").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));applyPreset(b.dataset.p);renderGMV();});
-function onRangeInput(){GMV_RANGE.preset="";$("gmvPreset").querySelectorAll("button").forEach(x=>x.classList.remove("active"));let s=$("rStart").value,e=$("rEnd").value;if(s&&e&&s>e){[s,e]=[e,s];$("rStart").value=s;$("rEnd").value=e;}GMV_RANGE.start=s;GMV_RANGE.end=e;computeCompare();renderGMV();}
+function onRangeInput(){const p=GMV_RANGE.preset;
+  if(p==="week"){const anc=$("rStart").value;if(!anc)return;const [mon,sun]=weekRange(anc);GMV_RANGE.start=mon;GMV_RANGE.end=sun;$("rStart").value=mon;$("rEnd").value=sun;}
+  else{/* day (or fallback): the picked date becomes a single day */const day=$("rStart").value;if(!day)return;GMV_RANGE.start=day;GMV_RANGE.end=day;if($("rEnd"))$("rEnd").value=day;if(GMV_RANGE.preset!=="day"){GMV_RANGE.preset="day";$("gmvPreset").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x.dataset.p==="day"));updateRangeUI();}}
+  computeCompare();renderGMV();}
 $("rStart").addEventListener("change",onRangeInput);$("rEnd").addEventListener("change",onRangeInput);
 $("cmpToggle").addEventListener("click",()=>{GMV_CMP_ON.v=!GMV_CMP_ON.v;$("cmpToggle").classList.toggle("active",GMV_CMP_ON.v);renderGMV();});
 $("cmpMode").addEventListener("change",()=>{GMV_RANGE.cmpMode=$("cmpMode").value;$("cmpCustom").hidden=GMV_RANGE.cmpMode!=="custom";computeCompare();renderGMV();});
