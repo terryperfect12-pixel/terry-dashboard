@@ -106,6 +106,30 @@
   .lc-tip{position:absolute;pointer-events:none;opacity:0;transform:translate(-50%,-108%);background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:12px;box-shadow:0 6px 20px rgba(0,0,0,.16);min-width:150px;z-index:9;}
   .lc-tip .m{font-weight:700;margin-bottom:5px;} .lc-tip .r{display:flex;justify-content:space-between;gap:14px;color:var(--ink2);} .lc-tip .r .v{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;}
   .delta{font-weight:700;font-variant-numeric:tabular-nums;font-size:12px;} .dn{color:var(--danger);} .up{color:var(--good);} .fl{color:var(--ink2);}
+  /* calendar popover (day / week Mon-Sun / month) */
+  .cal-btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:9px;padding:9px 13px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+  .cal-btn::before{content:"📅";font-size:13px;}
+  .cal-btn:hover{border-color:var(--s1);}
+  .cal-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:300;background:var(--surface);border:1px solid var(--line);border-radius:13px;box-shadow:0 14px 38px rgba(0,0,0,.24);padding:13px;width:286px;}
+  .cal-pop[hidden]{display:none!important;}
+  .cal-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;font-weight:700;font-size:14px;color:var(--ink);}
+  .cal-h button{border:none;background:var(--surface2);color:var(--ink2);width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:15px;line-height:1;}
+  .cal-h button:hover{background:var(--s1);color:#fff;}
+  .cal-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;}
+  .cal-dow span{text-align:center;font-size:11px;color:var(--muted);font-weight:700;padding:3px 0;}
+  .cal-days{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+  .cal-d{border:none;background:transparent;color:var(--ink);height:33px;border-radius:8px;cursor:pointer;font-size:12.5px;font-family:inherit;font-variant-numeric:tabular-nums;}
+  .cal-d.empty{visibility:hidden;pointer-events:none;}
+  .cal-d:hover:not(:disabled){background:var(--line2);}
+  .cal-d:disabled{color:var(--line);cursor:default;}
+  .cal-d.wk{background:var(--line2);}
+  .cal-d.insel{background:var(--s1)!important;color:#fff;font-weight:700;}
+  .cal-months{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
+  .cal-mo{border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:13px 0;border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;}
+  .cal-mo:hover:not(:disabled){border-color:var(--s1);background:var(--line2);}
+  .cal-mo:disabled{color:var(--line);cursor:default;}
+  .cal-mo.sel{background:var(--s1);color:#fff;border-color:var(--s1);}
+  .cal-hint{margin-top:9px;font-size:11px;color:var(--muted);text-align:center;}
   /* channel sales mix (donut + comparison table + content breakdown) */
   .mix-top{display:grid;grid-template-columns:1fr 1fr;gap:36px;align-items:start;} @media (max-width:900px){.mix-top{grid-template-columns:1fr;gap:24px;}}
   .mix-left{display:flex;flex-direction:column;align-items:center;gap:20px;}
@@ -218,7 +242,7 @@
       <span class="top-chip" style="padding:6px 12px;box-shadow:none"><span>🗓️</span><div><div class="lab">เดือน</div><select id="selMonth"></select></div></span>
       <span class="gl" style="margin-left:4px">ช่วงเวลา</span>
       <span class="seg lg" id="gmvPreset"><button data-p="day">วัน</button><button data-p="week">สัปดาห์</button><button data-p="month" class="active">เดือน</button><button data-p="all">ทั้งหมด</button></span>
-      <span id="rangePick" style="display:flex;gap:5px;align-items:center;font-size:12.5px;color:var(--muted)"><span id="rLab">เลือกวัน</span><input type="date" id="rStart" class="mini"><span id="rDash"> – </span><input type="date" id="rEnd" class="mini"></span>
+      <span id="rangePick" style="position:relative;display:inline-flex;align-items:center"><button id="calBtn" type="button" class="cal-btn"></button><div id="calPop" class="cal-pop" hidden></div></span>
       <span class="sp"></span>
       <span class="chart-legend" id="gPlat" style="display:flex;gap:9px"></span>
       <span class="sp"></span>
@@ -558,10 +582,28 @@ function applyPreset(p){const d=dataDates();if(!d.length)return;const min=d[0],m
   if($("rStart")){$("rStart").value=start;$("rEnd").value=end;}
   updateRangeUI();computeCompare();
 }
-function updateRangeUI(){const p=GMV_RANGE.preset,wrap=$("rangePick");if(!wrap)return;const re=$("rEnd"),rs=$("rStart"),dash=$("rDash"),lab=$("rLab");
-  if(p==="day"){wrap.hidden=false;if(re)re.hidden=true;if(dash)dash.hidden=true;if(lab)lab.textContent="เลือกวัน";if(rs)rs.readOnly=false;}
-  else if(p==="week"){wrap.hidden=false;if(re){re.hidden=false;re.readOnly=true;}if(dash)dash.hidden=false;if(lab)lab.textContent="เลือกวันในสัปดาห์ (จ–อา)";if(rs)rs.readOnly=false;}
-  else{wrap.hidden=true;}/* เดือน ใช้ตัวเลือกเดือน · ทั้งหมด = ทั้งช่วง */
+const THMONF=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+const THMONS=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+const CAL={mode:"month",viewY:2026,viewM:8};
+function calBtnLabel(){const p=GMV_RANGE.preset;if(p==="day")return fmtD(GMV_RANGE.start)+"/"+GMV_RANGE.start.slice(0,4);if(p==="week")return fmtD(GMV_RANGE.start)+" – "+fmtD(GMV_RANGE.end);if(p==="month")return mLabel(GMV_RANGE.start.slice(0,7));return "ทั้งหมด";}
+function updateRangeUI(){const wrap=$("rangePick"),btn=$("calBtn");if(!wrap)return;if(GMV_RANGE.preset==="all"){wrap.hidden=true;}else{wrap.hidden=false;if(btn)btn.textContent=calBtnLabel();}}
+function calMonthHasData(mk){return BRANDS.some(b=>(store.daily[b]||[]).some(r=>r.date.slice(0,7)===mk&&r.gmv>0))||BRANDS.some(b=>store.chan[b]&&store.chan[b][mk]);}
+function openCal(mode){if(mode==="all"){closeCal();return;}CAL.mode=mode;const s=GMV_RANGE.start||(dataDates().slice(-1)[0])||"2026-08-01";CAL.viewY=+s.slice(0,4);CAL.viewM=+s.slice(5,7);renderCal();$("calPop").hidden=false;}
+function closeCal(){if($("calPop"))$("calPop").hidden=true;}
+function renderCal(){const pop=$("calPop");if(!pop)return;const p=CAL.mode;const dd=dataDates(),min=dd[0],max=dd[dd.length-1];let h="";
+  if(p==="month"){
+    h+=`<div class="cal-h"><button data-nav="-1y" type="button">‹</button><span>${CAL.viewY}</span><button data-nav="+1y" type="button">›</button></div><div class="cal-months">`;
+    for(let m=1;m<=12;m++){const mk=CAL.viewY+"-"+String(m).padStart(2,"0");const ok=calMonthHasData(mk);const sel=GMV_RANGE.preset==="month"&&GMV_RANGE.start.slice(0,7)===mk;h+=`<button type="button" class="cal-mo${sel?' sel':''}" data-m="${m}" ${ok?'':'disabled'}>${THMONS[m-1]}</button>`;}
+    h+=`</div><div class="cal-hint">เลือกเดือนที่ต้องการ</div>`;
+  } else {
+    h+=`<div class="cal-h"><button data-nav="-1m" type="button">‹</button><span>${THMONF[CAL.viewM-1]} ${CAL.viewY}</span><button data-nav="+1m" type="button">›</button></div>`;
+    h+=`<div class="cal-dow">`+["จ","อ","พ","พฤ","ศ","ส","อา"].map(d=>`<span>${d}</span>`).join("")+`</div><div class="cal-days">`;
+    const first=new Date(CAL.viewY,CAL.viewM-1,1);const fdow=first.getDay();const lead=(fdow===0)?6:(fdow-1);const dim=new Date(CAL.viewY,CAL.viewM,0).getDate();
+    for(let i=0;i<lead;i++)h+=`<span class="cal-d empty"></span>`;
+    for(let d=1;d<=dim;d++){const iso=CAL.viewY+"-"+String(CAL.viewM).padStart(2,"0")+"-"+String(d).padStart(2,"0");const dis=(min&&iso<min)||(max&&iso>max);const insel=GMV_RANGE.start&&iso>=GMV_RANGE.start&&iso<=GMV_RANGE.end;h+=`<button type="button" class="cal-d${insel?' insel':''}" data-d="${iso}" ${dis?'disabled':''}>${d}</button>`;}
+    h+=`</div><div class="cal-hint">${p==="week"?"เลือกวันไหนก็ได้ → ล็อกทั้งสัปดาห์ (จ.–อา.)":"เลือกวันที่ต้องการ"}</div>`;
+  }
+  pop.innerHTML=h;
 }
 function computeCompare(){const R=GMV_RANGE;
   if(R.cmpMode==="prev"){
@@ -890,12 +932,19 @@ function renderAll(){renderGMV();if(!$("viewConfig").hidden)renderConfig();}
 $("gBrand").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;GLOBAL.brand=b.dataset.b;buildBrandBar();renderAll();});
 function toggleSeries(e){const b=e.target.closest(".lgd");if(!b)return;const k=b.dataset.k,vis=GMV_VIS.plat;if(vis[k]&&Object.values(vis).filter(Boolean).length<=1)return;vis[k]=!vis[k];renderGMV();}
 $("gPlat").addEventListener("click",toggleSeries);
-$("gmvPreset").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$("gmvPreset").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));applyPreset(b.dataset.p);renderGMV();});
-function onRangeInput(){const p=GMV_RANGE.preset;
-  if(p==="week"){const anc=$("rStart").value;if(!anc)return;const [mon,sun]=weekRange(anc);GMV_RANGE.start=mon;GMV_RANGE.end=sun;$("rStart").value=mon;$("rEnd").value=sun;}
-  else{/* day (or fallback): the picked date becomes a single day */const day=$("rStart").value;if(!day)return;GMV_RANGE.start=day;GMV_RANGE.end=day;if($("rEnd"))$("rEnd").value=day;if(GMV_RANGE.preset!=="day"){GMV_RANGE.preset="day";$("gmvPreset").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x.dataset.p==="day"));updateRangeUI();}}
-  computeCompare();renderGMV();}
-$("rStart").addEventListener("change",onRangeInput);$("rEnd").addEventListener("change",onRangeInput);
+$("gmvPreset").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$("gmvPreset").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));applyPreset(b.dataset.p);renderGMV();if(b.dataset.p==="all")closeCal();else openCal(b.dataset.p);});
+$("calBtn").addEventListener("click",ev=>{ev.stopPropagation();if($("calPop").hidden)openCal(GMV_RANGE.preset==="all"?"month":GMV_RANGE.preset);else closeCal();});
+$("calPop").addEventListener("click",ev=>{
+  const nav=ev.target.closest("[data-nav]");
+  if(nav){const v=nav.dataset.nav;if(v==="-1m"){if(--CAL.viewM<1){CAL.viewM=12;CAL.viewY--;}}else if(v==="+1m"){if(++CAL.viewM>12){CAL.viewM=1;CAL.viewY++;}}else if(v==="-1y")CAL.viewY--;else if(v==="+1y")CAL.viewY++;renderCal();return;}
+  const day=ev.target.closest(".cal-d[data-d]");
+  if(day&&!day.disabled){const iso=day.dataset.d;if(CAL.mode==="day"){GMV_RANGE.start=iso;GMV_RANGE.end=iso;GMV_RANGE.preset="day";}else{const [mon,sun]=weekRange(iso);GMV_RANGE.start=mon;GMV_RANGE.end=sun;GMV_RANGE.preset="week";}updateRangeUI();computeCompare();renderGMV();closeCal();return;}
+  const mo=ev.target.closest(".cal-mo[data-m]");
+  if(mo&&!mo.disabled){const m=+mo.dataset.m,mk=CAL.viewY+"-"+String(m).padStart(2,"0"),dim=new Date(CAL.viewY,m,0).getDate();GMV_RANGE.start=mk+"-01";GMV_RANGE.end=mk+"-"+String(dim).padStart(2,"0");GMV_RANGE.preset="month";if($("selMonth")&&[...$("selMonth").options].some(o=>o.value===mk))$("selMonth").value=mk;updateRangeUI();computeCompare();renderGMV();closeCal();return;}
+});
+$("calPop").addEventListener("mouseover",ev=>{if(CAL.mode!=="week")return;const b=ev.target.closest(".cal-d[data-d]");if(!b)return;const [mon,sun]=weekRange(b.dataset.d);$("calPop").querySelectorAll(".cal-d[data-d]").forEach(x=>x.classList.toggle("wk",x.dataset.d>=mon&&x.dataset.d<=sun));});
+$("calPop").addEventListener("mouseout",()=>{if(CAL.mode!=="week")return;$("calPop").querySelectorAll(".cal-d.wk").forEach(x=>x.classList.remove("wk"));});
+document.addEventListener("click",ev=>{const pop=$("calPop");if(!pop||pop.hidden)return;if(ev.target.closest("#calPop")||ev.target.closest("#calBtn")||ev.target.closest("#gmvPreset"))return;closeCal();});
 $("cmpToggle").addEventListener("click",()=>{GMV_CMP_ON.v=!GMV_CMP_ON.v;$("cmpToggle").classList.toggle("active",GMV_CMP_ON.v);renderGMV();});
 $("cmpMode").addEventListener("change",()=>{GMV_RANGE.cmpMode=$("cmpMode").value;$("cmpCustom").hidden=GMV_RANGE.cmpMode!=="custom";computeCompare();renderGMV();});
 $("cStart").addEventListener("change",()=>{computeCompare();renderGMV();});
