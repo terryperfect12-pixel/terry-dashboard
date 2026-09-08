@@ -114,9 +114,9 @@
   .mix-donut-box{position:relative;width:230px;} .mix-donut-box svg{display:block;width:100%;height:auto;}
   .mix-chan{width:100%;}
   .mono,.mix-pct,.mix-val,.mix-prev{font-variant-numeric:tabular-nums;}
-  .mix-chan-h,.mix-crow{display:grid;grid-template-columns:14px 1fr 56px 80px 92px;align-items:center;gap:10px;}
+  .mix-chan-h,.mix-crow{display:grid;grid-template-columns:13px 1fr 48px 54px 52px 58px 52px;align-items:center;gap:8px;}
   .mix-chan-h{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;font-weight:700;padding-bottom:8px;border-bottom:1px solid var(--line);}
-  .mix-crow{padding:11px 0;border-bottom:1px solid var(--line2);font-size:14px;}
+  .mix-crow{padding:10px 0;border-bottom:1px solid var(--line2);font-size:13px;}
   .mix-crow:last-child{border-bottom:none;}
   .mix-chan .r{text-align:right;}
   .mix-sw{width:13px;height:13px;border-radius:4px;}
@@ -130,13 +130,14 @@
   .mix-subh{font-weight:700;font-size:13px;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:10px;}
   .mix-subh .dotk{width:11px;height:11px;border-radius:3px;background:var(--ink);}
   .mix-subh .dots{width:11px;height:11px;border-radius:3px;background:#F5551D;}
-  .mix-sub-h,.mix-srow{display:grid;grid-template-columns:1fr 56px 74px 92px;gap:9px;align-items:center;}
+  .mix-sub-h,.mix-srow{display:grid;grid-template-columns:1fr 48px 54px 52px 58px 52px;gap:8px;align-items:center;}
   .mix-sub-h{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;font-weight:700;padding-bottom:7px;border-bottom:1px solid var(--line2);}
   .mix-srow{padding:9px 0;border-bottom:1px solid var(--line2);font-size:13px;}
   .mix-srow:last-child{border-bottom:none;}
   .mix-srow .r,.mix-sub-h .r{text-align:right;}
   .mix-snm{font-weight:600;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  @media (max-width:560px){.mix-chan-h,.mix-crow{grid-template-columns:12px 1fr 48px 60px 66px;gap:6px;font-size:12.5px;}}
+  .mix-chan-h,.mix-sub-h{white-space:nowrap;}
+  @media (max-width:560px){.mix-chan-h,.mix-crow,.mix-sub-h,.mix-srow{gap:5px;font-size:11.5px;}}
   /* expand-to-fullscreen chart */
   .expand-btn{flex:none;margin-left:auto;width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink2);cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(0,0,0,.06);transition:background .12s,color .12s;opacity:.85;}
   .expand-btn:hover{background:var(--s1);color:#fff;border-color:var(--s1);opacity:1;}
@@ -275,7 +276,7 @@
               <div class="mix-ccard"><div class="mix-subh"><span class="dots"></span>Shopee — แยกคอนเทนต์</div><div id="mixSh"></div></div>
             </div>
           </div>
-          <div class="tag" style="font-size:10.5px;color:var(--muted);margin-top:14px">ที่มา: performan all brand (รายเดือน) · สัดส่วน % = สัดส่วนยอดขาย · ทำได้/เป้า = ยอดขายจริงเทียบเป้า (≥100% = ถึงเป้า) · เทียบเดือนก่อน = การเติบโต · Facebook มีเฉพาะ Benutra</div>
+          <div class="tag" style="font-size:10.5px;color:var(--muted);margin-top:14px">ที่มา: performan all brand (รายเดือน) · ตัวเลข M=ล้าน K=พัน · ทำได้ = ยอดขายจริง (สีเขียว = ถึงเป้า, ส้ม/แดง = ต่ำกว่าเป้า) · เป้า = target · เดือนก่อน + เปลี่ยน% = เทียบเดือนก่อนหน้า · Facebook มีเฉพาะ Benutra</div>
         </div>
       </div>
 
@@ -594,6 +595,7 @@ function renderGMV(){
 /* ===== channel sales mix (donut) from performan all brand ===== */
 const CHAN_MIX=[{k:"Facebook",c:"#1877F2"},{k:"TikTok",c:"var(--ink)"},{k:"Shopee",c:"#F5551D"},{k:"Lazada",c:"#6E33C3"}];
 const thbShort=n=>{n=Math.round(n);const a=Math.abs(n);if(a>=1e6)return "฿"+(n/1e6).toFixed(2)+"M";if(a>=1e3)return "฿"+(n/1e3).toFixed(0)+"K";return "฿"+n;};
+const nShort=n=>{n=Math.round(n);const a=Math.abs(n);if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(0)+"K";return ""+n;};/* number, no ฿ */
 function donutArc(cx,cy,r,rin,a0,a1,fill){
   const p=(ra,an)=>[cx+ra*Math.cos(an),cy+ra*Math.sin(an)];
   const[x0,y0]=p(r,a0),[x1,y1]=p(r,a1),[xi1,yi1]=p(rin,a1),[xi0,yi0]=p(rin,a0);
@@ -631,12 +633,13 @@ function renderChannelMix(){
   if(items.length===1){g=`<circle cx="${cx}" cy="${cy}" r="${(r+rin)/2}" style="fill:none;stroke:${items[0].c};stroke-width:${r-rin}"/>`;}
   else{let a0=-Math.PI/2;items.forEach(x=>{const a1=a0+(x.v/total)*Math.PI*2;g+=donutArc(cx,cy,r,rin,a0,a1,x.c);a0=a1;});}
   const tgt=channelTgt(brand,mk);const cData=store.chan[brand]&&store.chan[brand][mk];const incAch=(cData&&cData.incomeTgt>0)?cData.income/cData.incomeTgt*100:null;
-  svg.innerHTML=g+`<text x="${cx}" y="${cy-6}" text-anchor="middle" style="fill:var(--muted);font-size:11.5px">ทำได้เทียบเป้า</text>`+
-    `<text x="${cx}" y="${cy+20}" text-anchor="middle" style="fill:${incAch==null?'var(--ink)':(incAch>=100?'var(--good)':'var(--warn)')};font-size:26px;font-weight:800;font-variant-numeric:tabular-nums">${incAch==null?"—":Math.round(incAch)+"%"}</text>`;
+  svg.innerHTML=g+`<text x="${cx}" y="${cy-14}" text-anchor="middle" style="fill:var(--muted);font-size:11px">ยอดขายรวม</text>`+
+    `<text x="${cx}" y="${cy+7}" text-anchor="middle" style="fill:var(--ink);font-size:21px;font-weight:800;font-variant-numeric:tabular-nums">${nShort(total)}</text>`+
+    `<text x="${cx}" y="${cy+26}" text-anchor="middle" style="fill:${incAch==null?'var(--muted)':(incAch>=100?'var(--good)':'var(--warn)')};font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums">${incAch==null?"":"ทำได้ "+Math.round(incAch)+"%"}</text>`;
   const pmk=perfPrevMonth(mk),mixPrev=pmk?channelMix(brand,pmk):null;
-  let ch=`<div class="mix-chan-h"><span></span><span>ช่องทาง</span><span class="r">สัดส่วน</span><span class="r">ทำได้/เป้า</span><span class="r">เทียบเดือนก่อน</span></div>`;
-  ch+=items.map(x=>{const pct=x.v/total*100;const pv=mixPrev?mixPrev[x.k]||0:0;const dl=pv>0?(x.v-pv)/pv*100:null;const tg=tgt[x.k]||0;const ach=tg>0?x.v/tg*100:null;
-    return `<div class="mix-crow"><span class="mix-sw" style="background:${x.c}"></span><span class="mix-nm">${x.k}</span><span class="mix-pct r">${pct.toFixed(1)}%</span><span class="r">${achHTML(ach)}</span><span class="r">${deltaHTML(dl)}</span></div>`;}).join("");
+  let ch=`<div class="mix-chan-h"><span></span><span>ช่องทาง</span><span class="r">สัดส่วน</span><span class="r">ทำได้</span><span class="r">เป้า</span><span class="r">เดือนก่อน</span><span class="r">เปลี่ยน</span></div>`;
+  ch+=items.map(x=>{const pct=x.v/total*100;const pv=mixPrev?mixPrev[x.k]||0:0;const dl=pv>0?(x.v-pv)/pv*100:null;const tg=tgt[x.k]||0;const ach=tg>0?x.v/tg*100:null;const acol=ach==null?"var(--ink)":(ach>=100?"var(--good)":(ach>=80?"var(--warn)":"var(--danger)"));
+    return `<div class="mix-crow"><span class="mix-sw" style="background:${x.c}"></span><span class="mix-nm">${x.k}</span><span class="mix-pct r">${pct.toFixed(1)}%</span><span class="r mono" style="font-weight:700;color:${acol}" title="ทำได้ ${ach==null?'—':Math.round(ach)+'% ของเป้า'}">${nShort(x.v)}</span><span class="r mono" style="color:var(--muted)">${tg>0?nShort(tg):"—"}</span><span class="r mono" style="color:var(--muted)">${pv?nShort(pv):"—"}</span><span class="r">${deltaHTML(dl)}</span></div>`;}).join("");
   host.innerHTML=ch;
   renderContentTable("mixTk","TikTok",brand,mk);
   renderContentTable("mixSh","Shopee",brand,mk);
@@ -651,8 +654,8 @@ function renderContentTable(elId,plat,brand,mk){
   const rows=contentRows(brand,mk,plat).sort((a,b)=>b.v-a.v);
   if(!rows.length){el.innerHTML='<div class="empty" style="padding:12px 0">— ไม่มีข้อมูล</div>';return;}
   const tot=rows.reduce((a,r)=>a+r.v,0)||1;
-  let h=`<div class="mix-sub-h"><span>คอนเทนต์</span><span class="r">สัดส่วน</span><span class="r">ทำได้/เป้า</span><span class="r">เทียบเดือนก่อน</span></div>`;
-  h+=rows.map(r=>{const pct=r.v/tot*100;const dl=r.pv>0?(r.v-r.pv)/r.pv*100:null;const ach=r.t>0?r.v/r.t*100:null;return `<div class="mix-srow"><span class="mix-snm">${r.sc}</span><span class="r mono">${pct.toFixed(1)}%</span><span class="r">${achHTML(ach)}</span><span class="r">${deltaHTML(dl)}</span></div>`;}).join("");
+  let h=`<div class="mix-sub-h"><span>คอนเทนต์</span><span class="r">สัดส่วน</span><span class="r">ทำได้</span><span class="r">เป้า</span><span class="r">เดือนก่อน</span><span class="r">เปลี่ยน</span></div>`;
+  h+=rows.map(r=>{const pct=r.v/tot*100;const dl=r.pv>0?(r.v-r.pv)/r.pv*100:null;const ach=r.t>0?r.v/r.t*100:null;const acol=ach==null?"var(--ink)":(ach>=100?"var(--good)":(ach>=80?"var(--warn)":"var(--danger)"));return `<div class="mix-srow"><span class="mix-snm">${r.sc}</span><span class="r mono">${pct.toFixed(1)}%</span><span class="r mono" style="font-weight:700;color:${acol}" title="ทำได้ ${ach==null?'—':Math.round(ach)+'% ของเป้า'}">${nShort(r.v)}</span><span class="r mono" style="color:var(--muted)">${r.t>0?nShort(r.t):"—"}</span><span class="r mono" style="color:var(--muted)">${r.pv?nShort(r.pv):"—"}</span><span class="r">${deltaHTML(dl)}</span></div>`;}).join("");
   el.innerHTML=h;
 }
 function renderMetricChart(metric,svgEl,tip,legendId,compareId,neutral){
