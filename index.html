@@ -114,7 +114,7 @@
   .mix-donut-box{position:relative;width:230px;} .mix-donut-box svg{display:block;width:100%;height:auto;}
   .mix-chan{width:100%;}
   .mono,.mix-pct,.mix-val,.mix-prev{font-variant-numeric:tabular-nums;}
-  .mix-chan-h,.mix-crow{display:grid;grid-template-columns:14px 1fr 50px 98px 92px 62px;align-items:center;gap:9px;}
+  .mix-chan-h,.mix-crow{display:grid;grid-template-columns:14px 1fr 56px 80px 92px;align-items:center;gap:10px;}
   .mix-chan-h{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;font-weight:700;padding-bottom:8px;border-bottom:1px solid var(--line);}
   .mix-crow{padding:11px 0;border-bottom:1px solid var(--line2);font-size:14px;}
   .mix-crow:last-child{border-bottom:none;}
@@ -130,13 +130,13 @@
   .mix-subh{font-weight:700;font-size:13px;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:10px;}
   .mix-subh .dotk{width:11px;height:11px;border-radius:3px;background:var(--ink);}
   .mix-subh .dots{width:11px;height:11px;border-radius:3px;background:#F5551D;}
-  .mix-sub-h,.mix-srow{display:grid;grid-template-columns:1fr 96px 50px 72px;gap:9px;align-items:center;}
+  .mix-sub-h,.mix-srow{display:grid;grid-template-columns:1fr 56px 74px 92px;gap:9px;align-items:center;}
   .mix-sub-h{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;font-weight:700;padding-bottom:7px;border-bottom:1px solid var(--line2);}
   .mix-srow{padding:9px 0;border-bottom:1px solid var(--line2);font-size:13px;}
   .mix-srow:last-child{border-bottom:none;}
   .mix-srow .r,.mix-sub-h .r{text-align:right;}
   .mix-snm{font-weight:600;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  @media (max-width:560px){.mix-chan-h,.mix-crow{grid-template-columns:13px 1fr 50px 62px;}.mix-val,.mix-prev,.mix-chan-h span:nth-child(4),.mix-chan-h span:nth-child(5){display:none;}}
+  @media (max-width:560px){.mix-chan-h,.mix-crow{grid-template-columns:12px 1fr 48px 60px 66px;gap:6px;font-size:12.5px;}}
   /* expand-to-fullscreen chart */
   .expand-btn{flex:none;margin-left:auto;width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink2);cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(0,0,0,.06);transition:background .12s,color .12s;opacity:.85;}
   .expand-btn:hover{background:var(--s1);color:#fff;border-color:var(--s1);opacity:1;}
@@ -275,7 +275,7 @@
               <div class="mix-ccard"><div class="mix-subh"><span class="dots"></span>Shopee — แยกคอนเทนต์</div><div id="mixSh"></div></div>
             </div>
           </div>
-          <div class="tag" style="font-size:10.5px;color:var(--muted);margin-top:14px">ที่มา: performan all brand (รายเดือน) · สัดส่วน % = สัดส่วนยอดขายของช่องทาง/คอนเทนต์นั้น · เปลี่ยน = เทียบเดือนก่อน · Facebook มีเฉพาะ Benutra</div>
+          <div class="tag" style="font-size:10.5px;color:var(--muted);margin-top:14px">ที่มา: performan all brand (รายเดือน) · สัดส่วน % = สัดส่วนยอดขาย · ทำได้/เป้า = ยอดขายจริงเทียบเป้า (≥100% = ถึงเป้า) · เทียบเดือนก่อน = การเติบโต · Facebook มีเฉพาะ Benutra</div>
         </div>
       </div>
 
@@ -392,13 +392,17 @@ function parsePerforman(grid,anchor){
   let monthCol={};
   if(hr>=0)grid[hr].forEach((c,idx)=>{const mk=parseMonthYear(c);if(mk&&monthCol[mk]==null)monthCol[mk]=idx;});
   if(Object.keys(monthCol).length<3){monthCol={};const EXCL=/target|diff|growth|portion|ach|%/i;const hdr=grid[0]||[];const inc=grid.find(r=>/^income/i.test(String(r[0]||"").trim()));if(inc){const cols=[];inc.forEach((c,idx)=>{if(idx<1)return;const h=String(hdr[idx]||"").trim();if(EXCL.test(h))return;if(num(c)>100000)cols.push(idx);});for(let i=cols.length-1,d=0;i>=0;i--,d--)monthCol[addMonths(anchor||"2026-08",d)]=cols[i];}hr=-1;}
-  const res={};Object.keys(monthCol).forEach(mk=>res[mk]={income:0,chan:{}});
+  const res={};Object.keys(monthCol).forEach(mk=>res[mk]={income:0,incomeTgt:0,chan:{},tgt:{}});
   let section=null;
   for(let i=(hr>=0?hr+1:0);i<grid.length;i++){const label=String(grid[i][0]||"").trim();if(!label)continue;const low=label.toLowerCase();let plat=null,sub=null,isInc=false,isLz=false,isFb=false;
     if(/^income/i.test(label))isInc=true;else if(/^lazada/i.test(label))isLz=true;else if(/^facebook/i.test(label))isFb=true;else if(/^shopee/i.test(label)){section="Shopee";continue;}else if(low==="tiktok"){section="TikTok";continue;}
     else if(/^tiktok-/i.test(label)){plat="TikTok";sub=label.replace(/tiktok-/i,"").trim();}
     else if(SUB_ORDER.includes(label)){if(!section)continue;plat=section;sub=label;}else continue;
-    for(const mk in monthCol){const v=num(grid[i][monthCol[mk]]);if(isInc)res[mk].income=v;else if(isLz)res[mk].chan["Lazada|Lazada"]=v;else if(isFb)res[mk].chan["Facebook|Facebook"]=v;else res[mk].chan[plat+"|"+sub]=v;}
+    for(const mk in monthCol){const ac=monthCol[mk];const v=num(grid[i][ac]);const tv=ac>=3?num(grid[i][ac-3]):0;/* TARGET column sits 3 cols before ACTUAL (PORTION,TARGET,DIFF,%ACH,ACTUAL) */
+      if(isInc){res[mk].income=v;res[mk].incomeTgt=tv;}
+      else if(isLz){res[mk].chan["Lazada|Lazada"]=v;res[mk].tgt["Lazada|Lazada"]=tv;}
+      else if(isFb){res[mk].chan["Facebook|Facebook"]=v;res[mk].tgt["Facebook|Facebook"]=tv;}
+      else {res[mk].chan[plat+"|"+sub]=v;res[mk].tgt[plat+"|"+sub]=tv;}}
   }
   return res;
 }
@@ -607,6 +611,13 @@ function channelMix(brand,mk){
   for(const key in c.chan){const plat=key.split("|")[0];if(agg[plat]!=null){agg[plat]+=c.chan[key]||0;if(c.chan[key]>0)any=true;}}
   return any?agg:null;
 }
+function channelTgt(brand,mk){
+  const c=store.chan[brand]&&store.chan[brand][mk];if(!c||!c.tgt)return {};
+  const agg={Facebook:0,TikTok:0,Shopee:0,Lazada:0};
+  for(const key in c.tgt){const plat=key.split("|")[0];if(agg[plat]!=null)agg[plat]+=c.tgt[key]||0;}
+  return agg;
+}
+function achHTML(a){if(a==null||!isFinite(a))return '<span style="color:var(--muted)">—</span>';const c=a>=100?"var(--good)":(a>=80?"var(--warn)":"var(--danger)");return `<b style="color:${c};font-variant-numeric:tabular-nums">${Math.round(a)}%</b>`;}
 function renderChannelMix(){
   const brand=GLOBAL.brand,mk=perfMonth();
   if($("mixBrand"))$("mixBrand").textContent=brand;
@@ -619,12 +630,13 @@ function renderChannelMix(){
   const cx=120,cy=120,r=92,rin=58;let g="";
   if(items.length===1){g=`<circle cx="${cx}" cy="${cy}" r="${(r+rin)/2}" style="fill:none;stroke:${items[0].c};stroke-width:${r-rin}"/>`;}
   else{let a0=-Math.PI/2;items.forEach(x=>{const a1=a0+(x.v/total)*Math.PI*2;g+=donutArc(cx,cy,r,rin,a0,a1,x.c);a0=a1;});}
-  svg.innerHTML=g+`<text x="${cx}" y="${cy-4}" text-anchor="middle" style="fill:var(--muted);font-size:12px">ยอดขายรวม</text>`+
-    `<text x="${cx}" y="${cy+18}" text-anchor="middle" style="fill:var(--ink);font-size:20px;font-weight:800;font-variant-numeric:tabular-nums">${thbShort(total)}</text>`;
+  const tgt=channelTgt(brand,mk);const cData=store.chan[brand]&&store.chan[brand][mk];const incAch=(cData&&cData.incomeTgt>0)?cData.income/cData.incomeTgt*100:null;
+  svg.innerHTML=g+`<text x="${cx}" y="${cy-6}" text-anchor="middle" style="fill:var(--muted);font-size:11.5px">ทำได้เทียบเป้า</text>`+
+    `<text x="${cx}" y="${cy+20}" text-anchor="middle" style="fill:${incAch==null?'var(--ink)':(incAch>=100?'var(--good)':'var(--warn)')};font-size:26px;font-weight:800;font-variant-numeric:tabular-nums">${incAch==null?"—":Math.round(incAch)+"%"}</text>`;
   const pmk=perfPrevMonth(mk),mixPrev=pmk?channelMix(brand,pmk):null;
-  let ch=`<div class="mix-chan-h"><span></span><span>ช่องทาง</span><span class="r">สัดส่วน</span><span class="r">ยอดขาย</span><span class="r">เดือนก่อน</span><span class="r">เปลี่ยน</span></div>`;
-  ch+=items.map(x=>{const pct=x.v/total*100;const pv=mixPrev?mixPrev[x.k]||0:0;const dl=pv>0?(x.v-pv)/pv*100:null;
-    return `<div class="mix-crow"><span class="mix-sw" style="background:${x.c}"></span><span class="mix-nm">${x.k}</span><span class="mix-pct r">${pct.toFixed(1)}%</span><span class="mix-val r">${thb(x.v)}</span><span class="mix-prev r">${pv?thb(pv):"—"}</span><span class="r">${deltaHTML(dl)}</span></div>`;}).join("");
+  let ch=`<div class="mix-chan-h"><span></span><span>ช่องทาง</span><span class="r">สัดส่วน</span><span class="r">ทำได้/เป้า</span><span class="r">เทียบเดือนก่อน</span></div>`;
+  ch+=items.map(x=>{const pct=x.v/total*100;const pv=mixPrev?mixPrev[x.k]||0:0;const dl=pv>0?(x.v-pv)/pv*100:null;const tg=tgt[x.k]||0;const ach=tg>0?x.v/tg*100:null;
+    return `<div class="mix-crow"><span class="mix-sw" style="background:${x.c}"></span><span class="mix-nm">${x.k}</span><span class="mix-pct r">${pct.toFixed(1)}%</span><span class="r">${achHTML(ach)}</span><span class="r">${deltaHTML(dl)}</span></div>`;}).join("");
   host.innerHTML=ch;
   renderContentTable("mixTk","TikTok",brand,mk);
   renderContentTable("mixSh","Shopee",brand,mk);
@@ -632,15 +644,15 @@ function renderChannelMix(){
 function perfPrevMonth(mk){const ch=Object.keys(store.chan[GLOBAL.brand]||{}).sort();const i=ch.indexOf(mk);return i>0?ch[i-1]:null;}
 function contentRows(brand,mk,plat){
   const c=store.chan[brand]&&store.chan[brand][mk];const pmk=perfPrevMonth(mk);const p=(pmk&&store.chan[brand])?store.chan[brand][pmk]:null;
-  return SUB_ORDER.map(sc=>{const k=plat+"|"+sc;return {sc,v:(c&&c.chan[k])||0,pv:(p&&p.chan[k])||0};}).filter(r=>r.v>0||r.pv>0);
+  return SUB_ORDER.map(sc=>{const k=plat+"|"+sc;return {sc,v:(c&&c.chan[k])||0,pv:(p&&p.chan[k])||0,t:(c&&c.tgt&&c.tgt[k])||0};}).filter(r=>r.v>0||r.pv>0);
 }
 function renderContentTable(elId,plat,brand,mk){
   const el=$(elId);if(!el)return;
   const rows=contentRows(brand,mk,plat).sort((a,b)=>b.v-a.v);
   if(!rows.length){el.innerHTML='<div class="empty" style="padding:12px 0">— ไม่มีข้อมูล</div>';return;}
   const tot=rows.reduce((a,r)=>a+r.v,0)||1;
-  let h=`<div class="mix-sub-h"><span>คอนเทนต์</span><span class="r">ยอดขาย</span><span class="r">สัดส่วน</span><span class="r">เทียบเดือนก่อน</span></div>`;
-  h+=rows.map(r=>{const pct=r.v/tot*100;const dl=r.pv>0?(r.v-r.pv)/r.pv*100:null;return `<div class="mix-srow"><span class="mix-snm">${r.sc}</span><span class="r mono">${thb(r.v)}</span><span class="r mono">${pct.toFixed(1)}%</span><span class="r">${deltaHTML(dl)}</span></div>`;}).join("");
+  let h=`<div class="mix-sub-h"><span>คอนเทนต์</span><span class="r">สัดส่วน</span><span class="r">ทำได้/เป้า</span><span class="r">เทียบเดือนก่อน</span></div>`;
+  h+=rows.map(r=>{const pct=r.v/tot*100;const dl=r.pv>0?(r.v-r.pv)/r.pv*100:null;const ach=r.t>0?r.v/r.t*100:null;return `<div class="mix-srow"><span class="mix-snm">${r.sc}</span><span class="r mono">${pct.toFixed(1)}%</span><span class="r">${achHTML(ach)}</span><span class="r">${deltaHTML(dl)}</span></div>`;}).join("");
   el.innerHTML=h;
 }
 function renderMetricChart(metric,svgEl,tip,legendId,compareId,neutral){
