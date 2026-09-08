@@ -107,11 +107,11 @@
   .lc-tip .m{font-weight:700;margin-bottom:5px;} .lc-tip .r{display:flex;justify-content:space-between;gap:14px;color:var(--ink2);} .lc-tip .r .v{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;}
   .delta{font-weight:700;font-variant-numeric:tabular-nums;font-size:12px;} .dn{color:var(--danger);} .up{color:var(--good);} .fl{color:var(--ink2);}
   /* channel sales mix (donut + comparison table + content breakdown) */
-  .mix-top{display:grid;grid-template-columns:210px 1fr;gap:34px;align-items:center;} @media (max-width:800px){.mix-top{grid-template-columns:1fr;justify-items:center;gap:20px;}}
-  .mix-donut-box{position:relative;width:210px;} .mix-donut-box svg{display:block;width:100%;height:auto;}
-  .mix-chan{width:100%;}
+  .mix-top{display:grid;grid-template-columns:200px auto;gap:30px;align-items:center;justify-content:start;} @media (max-width:800px){.mix-top{grid-template-columns:1fr;justify-items:start;gap:20px;}}
+  .mix-donut-box{position:relative;width:200px;} .mix-donut-box svg{display:block;width:100%;height:auto;}
+  .mix-chan{width:auto;}
   .mono,.mix-val,.mix-prev,.mix-pct{font-variant-numeric:tabular-nums;}
-  .mix-chan-h,.mix-crow{display:grid;grid-template-columns:14px 82px 108px 56px 1fr 1fr 74px;align-items:center;gap:10px;}
+  .mix-chan-h,.mix-crow{display:grid;grid-template-columns:14px 70px 84px 46px 106px 106px 68px;align-items:center;gap:9px;}
   .mix-chan-h{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;font-weight:700;padding-bottom:8px;border-bottom:1px solid var(--line);}
   .mix-crow{padding:11px 0;border-bottom:1px solid var(--line2);font-size:14px;}
   .mix-crow:last-child{border-bottom:none;}
