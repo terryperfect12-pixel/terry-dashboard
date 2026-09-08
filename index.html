@@ -111,10 +111,14 @@
   .expand-btn:hover{background:var(--s1);color:#fff;border-color:var(--s1);opacity:1;}
   .cmodal{position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(2px);}
   .cmodal[hidden]{display:none!important;}
-  .cmodal-inner{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.4);width:min(1200px,95vw);max-height:93vh;overflow:auto;padding:26px 30px 30px;position:relative;}
-  .cmodal-close{position:absolute;top:14px;right:16px;width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink2);cursor:pointer;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;z-index:3;}
+  .cmodal-inner{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.4);width:min(1840px,98vw);max-height:96vh;overflow:auto;padding:18px 22px 24px;position:relative;}
+  .cmodal-close{position:absolute;top:12px;right:14px;width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink2);cursor:pointer;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;z-index:5;}
   .cmodal-close:hover{background:#fee2e2;color:#b91c1c;border-color:#fca5a5;}
-  .cmodal-body{padding-top:4px;}
+  .cmodal-controls{padding-right:44px;margin-bottom:12px;}
+  .cmodal-controls:empty{display:none;}
+  .cmodal-controls .gbar{position:static;margin:0;box-shadow:none;border-radius:10px;top:auto;}
+  .cmodal-controls .gbar.stuck{border-radius:10px;box-shadow:none;}
+  .cmodal-body{padding-top:2px;}
   .cmodal-body .expand-btn{display:none;}
   .cmodal-body>div>div:first-child{font-size:16px;} /* enlarge chart title */
   .cmodal-body .lc-tip{font-size:13px;}
@@ -276,6 +280,7 @@
 <div class="cmodal" id="cmodal" hidden>
   <div class="cmodal-inner">
     <button class="cmodal-close" id="cmodalClose" type="button" title="ปิด (Esc)">✕</button>
+    <div class="cmodal-controls" id="cmodalControls"></div>
     <div class="cmodal-body" id="cmodalBody"></div>
   </div>
 </div>
@@ -631,7 +636,9 @@ function renderRoas2(){
 }
 /* generic multi-line drawer */
 function drawMultiLine(svg,tip,pts,series,fmtV,fmtX,opts){
-  opts=opts||{};const W=opts.W||640,H=opts.H||230,m=opts.m||{t:14,r:12,b:30,l:50},iw=W-m.l-m.r,ih=H-m.t-m.b,n=pts.length;
+  opts=opts||{};let W=opts.W||640,H=opts.H||230;
+  if(svg.closest&&svg.closest("#cmodalBody")){W=1200;H=360;} // wide layout when expanded to fullscreen
+  const m=opts.m||{t:14,r:12,b:30,l:50},iw=W-m.l-m.r,ih=H-m.t-m.b,n=pts.length;
   const showDot=opts.dot!=null?opts.dot:true;
   svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
   if(!n){svg.innerHTML="";return;}
@@ -764,7 +771,7 @@ let sv=null;try{sv=localStorage.getItem("exec-theme");}catch(e){}if(sv)applyThem
 tb.addEventListener("click",()=>{const dk=document.documentElement.getAttribute("data-theme")==="dark"||(!document.documentElement.getAttribute("data-theme")&&matchMedia("(prefers-color-scheme: dark)").matches);const nx=dk?"light":"dark";applyTheme(nx);try{localStorage.setItem("exec-theme",nx);}catch(e){}renderAll();});
 
 /* ===================== expand chart to fullscreen ===================== */
-let _cph=null,_cpar=null;
+let _cph=null,_cpar=null,_gph=null,_gpar=null;
 function setupExpand(){
   document.querySelectorAll("svg.chart").forEach(svg=>{
     const wrap=svg.parentElement; if(!wrap||wrap.querySelector(".expand-btn"))return;
@@ -776,17 +783,25 @@ function setupExpand(){
   });
 }
 function openChart(block){
-  const modal=$("cmodal"),body=$("cmodalBody");
+  const modal=$("cmodal"),body=$("cmodalBody"),ctrls=$("cmodalControls");
   if(!block||!modal)return;
   if(_cph)closeChart(); // restore any previously open chart first
+  // move the control bar (month / range / platform / compare) into the modal so it can be used while expanded
+  const gbar=$("dashOnly1");
+  if(gbar&&ctrls){_gpar=gbar.parentNode;_gph=document.createComment("gx");_gpar.insertBefore(_gph,gbar);ctrls.appendChild(gbar);}
   _cpar=block.parentNode;_cph=document.createComment("cx");_cpar.insertBefore(_cph,block);
   body.innerHTML="";body.appendChild(block);
   modal.hidden=false;document.body.style.overflow="hidden";
+  renderGMV(); // redraw so the expanded chart uses the wide layout
 }
 function closeChart(){
   const modal=$("cmodal"),body=$("cmodalBody");const block=body&&body.firstElementChild;
   if(block&&_cph&&_cpar){_cpar.replaceChild(block,_cph);}
-  _cph=null;_cpar=null; if(modal)modal.hidden=true; document.body.style.overflow="";
+  const gbar=$("dashOnly1");
+  if(gbar&&_gph&&_gpar){_gpar.replaceChild(gbar,_gph);}
+  _cph=null;_cpar=null;_gph=null;_gpar=null;
+  if(modal)modal.hidden=true; document.body.style.overflow="";
+  renderGMV(); // redraw charts back to normal size
 }
 $("cmodalClose").addEventListener("click",closeChart);
 $("cmodal").addEventListener("click",e=>{if(e.target===$("cmodal"))closeChart();});
