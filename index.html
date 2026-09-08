@@ -248,9 +248,9 @@
     <h1>เลือกแบรนด์</h1>
     <p class="gate-sub">เลือกแบรนด์ที่ต้องการเข้าดูแดชบอร์ด (ดูได้ทีละแบรนด์)</p>
     <div class="gate-choices">
-      <button class="gate-choice" data-b="Benutra" style="--gc:var(--s1)"><span class="gc-dot"></span><span>Benutra</span><span class="gc-arrow">→</span></button>
-      <button class="gate-choice" data-b="Terry" style="--gc:var(--s3)"><span class="gc-dot"></span><span>Terry</span><span class="gc-arrow">→</span></button>
-      <button class="gate-choice" data-b="Gala" style="--gc:var(--s4)"><span class="gc-dot"></span><span>Gala</span><span class="gc-arrow">→</span></button>
+      <button class="gate-choice" data-b="Benutra" style="--gc:var(--s3)"><span class="gc-dot"></span><span>Benutra</span><span class="gc-arrow">→</span></button>
+      <button class="gate-choice" data-b="Terry" style="--gc:var(--s1)"><span class="gc-dot"></span><span>Terry</span><span class="gc-arrow">→</span></button>
+      <button class="gate-choice" data-b="Gala" style="--gc:var(--danger)"><span class="gc-dot"></span><span>Gala</span><span class="gc-arrow">→</span></button>
     </div>
     <div class="gate-foot">ข้อมูลสดจาก Google Sheets · แยกข้อมูลรายแบรนด์ · สลับแบรนด์ได้โดยกด “ออกจากระบบ”</div>
   </div>
@@ -316,7 +316,7 @@
         </div>
       </div>
 
-      <div class="sec-label">สัดส่วนยอดขายตามช่องทาง · <span id="mixBrand" style="color:var(--s1)"></span> <span style="font-weight:400;color:var(--muted);text-transform:none">(<span id="mixMonth"></span> · แยกแบรนด์)</span></div>
+      <div class="sec-label">สัดส่วนยอดขายตามช่องทาง · <span id="mixBrand" style="color:var(--brand-accent,var(--s1))"></span> <span style="font-weight:400;color:var(--muted);text-transform:none">(<span id="mixMonth"></span> · แยกแบรนด์)</span></div>
       <div class="row" style="grid-template-columns:1fr">
         <div class="card pad">
           <div class="mix-top">
@@ -333,7 +333,7 @@
         </div>
       </div>
 
-      <div class="sec-label">ตัวชี้วัดหลัก · <span id="statsBrand" style="color:var(--s1)"></span> <span style="font-weight:400;color:var(--muted);text-transform:none">(ตามช่วงที่เลือก · แยกแบรนด์)</span></div>
+      <div class="sec-label">ตัวชี้วัดหลัก · <span id="statsBrand" style="color:var(--brand-accent,var(--s1))"></span> <span style="font-weight:400;color:var(--muted);text-transform:none">(ตามช่วงที่เลือก · แยกแบรนด์)</span></div>
       <div class="row" id="statsRow" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))"></div>
 
       <div class="row" style="grid-template-columns:1fr">
@@ -364,7 +364,7 @@
       </div>
 
       <div class="sec-label" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-        <span>อันดับสินค้า · <span id="prBrand" style="color:var(--s1)"></span> <span style="font-weight:400;text-transform:none;color:var(--muted)">(Top 10 · แยก TikTok / Shopee)</span></span>
+        <span>อันดับสินค้า · <span id="prBrand" style="color:var(--brand-accent,var(--s1))"></span> <span style="font-weight:400;text-transform:none;color:var(--muted)">(Top 10 · แยก TikTok / Shopee)</span></span>
         <span class="seg sm" id="prLevel" style="text-transform:none"><button data-lv="parent" class="active">ตะกร้า (รายการ)</button><button data-lv="sku">SKU ย่อย</button></span>
         <span style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);text-transform:none;font-weight:400">เรียงตาม <select class="mini" id="prSort"><option value="gmv">ยอดขาย / GMV</option><option value="reach">การเข้าชม / แสดงผล</option><option value="clicks">คลิก</option></select></span>
       </div>
@@ -417,7 +417,7 @@ const F_TKTRAF="1VYmAR91rFknX6-hx7NnuvE02enUULZ4WV65CMDhArUY";
 const F_SHSKU="1hQTqShDk_b-jhrXymnDeKc27aDcXczCs4YgjwD-zhWM";
 const F_TKSKU="1nxqJQM1zDx1dFBp4d1zeoPuTRbALUqhiKJT3TZzEpl0";
 const BRANDS=["Benutra","Terry","Gala"];
-const BRAND_C={Benutra:"var(--s1)",Terry:"var(--s3)",Gala:"var(--s4)"};
+const BRAND_C={Benutra:"var(--s3)",Terry:"var(--s1)",Gala:"var(--danger)"};/* Benutra=เขียว Terry=ฟ้า Gala=แดง */
 const TARGET_BRAND={Benutra:16229000,Terry:19000000,Gala:10000000,ALL:45229000};
 const SUB_ORDER=["Live-Self","Live-Aff","VDO-Self","VDO-Aff","Product Card"];
 const SUB_C={"Live-Self":"var(--s1)","Live-Aff":"var(--s2)","VDO-Self":"var(--s3)","VDO-Aff":"var(--s4)","Product Card":"var(--s5)"};
@@ -549,7 +549,7 @@ function latestMonth(){const cnt={};BRANDS.forEach(b=>(store.daily[b]||[]).forEa
 function monthlyGMV(brand,mk){let s=0;(brand==="ALL"?BRANDS:[brand]).forEach(b=>(store.daily[b]||[]).forEach(r=>{if(r.date.slice(0,7)===mk)s+=r.gmv;}));return s;}
 
 /* ===================== POPULATE ===================== */
-function buildBrandBar(){const el=$("curBrand");if(el){el.textContent=GLOBAL.brand;el.style.color=BRAND_C[GLOBAL.brand]||"var(--ink)";}}
+function buildBrandBar(){document.documentElement.style.setProperty("--brand-accent",BRAND_C[GLOBAL.brand]||"var(--s1)");const el=$("curBrand");if(el){el.textContent=GLOBAL.brand;el.style.color=BRAND_C[GLOBAL.brand]||"var(--ink)";}}
 function populate(){
   const months=store.months.slice();if(!months.includes("2026-09"))months.push("2026-09");
   const def=latestMonth()||months[months.length-1];const cur=$("selMonth").value;
