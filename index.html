@@ -48,6 +48,23 @@
   .side-foot{margin-top:auto;background:var(--track);border-radius:12px;padding:14px;font-size:12px;}
   .side-foot .b{font-weight:700;color:var(--ink);font-size:13.5px;margin:2px 0 8px;} .side-foot .h{color:var(--muted);} .side-foot .s{color:var(--ink2);line-height:1.5;}
   .side-ver{font-size:11px;color:var(--muted);padding:12px 8px 0;}
+  .cur-brand{font-size:20px;font-weight:800;padding:12px 15px;border-radius:11px;border:1.5px solid var(--line);background:var(--surface2,var(--surface));letter-spacing:-.01em;}
+  .btn.logout{width:100%;text-align:center;border:1.5px solid var(--line);background:var(--surface);color:var(--danger);font-weight:800;padding:11px;border-radius:11px;cursor:pointer;font-family:inherit;font-size:13.5px;}
+  .btn.logout:hover{background:color-mix(in srgb,var(--danger) 12%,var(--surface));border-color:var(--danger);}
+  /* brand gate */
+  .gate{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--page);}
+  .gate[hidden]{display:none!important;}
+  .gate-card{background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:0 34px 90px -24px rgba(0,0,0,.42);padding:38px 40px;width:min(440px,94vw);}
+  .gate-logo{font-size:12.5px;font-weight:800;letter-spacing:.06em;color:var(--s1);text-transform:uppercase;}
+  .gate-card h1{font-size:30px;font-weight:800;margin:14px 0 5px;color:var(--ink);letter-spacing:-.01em;}
+  .gate-sub{color:var(--ink2);font-size:14px;margin:0 0 24px;line-height:1.5;}
+  .gate-choices{display:flex;flex-direction:column;gap:12px;}
+  .gate-choice{display:flex;align-items:center;gap:13px;border:1.5px solid var(--line);background:var(--surface);border-radius:13px;padding:16px 18px;font-size:17px;font-weight:700;font-family:inherit;color:var(--ink);cursor:pointer;transition:border-color .12s,transform .08s,box-shadow .12s;}
+  .gate-choice:hover{border-color:var(--gc);box-shadow:0 8px 22px -10px var(--gc);transform:translateY(-1px);}
+  .gate-choice .gc-dot{width:14px;height:14px;border-radius:50%;background:var(--gc);flex:none;}
+  .gate-choice .gc-arrow{margin-left:auto;color:var(--muted);font-size:19px;font-weight:400;}
+  .gate-choice:hover .gc-arrow{color:var(--gc);}
+  .gate-foot{margin-top:22px;text-align:center;color:var(--muted);font-size:11.5px;line-height:1.5;}
   .main{padding:18px 24px 40px;min-width:0;}
   .topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px;}
   .topbar h1{font-size:27px;font-weight:800;margin:0 0 3px;letter-spacing:-0.01em;} .topbar .sub{color:var(--ink2);font-size:14px;}
@@ -225,6 +242,19 @@
 </style>
 </head>
 <body>
+<div class="gate" id="gate">
+  <div class="gate-card">
+    <div class="gate-logo">✦ Executive Dashboard</div>
+    <h1>เลือกแบรนด์</h1>
+    <p class="gate-sub">เลือกแบรนด์ที่ต้องการเข้าดูแดชบอร์ด (ดูได้ทีละแบรนด์)</p>
+    <div class="gate-choices">
+      <button class="gate-choice" data-b="Benutra" style="--gc:var(--s1)"><span class="gc-dot"></span><span>Benutra</span><span class="gc-arrow">→</span></button>
+      <button class="gate-choice" data-b="Terry" style="--gc:var(--s3)"><span class="gc-dot"></span><span>Terry</span><span class="gc-arrow">→</span></button>
+      <button class="gate-choice" data-b="Gala" style="--gc:var(--s4)"><span class="gc-dot"></span><span>Gala</span><span class="gc-arrow">→</span></button>
+    </div>
+    <div class="gate-foot">ข้อมูลสดจาก Google Sheets · แยกข้อมูลรายแบรนด์ · สลับแบรนด์ได้โดยกด “ออกจากระบบ”</div>
+  </div>
+</div>
 <div class="app">
   <aside class="side">
     <div>
@@ -232,12 +262,13 @@
       <div class="sub">Performance · Traffic · Product · Insight · Action</div>
     </div>
     <div>
-      <span class="brand-lead">เลือกแบรนด์</span>
-      <span class="brands vert" id="gBrand"></span>
+      <span class="brand-lead">แบรนด์ที่กำลังดู</span>
+      <div class="cur-brand" id="curBrand">—</div>
     </div>
     <div class="side-foot">
       <span class="online load" id="status">Loading…</span>
       <span style="display:flex;gap:6px"><button class="btn" id="btnRefresh">🔄 Refresh</button><button class="tgl" id="btnCfg">⚙</button><button class="tgl" id="themeToggle">🌙</button></span>
+      <button class="btn logout" id="btnLogout">↩ ออกจากระบบ</button>
     </div>
   </aside>
   <main class="main">
@@ -518,7 +549,7 @@ function latestMonth(){const cnt={};BRANDS.forEach(b=>(store.daily[b]||[]).forEa
 function monthlyGMV(brand,mk){let s=0;(brand==="ALL"?BRANDS:[brand]).forEach(b=>(store.daily[b]||[]).forEach(r=>{if(r.date.slice(0,7)===mk)s+=r.gmv;}));return s;}
 
 /* ===================== POPULATE ===================== */
-function buildBrandBar(){$("gBrand").innerHTML=BRANDS.map(b=>`<button data-b="${b}"${b===GLOBAL.brand?' class="active"':''}>${b}</button>`).join("");}
+function buildBrandBar(){const el=$("curBrand");if(el){el.textContent=GLOBAL.brand;el.style.color=BRAND_C[GLOBAL.brand]||"var(--ink)";}}
 function populate(){
   const months=store.months.slice();if(!months.includes("2026-09"))months.push("2026-09");
   const def=latestMonth()||months[months.length-1];const cur=$("selMonth").value;
@@ -945,7 +976,9 @@ function renderConfig(){
 function renderAll(){renderGMV();if(!$("viewConfig").hidden)renderConfig();}
 
 /* ===================== events ===================== */
-$("gBrand").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;GLOBAL.brand=b.dataset.b;buildBrandBar();renderAll();});
+function enterBrand(b){GLOBAL.brand=b;buildBrandBar();$("gate").hidden=true;if(store.loaded){renderAll();renderTrafficSection();renderProducts2();}}
+document.querySelectorAll(".gate-choice").forEach(btn=>btn.addEventListener("click",()=>enterBrand(btn.dataset.b)));
+$("btnLogout").addEventListener("click",()=>{$("gate").hidden=false;closeCal();});
 function toggleSeries(e){const b=e.target.closest(".lgd");if(!b)return;const k=b.dataset.k,vis=GMV_VIS.plat;if(vis[k]&&Object.values(vis).filter(Boolean).length<=1)return;vis[k]=!vis[k];renderGMV();}
 $("gPlat").addEventListener("click",toggleSeries);
 $("gmvPreset").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$("gmvPreset").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));applyPreset(b.dataset.p);renderGMV();if(b.dataset.p==="all")closeCal();else openCal(b.dataset.p);});
