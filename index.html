@@ -126,7 +126,7 @@
   .lgd{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:5px 12px 5px 10px;cursor:pointer;font-size:12px;color:var(--ink);font-family:inherit;transition:opacity .12s,border-color .12s;}
   .lgd:hover{border-color:var(--muted);} .lgd .sw{width:12px;height:12px;border-radius:3px;flex:none;} .lgd .nm{font-weight:600;} .lgd .tv{font-variant-numeric:tabular-nums;color:var(--muted);}
   .lgd.off{opacity:.42;} .lgd.off .sw{background:var(--muted)!important;} .lgd.off .nm{text-decoration:line-through;}
-  #gPlat .lgd{font-size:14.5px;font-weight:700;padding:8px 17px;} #gPlat .lgd .sw{width:14px;height:14px;} #gPlat .lgd:not(.off){border-color:var(--muted);}
+  #gPlat .lgd{font-size:16px;font-weight:700;padding:10px 22px;border-radius:24px;} #gPlat .lgd .sw{width:16px;height:16px;border-radius:4px;} #gPlat .lgd:not(.off){border-color:var(--muted);}
   .lc-tip{position:absolute;pointer-events:none;opacity:0;transform:translate(-50%,-108%);background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:12px;box-shadow:0 6px 20px rgba(0,0,0,.16);min-width:150px;z-index:9;}
   .lc-tip .m{font-weight:700;margin-bottom:5px;} .lc-tip .r{display:flex;justify-content:space-between;gap:14px;color:var(--ink2);} .lc-tip .r .v{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;}
   .delta{font-weight:700;font-variant-numeric:tabular-nums;font-size:12px;} .dn{color:var(--danger);} .up{color:var(--good);} .fl{color:var(--ink2);}
@@ -293,11 +293,10 @@
       <span class="gl" style="margin-left:4px">ช่วงเวลา</span>
       <span class="seg lg" id="gmvPreset"><button data-p="day">วัน</button><button data-p="week">สัปดาห์</button><button data-p="month" class="active">เดือน</button><button data-p="all">ทั้งหมด</button></span>
       <span id="rangePick" style="position:relative;display:inline-flex;align-items:center"><button id="calBtn" type="button" class="cal-btn"></button><div id="calPop" class="cal-pop" hidden></div></span>
-      <span class="sp"></span>
-      <span class="chart-legend" id="gPlat" style="display:flex;gap:9px"></span>
-      <span class="sp"></span>
       <span style="display:flex;gap:5px;align-items:center;font-size:12.5px;color:var(--muted)">เทียบ <select class="mini" id="cmpMode"><option value="prev">ช่วงก่อนหน้า</option><option value="custom">กำหนดเอง</option></select><span id="cmpCustom" hidden style="display:inline-flex;gap:4px"><input type="date" id="cStart" class="mini"> <input type="date" id="cEnd" class="mini"></span></span>
       <button id="cmpToggle" class="tglbtn" title="แสดงเส้นช่วงก่อนหน้าซ้อนด้านหลัง">⇄ เปรียบเทียบ</button>
+      <span class="sp"></span>
+      <span class="chart-legend" id="gPlat" style="display:flex;gap:10px"></span>
     </div>
 
     <!-- ============ DASHBOARD VIEW ============ -->
