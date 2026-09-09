@@ -137,6 +137,11 @@
   .aff-tbl td{padding:11px 14px;border-bottom:1px solid var(--line2);font-variant-numeric:tabular-nums;vertical-align:middle;}
   .aff-tbl tbody tr:last-child td{border-bottom:none;}
   .aff-tbl tbody tr:hover{background:var(--track);}
+  .aff-tbl th.aff-th{cursor:pointer;user-select:none;transition:color .12s;}
+  .aff-tbl th.aff-th:hover{color:var(--ink2);}
+  .aff-tbl th.aff-th.act{color:var(--brand-accent,var(--s1));}
+  .aff-ar{display:inline-block;margin-left:5px;font-size:9px;opacity:.45;vertical-align:middle;}
+  .aff-tbl th.aff-th.act .aff-ar{opacity:1;}
   .aff-s{display:flex;align-items:center;gap:11px;}
   .aff-rk{width:24px;height:24px;border-radius:7px;background:var(--track);color:var(--ink2);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none;}
   .aff-rk.g{background:var(--brand-accent,var(--s1));color:#fff;}
@@ -437,7 +442,7 @@
         </div>
       </div>
 
-      <div class="sec-label" id="sec-aff">TikTok Affiliate LIVE · <span id="affBrand" style="color:var(--brand-accent,var(--s1))"></span> <span style="font-weight:400;color:var(--muted);text-transform:none">(<span id="affMonth"></span> · Top 15 · เรียงตาม GMV)</span></div>
+      <div class="sec-label" id="sec-aff">TikTok Affiliate LIVE · <span id="affBrand" style="color:var(--brand-accent,var(--s1))"></span> <span style="font-weight:400;color:var(--muted);text-transform:none">(<span id="affWin"></span> · <span id="affCount"></span> · เรียงตาม <span id="affSortLbl"></span>)</span></div>
       <div class="row" style="grid-template-columns:1fr">
         <div class="card pad">
           <div id="affTable"><div class="empty">กำลังโหลด…</div></div>
@@ -1022,17 +1027,44 @@ const escH=s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",
 function affTime(s){const m=String(s).match(/(\d{4})\/(\d{1,2})\/(\d{1,2})\/?\s*(\d{1,2}:\d{2})/);return m?(+m[3])+"/"+(+m[2])+" "+m[4]:escH(s);}
 function parseAffiliate(grid){const out=[];for(let i=1;i<grid.length;i++){const r=grid[i];const creator=String(r[1]||"").trim();if(!creator)continue;out.push({creator,handle:String(r[2]||"").trim(),start:String(r[3]||"").trim(),dur:String(r[4]||"").trim(),gmv:num(r[5]),ctor:String(r[17]||"").trim(),views:num(r[19]),imp:num(r[25]),ctr:String(r[27]||"").trim()});}return out;}
 async function loadAffiliate(mk){store.aff=store.aff||{};if(store.aff[mk])return;const tab=MABBR[+mk.split("-")[1]-1];const res={};await Promise.all(BRANDS.map(async b=>{try{res[b]=parseAffiliate(await fetchSheet(F_AFF,tab+" "+b));}catch(e){res[b]=[];}}));store.aff[mk]=res;}
-async function loadAllAffiliate(){if(!store.affMonths)store.affMonths=await enumMonths(F_AFF);const mk=affMonth()||(store.affMonths||[]).slice(-1)[0];if(mk)await loadAffiliate(mk);}
+async function loadAllAffiliate(){if(!store.affMonths)store.affMonths=await enumMonths(F_AFF);const ms=store.affMonths||[];await Promise.all(ms.map(m=>loadAffiliate(m)));}
 function affMonth(){const ms=store.affMonths||[];if(!ms.length)return null;const cov=rangeMonths(GMV_RANGE.start,GMV_RANGE.end);const inR=ms.filter(x=>cov.includes(x));return inR.length?inR.sort().slice(-1)[0]:ms.slice(-1)[0];}
-function renderAffiliate(){const brand=GLOBAL.brand,mk=affMonth();
-  if($("affBrand"))$("affBrand").textContent=brand;if($("affMonth"))$("affMonth").textContent=mk?mLabel(mk):"—";
+function affISO(s){const m=String(s).match(/(\d{4})\/(\d{1,2})\/(\d{1,2})/);return m?m[1]+"-"+String(+m[2]).padStart(2,"0")+"-"+String(+m[3]).padStart(2,"0"):null;}
+function affTS(s){const m=String(s).match(/(\d{4})\/(\d{1,2})\/(\d{1,2})\/?\s*(\d{1,2}):(\d{2})/);return m?new Date(+m[1],+m[2]-1,+m[3],+m[4],+m[5]).getTime():0;}
+const AFF_COLS=[
+  {k:"creator",label:"เซสชัน (ครีเอเตอร์)",num:false,val:r=>r.creator.toLowerCase()},
+  {k:"start",label:"เวลาที่เริ่ม",num:true,val:r=>affTS(r.start)},
+  {k:"gmv",label:"GMV จาก LIVE",num:true,val:r=>r.gmv},
+  {k:"ctor",label:"CTOR",num:true,val:r=>num(r.ctor)},
+  {k:"views",label:"ยอดการดู",num:true,val:r=>r.views},
+  {k:"imp",label:"แสดงผลสินค้า",num:true,val:r=>r.imp},
+  {k:"ctr",label:"CTR",num:true,val:r=>num(r.ctr)},
+];
+let AFF_SORT={key:"gmv",dir:"desc"};
+function affSetSort(key){/* cycle: asc → desc → remove(default gmv desc) */
+  if(AFF_SORT.key!==key)AFF_SORT={key,dir:"asc"};
+  else if(AFF_SORT.dir==="asc")AFF_SORT.dir="desc";
+  else AFF_SORT={key:"gmv",dir:"desc"};
+  renderAffiliate();
+}
+function renderAffiliate(){const brand=GLOBAL.brand,R=GMV_RANGE;
+  if($("affBrand"))$("affBrand").textContent=brand;
+  if($("affWin"))$("affWin").textContent=winLabel();
   const el=$("affTable");if(!el)return;
-  const data=(store.aff&&mk&&store.aff[mk]&&store.aff[mk][brand])||null;
-  if(!data){el.innerHTML='<div class="empty">กำลังโหลดข้อมูล Affiliate LIVE…</div>';return;}
-  const rows=data.slice().sort((a,b)=>b.gmv-a.gmv).slice(0,15);
-  if(!rows.length){el.innerHTML='<div class="empty">ไม่มีข้อมูล Affiliate LIVE ในเดือนนี้</div>';return;}
-  el.innerHTML=`<div class="table-scroll"><table class="aff-tbl"><thead><tr><th>เซสชัน (ครีเอเตอร์)</th><th class="num">เวลาที่เริ่ม</th><th class="num">GMV จาก LIVE</th><th class="num">CTOR</th><th class="num">ยอดการดู</th><th class="num">แสดงผลสินค้า</th><th class="num">CTR</th></tr></thead><tbody>`+
-    rows.map((r,i)=>`<tr><td><div class="aff-s"><span class="aff-rk${i<3?' g':''}">${i+1}</span><div class="aff-si"><div class="aff-nm" title="${escH(r.creator)}">${escH(r.creator)}</div><div class="aff-h">@${escH(r.handle)}</div></div></div></td><td class="num aff-dt">${affTime(r.start)}<span class="aff-dur">${escH(r.dur)}</span></td><td class="num aff-gmv">${thb(r.gmv)}</td><td class="num">${escH(r.ctor)||"—"}</td><td class="num">${r.views.toLocaleString("en-US")}</td><td class="num">${r.imp.toLocaleString("en-US")}</td><td class="num">${escH(r.ctr)||"—"}</td></tr>`).join("")+
+  const loaded=store.aff&&Object.keys(store.aff).length;
+  if(!loaded){el.innerHTML='<div class="empty">กำลังโหลดข้อมูล Affiliate LIVE…</div>';if($("affCount"))$("affCount").textContent="…";if($("affSortLbl"))$("affSortLbl").textContent="GMV";return;}
+  let all=[];Object.keys(store.aff).forEach(mk=>{const arr=store.aff[mk]&&store.aff[mk][brand];if(arr)all=all.concat(arr);});
+  let rows=all.filter(r=>{if(R.preset==="all")return true;const iso=affISO(r.start);return iso&&iso>=R.start&&iso<=R.end;});
+  const total=rows.length;
+  const col=AFF_COLS.find(c=>c.k===AFF_SORT.key)||AFF_COLS[2];
+  rows.sort((a,b)=>{const x=col.val(a),y=col.val(b);let c;if(typeof x==="string")c=x<y?-1:x>y?1:0;else c=x-y;return AFF_SORT.dir==="asc"?c:-c;});
+  const CAP=15,shown=rows.slice(0,CAP);
+  if($("affSortLbl"))$("affSortLbl").textContent=col.label.replace(/ .*/,"")+" "+(AFF_SORT.dir==="asc"?"↑":"↓");
+  if($("affCount"))$("affCount").textContent=total?(total<=CAP?total+" เซสชัน":"Top "+CAP+" / "+total):"0 เซสชัน";
+  if(!total){el.innerHTML='<div class="empty">ไม่มีข้อมูล Affiliate LIVE ในช่วงที่เลือก ('+winLabel()+')</div>';return;}
+  const th=AFF_COLS.map(c=>{const act=AFF_SORT.key===c.k;const ar=act?(AFF_SORT.dir==="asc"?"▲":"▼"):"⇅";return `<th class="aff-th${c.num?' num':''}${act?' act':''}" data-k="${c.k}" title="คลิกเพื่อจัดเรียง (น้อย→มาก / มาก→น้อย / ยกเลิก)">${escH(c.label)}<span class="aff-ar">${ar}</span></th>`;}).join("");
+  el.innerHTML=`<div class="table-scroll"><table class="aff-tbl"><thead><tr>`+th+`</tr></thead><tbody>`+
+    shown.map((r,i)=>`<tr><td><div class="aff-s"><span class="aff-rk${i<3?' g':''}">${i+1}</span><div class="aff-si"><div class="aff-nm" title="${escH(r.creator)}">${escH(r.creator)}</div><div class="aff-h">@${escH(r.handle)}</div></div></div></td><td class="num aff-dt">${affTime(r.start)}<span class="aff-dur">${escH(r.dur)}</span></td><td class="num aff-gmv">${thb(r.gmv)}</td><td class="num">${escH(r.ctor)||"—"}</td><td class="num">${r.views.toLocaleString("en-US")}</td><td class="num">${r.imp.toLocaleString("en-US")}</td><td class="num">${escH(r.ctr)||"—"}</td></tr>`).join("")+
     `</tbody></table></div>`;
 }
 
@@ -1087,6 +1119,7 @@ function toggleSeries(e){const b=e.target.closest(".lgd");if(!b)return;const k=b
 $("gPlat").addEventListener("click",toggleSeries);
 $("gmvPreset").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$("gmvPreset").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));applyPreset(b.dataset.p);renderGMV();if(b.dataset.p==="all")closeCal();else openCal(b.dataset.p);});
 $("calBtn").addEventListener("click",ev=>{ev.stopPropagation();if($("calPop").hidden)openCal(GMV_RANGE.preset==="all"?"month":GMV_RANGE.preset);else closeCal();});
+$("affTable").addEventListener("click",ev=>{const th=ev.target.closest(".aff-th[data-k]");if(th)affSetSort(th.dataset.k);});
 $("calPop").addEventListener("click",ev=>{
   ev.stopPropagation();/* keep click inside — re-render detaches target, else document handler would close the popover */
   const nav=ev.target.closest("[data-nav]");
