@@ -446,7 +446,7 @@
       <div class="row" style="grid-template-columns:1fr">
         <div class="card pad">
           <div id="affTable"><div class="empty">กำลังโหลด…</div></div>
-          <div class="tag" style="font-size:10px;color:var(--muted);margin-top:8px">ที่มา: Tiktok Affiliate Live · GMV จาก LIVE ของครีเอเตอร์ · แยกแบรนด์</div>
+          <div class="tag" style="font-size:10px;color:var(--muted);margin-top:8px">ที่มา: Tiktok Affiliate Live · รวมทุกไลฟ์ของครีเอเตอร์คนเดียวกันตาม Creator ID · GMV/ยอดดู/แสดงผล = ผลรวม · CTOR/CTR = ค่าเฉลี่ยถ่วงน้ำหนัก · คลิกหัวข้อเพื่อจัดเรียง</div>
         </div>
       </div>
     </div>
@@ -1025,20 +1025,34 @@ function renderProducts2(){
 /* ===================== TIKTOK AFFILIATE LIVE ===================== */
 const escH=s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 function affTime(s){const m=String(s).match(/(\d{4})\/(\d{1,2})\/(\d{1,2})\/?\s*(\d{1,2}:\d{2})/);return m?(+m[3])+"/"+(+m[2])+" "+m[4]:escH(s);}
-function parseAffiliate(grid){const out=[];for(let i=1;i<grid.length;i++){const r=grid[i];const creator=String(r[1]||"").trim();if(!creator)continue;out.push({creator,handle:String(r[2]||"").trim(),start:String(r[3]||"").trim(),dur:String(r[4]||"").trim(),gmv:num(r[5]),ctor:String(r[17]||"").trim(),views:num(r[19]),imp:num(r[25]),ctr:String(r[27]||"").trim()});}return out;}
+function parseAffiliate(grid){const out=[];for(let i=1;i<grid.length;i++){const r=grid[i];const creator=String(r[1]||"").trim();if(!creator)continue;out.push({id:String(r[0]||"").trim(),creator,handle:String(r[2]||"").trim(),start:String(r[3]||"").trim(),dur:String(r[4]||"").trim(),gmv:num(r[5]),ctor:String(r[17]||"").trim(),views:num(r[19]),imp:num(r[25]),ctr:String(r[27]||"").trim()});}return out;}
+function affDurMin(s){let t=0;const h=String(s).match(/(\d+)\s*h/i),m=String(s).match(/(\d+)\s*min/i);if(h)t+=(+h[1])*60;if(m)t+=(+m[1]);return t;}
+function affDurFmt(t){t=Math.round(t);const h=Math.floor(t/60),mi=t%60;return (h?h+"h ":"")+mi+"min";}
+/* merge sessions that share the same Creator ID into one creator */
+function affAggregate(rows){const map=new Map();
+  rows.forEach(r=>{const key=r.id||r.creator;if(!key)return;let a=map.get(key);
+    if(!a){a={id:r.id,creator:r.creator,handle:r.handle,gmv:0,views:0,imp:0,sessions:0,dur:0,_cw:0,_cd:0,_rw:0,_rd:0,_top:-1};map.set(key,a);}
+    a.gmv+=r.gmv;a.views+=r.views;a.imp+=r.imp;a.sessions++;a.dur+=affDurMin(r.dur);
+    const cto=num(r.ctor),ctr=num(r.ctr);
+    if(r.views>0){a._cw+=cto*r.views;a._cd+=r.views;}/* CTOR weighted by views */
+    if(r.imp>0){a._rw+=ctr*r.imp;a._rd+=r.imp;}/* CTR weighted by impressions */
+    if(r.gmv>a._top){a._top=r.gmv;a.creator=r.creator;a.handle=r.handle;}/* identity = biggest live */
+  });
+  const out=[...map.values()];out.forEach(a=>{a.ctor=a._cd?a._cw/a._cd:0;a.ctr=a._rd?a._rw/a._rd:0;});return out;
+}
 async function loadAffiliate(mk){store.aff=store.aff||{};if(store.aff[mk])return;const tab=MABBR[+mk.split("-")[1]-1];const res={};await Promise.all(BRANDS.map(async b=>{try{res[b]=parseAffiliate(await fetchSheet(F_AFF,tab+" "+b));}catch(e){res[b]=[];}}));store.aff[mk]=res;}
 async function loadAllAffiliate(){if(!store.affMonths)store.affMonths=await enumMonths(F_AFF);const ms=store.affMonths||[];await Promise.all(ms.map(m=>loadAffiliate(m)));}
 function affMonth(){const ms=store.affMonths||[];if(!ms.length)return null;const cov=rangeMonths(GMV_RANGE.start,GMV_RANGE.end);const inR=ms.filter(x=>cov.includes(x));return inR.length?inR.sort().slice(-1)[0]:ms.slice(-1)[0];}
 function affISO(s){const m=String(s).match(/(\d{4})\/(\d{1,2})\/(\d{1,2})/);return m?m[1]+"-"+String(+m[2]).padStart(2,"0")+"-"+String(+m[3]).padStart(2,"0"):null;}
 function affTS(s){const m=String(s).match(/(\d{4})\/(\d{1,2})\/(\d{1,2})\/?\s*(\d{1,2}):(\d{2})/);return m?new Date(+m[1],+m[2]-1,+m[3],+m[4],+m[5]).getTime():0;}
 const AFF_COLS=[
-  {k:"creator",label:"เซสชัน (ครีเอเตอร์)",num:false,val:r=>r.creator.toLowerCase()},
-  {k:"start",label:"เวลาที่เริ่ม",num:true,val:r=>affTS(r.start)},
+  {k:"creator",label:"ครีเอเตอร์",num:false,val:r=>r.creator.toLowerCase()},
+  {k:"sessions",label:"ไลฟ์",num:true,val:r=>r.sessions},
   {k:"gmv",label:"GMV จาก LIVE",num:true,val:r=>r.gmv},
-  {k:"ctor",label:"CTOR",num:true,val:r=>num(r.ctor)},
+  {k:"ctor",label:"CTOR",num:true,val:r=>r.ctor},
   {k:"views",label:"ยอดการดู",num:true,val:r=>r.views},
   {k:"imp",label:"แสดงผลสินค้า",num:true,val:r=>r.imp},
-  {k:"ctr",label:"CTR",num:true,val:r=>num(r.ctr)},
+  {k:"ctr",label:"CTR",num:true,val:r=>r.ctr},
 ];
 let AFF_SORT={key:"gmv",dir:"desc"};
 function affSetSort(key){/* cycle: asc → desc → remove(default gmv desc) */
@@ -1054,17 +1068,18 @@ function renderAffiliate(){const brand=GLOBAL.brand,R=GMV_RANGE;
   const loaded=store.aff&&Object.keys(store.aff).length;
   if(!loaded){el.innerHTML='<div class="empty">กำลังโหลดข้อมูล Affiliate LIVE…</div>';if($("affCount"))$("affCount").textContent="…";if($("affSortLbl"))$("affSortLbl").textContent="GMV";return;}
   let all=[];Object.keys(store.aff).forEach(mk=>{const arr=store.aff[mk]&&store.aff[mk][brand];if(arr)all=all.concat(arr);});
-  let rows=all.filter(r=>{if(R.preset==="all")return true;const iso=affISO(r.start);return iso&&iso>=R.start&&iso<=R.end;});
-  const total=rows.length;
+  const sessions=all.filter(r=>{if(R.preset==="all")return true;const iso=affISO(r.start);return iso&&iso>=R.start&&iso<=R.end;});
+  let rows=affAggregate(sessions);/* merge by Creator ID */
+  const total=rows.length;/* unique creators */
   const col=AFF_COLS.find(c=>c.k===AFF_SORT.key)||AFF_COLS[2];
   rows.sort((a,b)=>{const x=col.val(a),y=col.val(b);let c;if(typeof x==="string")c=x<y?-1:x>y?1:0;else c=x-y;return AFF_SORT.dir==="asc"?c:-c;});
   const CAP=15,shown=rows.slice(0,CAP);
   if($("affSortLbl"))$("affSortLbl").textContent=col.label.replace(/ .*/,"")+" "+(AFF_SORT.dir==="asc"?"↑":"↓");
-  if($("affCount"))$("affCount").textContent=total?(total<=CAP?total+" เซสชัน":"Top "+CAP+" / "+total):"0 เซสชัน";
+  if($("affCount"))$("affCount").textContent=total?(total<=CAP?total+" คน":"Top "+CAP+" / "+total+" คน")+" · "+sessions.length+" ไลฟ์":"0 คน";
   if(!total){el.innerHTML='<div class="empty">ไม่มีข้อมูล Affiliate LIVE ในช่วงที่เลือก ('+winLabel()+')</div>';return;}
   const th=AFF_COLS.map(c=>{const act=AFF_SORT.key===c.k;const ar=act?(AFF_SORT.dir==="asc"?"▲":"▼"):"⇅";return `<th class="aff-th${c.num?' num':''}${act?' act':''}" data-k="${c.k}" title="คลิกเพื่อจัดเรียง (น้อย→มาก / มาก→น้อย / ยกเลิก)">${escH(c.label)}<span class="aff-ar">${ar}</span></th>`;}).join("");
   el.innerHTML=`<div class="table-scroll"><table class="aff-tbl"><thead><tr>`+th+`</tr></thead><tbody>`+
-    shown.map((r,i)=>`<tr><td><div class="aff-s"><span class="aff-rk${i<3?' g':''}">${i+1}</span><div class="aff-si"><div class="aff-nm" title="${escH(r.creator)}">${escH(r.creator)}</div><div class="aff-h">@${escH(r.handle)}</div></div></div></td><td class="num aff-dt">${affTime(r.start)}<span class="aff-dur">${escH(r.dur)}</span></td><td class="num aff-gmv">${thb(r.gmv)}</td><td class="num">${escH(r.ctor)||"—"}</td><td class="num">${r.views.toLocaleString("en-US")}</td><td class="num">${r.imp.toLocaleString("en-US")}</td><td class="num">${escH(r.ctr)||"—"}</td></tr>`).join("")+
+    shown.map((r,i)=>`<tr><td><div class="aff-s"><span class="aff-rk${i<3?' g':''}">${i+1}</span><div class="aff-si"><div class="aff-nm" title="${escH(r.creator)}">${escH(r.creator)}</div><div class="aff-h">@${escH(r.handle)}</div></div></div></td><td class="num aff-dt">${r.sessions} ไลฟ์<span class="aff-dur">รวม ${affDurFmt(r.dur)}</span></td><td class="num aff-gmv">${thb(r.gmv)}</td><td class="num">${r.ctor?r.ctor.toFixed(2)+"%":"—"}</td><td class="num">${r.views.toLocaleString("en-US")}</td><td class="num">${r.imp.toLocaleString("en-US")}</td><td class="num">${r.ctr?r.ctr.toFixed(2)+"%":"—"}</td></tr>`).join("")+
     `</tbody></table></div>`;
 }
 
