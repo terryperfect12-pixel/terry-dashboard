@@ -53,6 +53,26 @@
   .side-nav a{display:block;padding:10px 12px;border-radius:9px;font-size:13.5px;font-weight:600;color:var(--ink2);cursor:pointer;border-left:3px solid transparent;transition:background .12s,color .12s,border-color .12s;user-select:none;}
   .side-nav a:hover{background:var(--track);color:var(--ink);}
   .side-nav a.active{background:var(--track)!important;color:var(--brand-accent,var(--s1))!important;border-left-color:var(--brand-accent,var(--s1));font-weight:700;}
+  .side-nav a{display:flex;align-items:center;gap:11px;}
+  .side-nav a .ic{width:20px;text-align:center;flex:none;font-size:15px;}
+  .side-nav a .nl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  /* sidebar header + collapse */
+  .side-head{display:flex;align-items:flex-start;gap:10px;}
+  .brand-mark{width:36px;height:36px;border-radius:10px;background:var(--brand-accent,var(--s1));color:#fff;font-weight:800;font-size:19px;display:none;align-items:center;justify-content:center;flex:none;}
+  .brand-txt{flex:1;min-width:0;}
+  .nav-toggle{margin-left:auto;border:1px solid var(--line);background:var(--surface);color:var(--ink2);width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:15px;line-height:1;flex:none;}
+  .nav-toggle:hover{border-color:var(--muted);color:var(--ink);}
+  .app{transition:grid-template-columns .22s ease;}
+  .app.snav{grid-template-columns:70px 1fr;}
+  .app.snav .side{padding:16px 10px;}
+  .app.snav .brand-txt,.app.snav .brand-lead,.app.snav .cur-brand,.app.snav .side-nav a .nl,.app.snav .btn.logout .nl,.app.snav .side-foot>span{display:none!important;}
+  .app.snav .brand-mark{display:flex;}
+  .app.snav .side-head{justify-content:center;flex-wrap:wrap;gap:10px;}
+  .app.snav .nav-toggle{margin:0;}
+  .app.snav .side-nav a{justify-content:center;padding:12px 0;}
+  .app.snav .side-nav a .ic{width:auto;font-size:19px;}
+  .app.snav .btn.logout{padding:12px 0;font-size:16px;}
+  @media (max-width:900px){.app.snav{grid-template-columns:1fr!important;}}
   .btn.logout{width:100%;text-align:center;border:1.5px solid var(--line);background:var(--surface);color:var(--danger);font-weight:800;padding:11px;border-radius:11px;cursor:pointer;font-family:inherit;font-size:13.5px;}
   .btn.logout:hover{background:color-mix(in srgb,var(--danger) 12%,var(--surface));border-color:var(--danger);}
   /* brand gate */
@@ -108,6 +128,7 @@
   .kpi .kl{font-size:12px;font-weight:600;opacity:.85;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;} .kpi .kicon{font-size:18px;opacity:.6;}
   .kpi .kv{font-size:30px;font-weight:800;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;line-height:1.05;} .kpi .ks{font-size:11.5px;margin-top:7px;opacity:.85;}
   .kpi .kc{font-size:11px;margin-top:8px;padding-top:8px;border-top:1px solid color-mix(in srgb,currentColor 12%,transparent);opacity:.82;font-variant-numeric:tabular-nums;} .kpi .kc b{font-weight:800;opacity:1;}
+  .kpi .kspark{display:block;width:100%;height:36px;margin-top:10px;overflow:visible;}
   .kpi-badge{font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;border:1.5px solid;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1;background:color-mix(in srgb,currentColor 12%,var(--surface));}
   .kpi.dark .kpi-badge{background:rgba(255,255,255,.12);}
   .kpi.dark{background:var(--brandnavy);color:#fff;border-color:transparent;}
@@ -262,9 +283,13 @@
 </div>
 <div class="app">
   <aside class="side">
-    <div>
-      <div class="brand-title">EXECUTIVE<br>DASHBOARD</div>
-      <div class="sub">Performance · Traffic · Product · Insight · Action</div>
+    <div class="side-head">
+      <div class="brand-mark">E</div>
+      <div class="brand-txt">
+        <div class="brand-title">EXECUTIVE<br>DASHBOARD</div>
+        <div class="sub">Performance · Traffic · Product · Insight · Action</div>
+      </div>
+      <button class="nav-toggle" id="navToggle" type="button" aria-label="ย่อ/ขยายเมนู" title="ย่อ/ขยายเมนู">«</button>
     </div>
     <div>
       <span class="brand-lead">แบรนด์ที่กำลังดู</span>
@@ -273,17 +298,17 @@
     <div>
       <span class="brand-lead">เมนู</span>
       <nav class="side-nav" id="sideNav">
-        <a data-t="sec-gmv">GMV &amp; Ads</a>
-        <a data-t="sec-mix">สัดส่วนยอดขายตามช่องทาง</a>
-        <a data-t="sec-stats">ตัวชี้วัดหลัก</a>
-        <a data-t="sec-traffic">การเข้าชม &amp; ROAS</a>
-        <a data-t="sec-prod">อันดับสินค้า</a>
+        <a data-t="sec-gmv" title="GMV & Ads"><span class="ic">📈</span><span class="nl">GMV &amp; Ads</span></a>
+        <a data-t="sec-mix" title="สัดส่วนยอดขายตามช่องทาง"><span class="ic">🍩</span><span class="nl">สัดส่วนยอดขายตามช่องทาง</span></a>
+        <a data-t="sec-stats" title="ตัวชี้วัดหลัก"><span class="ic">📊</span><span class="nl">ตัวชี้วัดหลัก</span></a>
+        <a data-t="sec-traffic" title="การเข้าชม & ROAS"><span class="ic">👁️</span><span class="nl">การเข้าชม &amp; ROAS</span></a>
+        <a data-t="sec-prod" title="อันดับสินค้า"><span class="ic">🏆</span><span class="nl">อันดับสินค้า</span></a>
       </nav>
     </div>
     <div class="side-foot">
       <span class="online load" id="status">Loading…</span>
       <span style="display:flex;gap:6px"><button class="btn" id="btnRefresh">🔄 Refresh</button><button class="tgl" id="btnCfg">⚙</button><button class="tgl" id="themeToggle">🌙</button></span>
-      <button class="btn logout" id="btnLogout">↩ ออกจากระบบ</button>
+      <button class="btn logout" id="btnLogout" title="ออกจากระบบ"><span class="lic">↩</span><span class="nl"> ออกจากระบบ</span></button>
     </div>
   </aside>
   <main class="main">
@@ -577,6 +602,14 @@ function populate(){
 
 /* ===================== KPI ===================== */
 function kpiBadge(p,goodUp){if(p==null||!isFinite(p))return "";const near=Math.abs(p)<0.05;const up=p>=0;const good=goodUp?up:!up;const col=near?"var(--muted)":(good?"var(--good)":"var(--danger)");const ar=near?"→":(up?"↗":"↘");return `<span class="kpi-badge" style="color:${col};border-color:color-mix(in srgb,${col} 45%,transparent)">${ar} ${p>0?"+":""}${p.toFixed(1)}%</span>`;}
+function sparkSVG(data,color){const w=240,h=36,pad=4;const vals=data.filter(v=>v!=null&&isFinite(v));if(vals.length<2)return "";
+  const mn=Math.min(...vals),mx=Math.max(...vals),rng=(mx-mn)||1,n=data.length;
+  const xs=i=>pad+(w-2*pad)*(n<=1?.5:i/(n-1)),ys=v=>h-pad-((v-mn)/rng)*(h-2*pad);
+  const pts=data.map((v,i)=>({x:xs(i),y:ys(v==null?mn:v)}));
+  let d=`M${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+  for(let i=0;i<pts.length-1;i++){const p0=pts[i-1]||pts[i],p1=pts[i],p2=pts[i+1],p3=pts[i+2]||p2;const c1x=p1.x+(p2.x-p0.x)/6,c1y=p1.y+(p2.y-p0.y)/6,c2x=p2.x-(p3.x-p1.x)/6,c2y=p2.y-(p3.y-p1.y)/6;d+=` C${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;}
+  const last=pts[pts.length-1];
+  return `<svg class="kspark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${d}" style="fill:none;stroke:${color};stroke-width:2.2;vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-linejoin:round"/><circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="3" style="fill:${color};vector-effect:non-scaling-stroke"/></svg>`;}
 function renderKPI(){
   const R=GMV_RANGE,brand=GLOBAL.brand;
   let gmv=0;const days=new Set();(store.daily[brand]||[]).forEach(r=>{if(inR(r.date,R.start,R.end)){gmv+=r.gmv;days.add(r.date);}});
@@ -595,14 +628,19 @@ function renderKPI(){
   const rangeLbl=fmtD(R.start)+"–"+fmtD(R.end), cmpLbl=fmtD(R.cmpStart)+"–"+fmtD(R.cmpEnd);
   const nf=n=>Math.round(n).toLocaleString("en-US");
   const cmp=(pv,fmt)=>open?"":`<div class="kc">เทียบช่วงก่อน (${cmpLbl}): <b>${fmt?fmt(pv):nf(pv)}</b></div>`;
+  // daily trajectory for mini sparklines
+  const drows=(store.daily[brand]||[]).filter(r=>inR(r.date,R.start,R.end)).sort((a,b)=>a.date<b.date?-1:1);
+  const dTgt=monthlyTgt/30;let cg=0,ct=0;const sGmv=[],sAch=[],sGap=[],sTgt=[];
+  drows.forEach(r=>{cg+=r.gmv;ct+=dTgt;sGmv.push(r.gmv);sAch.push(ct>0?cg/ct*100:0);sGap.push(ct-cg);sTgt.push(ct);});
+  const GC="var(--good)",BC="var(--danger)",MC="var(--muted)",col=(m,up)=>m==null?MC:((up?m>=0:m<0)?GC:BC);
   const cards=[
-    {cls:"dark",l:"GMV (THB)",v:open?"0":nf(gmv),s:open?"ไม่มีข้อมูลในช่วงนี้":"ช่วงที่เลือก "+rangeLbl,badge:open?null:kpiBadge(mom,true),cmp:cmp(prev)},
-    {cls:"green",l:"Target (THB)",v:nf(tgt),s:brand+(fullMonth?" · เป้าทั้งเดือน":" · เป้า "+nDays+" วัน"),badge:kpiBadge(tgtMom,true),cmp:cmp(prevTgt)},
-    {cls:"red",l:"Achievement",v:ach.toFixed(0)+"%",s:"ยอดจริง ÷ เป้า"+(fullMonth?"":" (สัดส่วนวัน)"),badge:open?null:kpiBadge(achMom,true),cmp:cmp(prevAch,x=>x.toFixed(0)+"%")},
-    {cls:"amber",l:"Gap (THB)",v:nf(gap),s:"เหลือถึงเป้า",badge:open?null:kpiBadge(gapMom,true),cmp:cmp(prevGap)},
+    {cls:"dark",l:"GMV (THB)",v:open?"0":nf(gmv),s:open?"ไม่มีข้อมูลในช่วงนี้":"ช่วงที่เลือก "+rangeLbl,badge:open?null:kpiBadge(mom,true),cmp:cmp(prev),spark:open?"":sparkSVG(sGmv,col(mom,true))},
+    {cls:"green",l:"Target (THB)",v:nf(tgt),s:brand+(fullMonth?" · เป้าทั้งเดือน":" · เป้า "+nDays+" วัน"),badge:kpiBadge(tgtMom,true),cmp:cmp(prevTgt),spark:sparkSVG(sTgt,MC)},
+    {cls:"red",l:"Achievement",v:ach.toFixed(0)+"%",s:"ยอดจริง ÷ เป้า"+(fullMonth?"":" (สัดส่วนวัน)"),badge:open?null:kpiBadge(achMom,true),cmp:cmp(prevAch,x=>x.toFixed(0)+"%"),spark:open?"":sparkSVG(sAch,col(achMom,true))},
+    {cls:"amber",l:"Gap (THB)",v:nf(gap),s:"เหลือถึงเป้า",badge:open?null:kpiBadge(gapMom,true),cmp:cmp(prevGap),spark:open?"":sparkSVG(sGap,col(gapMom,true))},
   ];
   $("kpiRow").style.gridTemplateColumns=open?"repeat(4,1fr) 1.55fr":"repeat(4,1fr)";
-  $("kpiRow").innerHTML=cards.map(c=>`<div class="kpi ${c.cls}"><div class="kl"><span>${c.l}</span>${c.badge||""}</div><div class="kv">${c.v}</div><div class="ks">${c.s}</div>${c.cmp||""}</div>`).join("")+
+  $("kpiRow").innerHTML=cards.map(c=>`<div class="kpi ${c.cls}"><div class="kl"><span>${c.l}</span>${c.badge||""}</div><div class="kv">${c.v}</div><div class="ks">${c.s}</div>${c.cmp||""}${c.spark||""}</div>`).join("")+
     (open?`<div class="info-banner"><div class="bi">i</div><div><div class="bt">ช่วงที่เลือกยังไม่มีข้อมูล (${rangeLbl})</div><div class="bd">Open Month Safety · เลือกช่วงเวลาที่มีข้อมูล (พ.ค.–ส.ค. 2026) เพื่อดูตัวเลข</div></div></div>`:"");
 }
 
@@ -1076,6 +1114,11 @@ function stickChk(){const g=$("dashOnly1");if(g)g.classList.toggle("stuck",g.get
 document.addEventListener("scroll",stickChk,true);window.addEventListener("resize",stickChk);
 buildBrandBar();
 setupExpand();
+/* sidebar collapse/expand */
+(function(){const app=document.querySelector(".app"),tg=$("navToggle");if(!tg||!app)return;
+  const set=c=>{app.classList.toggle("snav",c);tg.textContent=c?"»":"«";};
+  try{set(localStorage.getItem("side-collapsed")==="1");}catch(e){}
+  tg.addEventListener("click",()=>{const c=!app.classList.contains("snav");set(c);try{localStorage.setItem("side-collapsed",c?"1":"0");}catch(e){}});})();
 /* sidebar section navigation (click to scroll + scrollspy) */
 (function(){const nav=$("sideNav");if(!nav)return;const ids=["sec-gmv","sec-mix","sec-stats","sec-traffic","sec-prod"];
   function smoothScrollTo(ty){ty=Math.max(0,ty);const sy=window.scrollY,d=ty-sy,dur=450,t0=performance.now();(function step(now){const p=Math.min(1,(now-t0)/dur),e=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;window.scrollTo(0,sy+d*e);if(p<1)requestAnimationFrame(step);})(t0);}
