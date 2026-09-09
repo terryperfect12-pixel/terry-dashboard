@@ -130,6 +130,21 @@
   .kpi .kc{font-size:11px;margin-top:8px;padding-top:8px;border-top:1px solid color-mix(in srgb,currentColor 12%,transparent);opacity:.82;font-variant-numeric:tabular-nums;} .kpi .kc b{font-weight:800;opacity:1;}
   .kpi .kl .ktrend{display:inline-flex;align-items:center;gap:8px;opacity:1;}
   .kpi .kspark{display:block;width:64px;height:26px;overflow:visible;flex:none;}
+  /* affiliate LIVE table */
+  .aff-tbl{width:100%;border-collapse:collapse;font-size:13px;}
+  .aff-tbl th{text-align:left;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;font-weight:700;padding:0 14px 10px;border-bottom:1.5px solid var(--line);white-space:nowrap;}
+  .aff-tbl th.num,.aff-tbl td.num{text-align:right;}
+  .aff-tbl td{padding:11px 14px;border-bottom:1px solid var(--line2);font-variant-numeric:tabular-nums;vertical-align:middle;}
+  .aff-tbl tbody tr:last-child td{border-bottom:none;}
+  .aff-tbl tbody tr:hover{background:var(--track);}
+  .aff-s{display:flex;align-items:center;gap:11px;}
+  .aff-rk{width:24px;height:24px;border-radius:7px;background:var(--track);color:var(--ink2);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none;}
+  .aff-rk.g{background:var(--brand-accent,var(--s1));color:#fff;}
+  .aff-si{min-width:0;}
+  .aff-nm{font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:230px;}
+  .aff-h{font-size:11px;color:var(--muted);}
+  .aff-dt{color:var(--ink2);white-space:nowrap;} .aff-dur{display:block;font-size:10.5px;color:var(--muted);}
+  .aff-gmv{font-weight:800;color:var(--brand-accent,var(--s1));}
   .kpi-badge{font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;border:1.5px solid;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1;background:color-mix(in srgb,currentColor 12%,var(--surface));}
   .kpi.dark .kpi-badge{background:rgba(255,255,255,.12);}
   .kpi.dark{background:var(--brandnavy);color:#fff;border-color:transparent;}
@@ -304,6 +319,7 @@
         <a data-t="sec-stats" title="ตัวชี้วัดหลัก"><span class="ic">📊</span><span class="nl">ตัวชี้วัดหลัก</span></a>
         <a data-t="sec-traffic" title="การเข้าชม & ROAS"><span class="ic">👁️</span><span class="nl">การเข้าชม &amp; ROAS</span></a>
         <a data-t="sec-prod" title="อันดับสินค้า"><span class="ic">🏆</span><span class="nl">อันดับสินค้า</span></a>
+        <a data-t="sec-aff" title="TikTok Affiliate LIVE"><span class="ic">🎥</span><span class="nl">Affiliate LIVE</span></a>
       </nav>
     </div>
     <div class="side-foot">
@@ -420,6 +436,14 @@
           <div class="tag" style="font-size:10px;color:var(--muted);margin-top:8px">ที่มา: Shopee Sku Revenue (ยอดขายยืนยันแล้ว) · ลูกศร = อันดับเทียบเดือนก่อน</div>
         </div>
       </div>
+
+      <div class="sec-label" id="sec-aff">TikTok Affiliate LIVE · <span id="affBrand" style="color:var(--brand-accent,var(--s1))"></span> <span style="font-weight:400;color:var(--muted);text-transform:none">(<span id="affMonth"></span> · Top 15 · เรียงตาม GMV)</span></div>
+      <div class="row" style="grid-template-columns:1fr">
+        <div class="card pad">
+          <div id="affTable"><div class="empty">กำลังโหลด…</div></div>
+          <div class="tag" style="font-size:10px;color:var(--muted);margin-top:8px">ที่มา: Tiktok Affiliate Live · GMV จาก LIVE ของครีเอเตอร์ · แยกแบรนด์</div>
+        </div>
+      </div>
     </div>
 
     <!-- ============ CONFIG / HEALTH VIEW ============ -->
@@ -456,6 +480,7 @@ const F_SHTRAF="1y3jgMoL_bhbfva9SLeRSqIHpaOQ1Na0Baax9c2zAthQ";
 const F_TKTRAF="1VYmAR91rFknX6-hx7NnuvE02enUULZ4WV65CMDhArUY";
 const F_SHSKU="1hQTqShDk_b-jhrXymnDeKc27aDcXczCs4YgjwD-zhWM";
 const F_TKSKU="1nxqJQM1zDx1dFBp4d1zeoPuTRbALUqhiKJT3TZzEpl0";
+const F_AFF="1EvO5V6ai-BH_nzWOGLW-fjUVWxHKmBjJ8GFZwEQhBqA";/* Tiktok Affiliate Live */
 const BRANDS=["Benutra","Terry","Gala"];
 const BRAND_C={Benutra:"var(--s3)",Terry:"var(--s1)",Gala:"var(--danger)"};/* Benutra=เขียว Terry=ฟ้า Gala=แดง */
 const TARGET_BRAND={Benutra:16229000,Terry:19000000,Gala:10000000,ALL:45229000};
@@ -541,7 +566,7 @@ function parseTiktokSKU(grid){
 }
 
 /* ===================== STORE ===================== */
-const store={daily:{},chan:{},traf:{},prod:{},months:[],err:[],loaded:false,lastFetch:null};
+const store={daily:{},chan:{},traf:{},prod:{},aff:{},months:[],err:[],loaded:false,lastFetch:null};
 const GLOBAL={brand:"Benutra",gran:"day"};
 
 async function loadCore(){
@@ -738,6 +763,7 @@ function renderGMV(){
   renderChannelMix();
   renderTrafficSection();
   renderProducts2();
+  renderAffiliate();
 }
 /* ===== channel sales mix (donut) from performan all brand ===== */
 const CHAN_MIX=[{k:"Facebook",c:"#1877F2"},{k:"TikTok",c:"var(--ink)"},{k:"Shopee",c:"#F5551D"},{k:"Lazada",c:"#6E33C3"}];
@@ -991,6 +1017,25 @@ function renderProducts2(){
   build("Shopee","shProd",sv==="reach"?"visits":sv==="clicks"?"clicks":"gmv");
 }
 
+/* ===================== TIKTOK AFFILIATE LIVE ===================== */
+const escH=s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+function affTime(s){const m=String(s).match(/(\d{4})\/(\d{1,2})\/(\d{1,2})\/?\s*(\d{1,2}:\d{2})/);return m?(+m[3])+"/"+(+m[2])+" "+m[4]:escH(s);}
+function parseAffiliate(grid){const out=[];for(let i=1;i<grid.length;i++){const r=grid[i];const creator=String(r[1]||"").trim();if(!creator)continue;out.push({creator,handle:String(r[2]||"").trim(),start:String(r[3]||"").trim(),dur:String(r[4]||"").trim(),gmv:num(r[5]),ctor:String(r[17]||"").trim(),views:num(r[19]),imp:num(r[25]),ctr:String(r[27]||"").trim()});}return out;}
+async function loadAffiliate(mk){store.aff=store.aff||{};if(store.aff[mk])return;const tab=MABBR[+mk.split("-")[1]-1];const res={};await Promise.all(BRANDS.map(async b=>{try{res[b]=parseAffiliate(await fetchSheet(F_AFF,tab+" "+b));}catch(e){res[b]=[];}}));store.aff[mk]=res;}
+async function loadAllAffiliate(){if(!store.affMonths)store.affMonths=await enumMonths(F_AFF);const mk=affMonth()||(store.affMonths||[]).slice(-1)[0];if(mk)await loadAffiliate(mk);}
+function affMonth(){const ms=store.affMonths||[];if(!ms.length)return null;const cov=rangeMonths(GMV_RANGE.start,GMV_RANGE.end);const inR=ms.filter(x=>cov.includes(x));return inR.length?inR.sort().slice(-1)[0]:ms.slice(-1)[0];}
+function renderAffiliate(){const brand=GLOBAL.brand,mk=affMonth();
+  if($("affBrand"))$("affBrand").textContent=brand;if($("affMonth"))$("affMonth").textContent=mk?mLabel(mk):"—";
+  const el=$("affTable");if(!el)return;
+  const data=(store.aff&&mk&&store.aff[mk]&&store.aff[mk][brand])||null;
+  if(!data){el.innerHTML='<div class="empty">กำลังโหลดข้อมูล Affiliate LIVE…</div>';return;}
+  const rows=data.slice().sort((a,b)=>b.gmv-a.gmv).slice(0,15);
+  if(!rows.length){el.innerHTML='<div class="empty">ไม่มีข้อมูล Affiliate LIVE ในเดือนนี้</div>';return;}
+  el.innerHTML=`<div class="table-scroll"><table class="aff-tbl"><thead><tr><th>เซสชัน (ครีเอเตอร์)</th><th class="num">เวลาที่เริ่ม</th><th class="num">GMV จาก LIVE</th><th class="num">CTOR</th><th class="num">ยอดการดู</th><th class="num">แสดงผลสินค้า</th><th class="num">CTR</th></tr></thead><tbody>`+
+    rows.map((r,i)=>`<tr><td><div class="aff-s"><span class="aff-rk${i<3?' g':''}">${i+1}</span><div class="aff-si"><div class="aff-nm" title="${escH(r.creator)}">${escH(r.creator)}</div><div class="aff-h">@${escH(r.handle)}</div></div></div></td><td class="num aff-dt">${affTime(r.start)}<span class="aff-dur">${escH(r.dur)}</span></td><td class="num aff-gmv">${thb(r.gmv)}</td><td class="num">${escH(r.ctor)||"—"}</td><td class="num">${r.views.toLocaleString("en-US")}</td><td class="num">${r.imp.toLocaleString("en-US")}</td><td class="num">${escH(r.ctr)||"—"}</td></tr>`).join("")+
+    `</tbody></table></div>`;
+}
+
 /* ===================== INSIGHT / PRIORITY / ACTION ===================== */
 function renderInsight(){
   const mk=latestMonth();const gmv=mk?monthlyGMV("ALL",mk):0;
@@ -1062,7 +1107,7 @@ $("selMonth").addEventListener("change",()=>{$("gmvPreset").querySelectorAll("bu
 $("prSort").addEventListener("change",renderProducts2);
 $("prLevel").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;PROD_LEVEL.v=b.dataset.lv;$("prLevel").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));renderProducts2();});
 async function loadAllTraffic(){if(!store.trafMonths)store.trafMonths=await enumMonths(F_TKTRAF);await Promise.all((store.trafMonths||[]).map(loadTraffic));}
-async function doRefresh(){store.prod={};store.traf={};await loadCore();populate();initRange();await Promise.all([loadAllTraffic(),loadAllProducts()]);renderAll();renderProducts2();}
+async function doRefresh(){store.prod={};store.traf={};store.aff={};await loadCore();populate();initRange();await Promise.all([loadAllTraffic(),loadAllProducts(),loadAllAffiliate()]);renderAll();renderProducts2();renderAffiliate();}
 $("btnRefresh").addEventListener("click",doRefresh);$("btnRefresh2").addEventListener("click",doRefresh);
 function showConfig(on){$("viewConfig").hidden=!on;$("viewDash").hidden=on;$("dashOnly1").style.display=on?"none":"";if(on)renderConfig();}
 $("btnCfg").addEventListener("click",()=>showConfig($("viewConfig").hidden));
@@ -1121,12 +1166,12 @@ setupExpand();
   try{set(localStorage.getItem("side-collapsed")==="1");}catch(e){}
   tg.addEventListener("click",()=>{const c=!app.classList.contains("snav");set(c);try{localStorage.setItem("side-collapsed",c?"1":"0");}catch(e){}});})();
 /* sidebar section navigation (click to scroll + scrollspy) */
-(function(){const nav=$("sideNav");if(!nav)return;const ids=["sec-gmv","sec-mix","sec-stats","sec-traffic","sec-prod"];
+(function(){const nav=$("sideNav");if(!nav)return;const ids=["sec-gmv","sec-mix","sec-stats","sec-traffic","sec-prod","sec-aff"];
   function smoothScrollTo(ty){ty=Math.max(0,ty);const sy=window.scrollY,d=ty-sy,dur=450,t0=performance.now();(function step(now){const p=Math.min(1,(now-t0)/dur),e=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;window.scrollTo(0,sy+d*e);if(p<1)requestAnimationFrame(step);})(t0);}
   nav.addEventListener("click",e=>{const a=e.target.closest("a[data-t]");if(!a)return;const el=$(a.dataset.t);if(!el)return;smoothScrollTo(el.getBoundingClientRect().top+window.scrollY-72);nav.querySelectorAll("a").forEach(x=>x.classList.toggle("active",x===a));});
   const spy=()=>{let cur=ids[0];ids.forEach(id=>{const el=$(id);if(el&&el.getBoundingClientRect().top<=96)cur=id;});nav.querySelectorAll("a").forEach(x=>x.classList.toggle("active",x.dataset.t===cur));};
   document.addEventListener("scroll",spy,{passive:true});spy();})();
-(async function(){ await loadCore(); populate(); initRange(); renderAll(); await Promise.all([loadAllTraffic(),loadAllProducts()]); renderTrafficSection(); renderProducts2(); })();
+(async function(){ await loadCore(); populate(); initRange(); renderAll(); await Promise.all([loadAllTraffic(),loadAllProducts(),loadAllAffiliate()]); renderTrafficSection(); renderProducts2(); renderAffiliate(); })();
 </script>
 </body>
 </html>
