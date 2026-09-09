@@ -520,12 +520,19 @@ function parsePerforman(grid,anchor){
   if(hr>=0)grid[hr].forEach((c,idx)=>{const mk=parseMonthYear(c);if(mk&&monthCol[mk]==null)monthCol[mk]=idx;});
   if(Object.keys(monthCol).length<3){monthCol={};const EXCL=/target|diff|growth|portion|ach|%/i;const hdr=grid[0]||[];const inc=grid.find(r=>/^income/i.test(String(r[0]||"").trim()));if(inc){const cols=[];inc.forEach((c,idx)=>{if(idx<1)return;const h=String(hdr[idx]||"").trim();if(EXCL.test(h))return;if(num(c)>100000)cols.push(idx);});for(let i=cols.length-1,d=0;i>=0;i--,d--)monthCol[addMonths(anchor||"2026-08",d)]=cols[i];}hr=-1;}
   const res={};Object.keys(monthCol).forEach(mk=>res[mk]={income:0,incomeTgt:0,chan:{},tgt:{}});
+  /* TARGET column layout differs per brand tab:
+     - Benutra: 6-col block [ACTUAL, GROWTH, PORTION, TARGET(+3), DIFF, %ACH] → target = actual+3
+     - Terry/Gala: a "TARGET <MONTH>" column sits immediately BEFORE each month actual → target = actual-1
+     Detect via header row: Terry/Gala carry ≥2 "TARGET <month>" headers; Benutra's are bare "TARGET". */
+  const hdr0=grid[0]||[];
+  const preLayout=hdr0.filter(h=>/^target\s+\S/i.test(String(h||"").trim())).length>=2;
+  const tgtCol={};Object.keys(monthCol).forEach(mk=>{const ac=monthCol[mk];const tc=preLayout?ac-1:ac+3;tgtCol[mk]=/target/i.test(String(hdr0[tc]||""))?tc:-1;});
   let section=null;
   for(let i=(hr>=0?hr+1:0);i<grid.length;i++){const label=String(grid[i][0]||"").trim();if(!label)continue;const low=label.toLowerCase();let plat=null,sub=null,isInc=false,isLz=false,isFb=false;
     if(/^income/i.test(label))isInc=true;else if(/^lazada/i.test(label))isLz=true;else if(/^facebook/i.test(label))isFb=true;else if(/^shopee/i.test(label)){section="Shopee";continue;}else if(low==="tiktok"){section="TikTok";continue;}
     else if(/^tiktok-/i.test(label)){plat="TikTok";sub=label.replace(/tiktok-/i,"").trim();}
     else if(SUB_ORDER.includes(label)){if(!section)continue;plat=section;sub=label;}else continue;
-    for(const mk in monthCol){const ac=monthCol[mk];const v=num(grid[i][ac]);const tv=num(grid[i][ac+3]);/* block = [ACTUAL, GROWTH, PORTION, TARGET(+3), DIFF, %ACH] */
+    for(const mk in monthCol){const ac=monthCol[mk];const tc=tgtCol[mk];const v=num(grid[i][ac]);const tv=tc>=0?num(grid[i][tc]):0;
       if(isInc){res[mk].income=v;res[mk].incomeTgt=tv;}
       else if(isLz){res[mk].chan["Lazada|Lazada"]=v;res[mk].tgt["Lazada|Lazada"]=tv;}
       else if(isFb){res[mk].chan["Facebook|Facebook"]=v;res[mk].tgt["Facebook|Facebook"]=tv;}
