@@ -49,6 +49,10 @@
   .side-foot .b{font-weight:700;color:var(--ink);font-size:13.5px;margin:2px 0 8px;} .side-foot .h{color:var(--muted);} .side-foot .s{color:var(--ink2);line-height:1.5;}
   .side-ver{font-size:11px;color:var(--muted);padding:12px 8px 0;}
   .cur-brand{font-size:20px;font-weight:800;padding:12px 15px;border-radius:11px;border:1.5px solid var(--line);background:var(--surface2,var(--surface));letter-spacing:-.01em;}
+  .side-nav{display:flex;flex-direction:column;gap:3px;}
+  .side-nav a{display:block;padding:10px 12px;border-radius:9px;font-size:13.5px;font-weight:600;color:var(--ink2);cursor:pointer;border-left:3px solid transparent;transition:background .12s,color .12s,border-color .12s;user-select:none;}
+  .side-nav a:hover{background:var(--track);color:var(--ink);}
+  .side-nav a.active{background:var(--track)!important;color:var(--brand-accent,var(--s1))!important;border-left-color:var(--brand-accent,var(--s1));font-weight:700;}
   .btn.logout{width:100%;text-align:center;border:1.5px solid var(--line);background:var(--surface);color:var(--danger);font-weight:800;padding:11px;border-radius:11px;cursor:pointer;font-family:inherit;font-size:13.5px;}
   .btn.logout:hover{background:color-mix(in srgb,var(--danger) 12%,var(--surface));border-color:var(--danger);}
   /* brand gate */
@@ -266,6 +270,16 @@
       <span class="brand-lead">แบรนด์ที่กำลังดู</span>
       <div class="cur-brand" id="curBrand">—</div>
     </div>
+    <div>
+      <span class="brand-lead">เมนู</span>
+      <nav class="side-nav" id="sideNav">
+        <a data-t="sec-gmv">GMV &amp; Ads</a>
+        <a data-t="sec-mix">สัดส่วนยอดขายตามช่องทาง</a>
+        <a data-t="sec-stats">ตัวชี้วัดหลัก</a>
+        <a data-t="sec-traffic">การเข้าชม &amp; ROAS</a>
+        <a data-t="sec-prod">อันดับสินค้า</a>
+      </nav>
+    </div>
     <div class="side-foot">
       <span class="online load" id="status">Loading…</span>
       <span style="display:flex;gap:6px"><button class="btn" id="btnRefresh">🔄 Refresh</button><button class="tgl" id="btnCfg">⚙</button><button class="tgl" id="themeToggle">🌙</button></span>
@@ -292,9 +306,9 @@
       <div class="kpi-row" id="kpiRow"></div>
 
       <!-- HERO: GMV multi-line (Total + 3 platforms, toggleable) -->
-      <div class="row" style="grid-template-columns:1fr">
+      <div class="row" id="sec-gmv" style="grid-template-columns:1fr">
         <div class="card pad">
-          <div class="card-h"><span>GMV &amp; ค่าโฆษณา · ดูควบคู่</span></div>
+          <div class="card-h"><span>GMV &amp; Ads</span></div>
           <div class="split2">
             <div>
               <div style="font-weight:700;font-size:13px;color:var(--ink);border-left:3px solid var(--s1);padding-left:8px">ยอดขาย GMV</div>
@@ -317,7 +331,7 @@
         </div>
       </div>
 
-      <div class="sec-label">สัดส่วนยอดขายตามช่องทาง · <span id="mixBrand" style="color:var(--brand-accent,var(--s1))"></span> <span style="font-weight:400;color:var(--muted);text-transform:none">(<span id="mixMonth"></span> · แยกแบรนด์)</span></div>
+      <div class="sec-label" id="sec-mix">สัดส่วนยอดขายตามช่องทาง · <span id="mixBrand" style="color:var(--brand-accent,var(--s1))"></span> <span style="font-weight:400;color:var(--muted);text-transform:none">(<span id="mixMonth"></span> · แยกแบรนด์)</span></div>
       <div class="row" style="grid-template-columns:1fr">
         <div class="card pad">
           <div class="mix-top">
@@ -334,12 +348,12 @@
         </div>
       </div>
 
-      <div class="sec-label">ตัวชี้วัดหลัก · <span id="statsBrand" style="color:var(--brand-accent,var(--s1))"></span> <span style="font-weight:400;color:var(--muted);text-transform:none">(ตามช่วงที่เลือก · แยกแบรนด์)</span></div>
+      <div class="sec-label" id="sec-stats">ตัวชี้วัดหลัก · <span id="statsBrand" style="color:var(--brand-accent,var(--s1))"></span> <span style="font-weight:400;color:var(--muted);text-transform:none">(ตามช่วงที่เลือก · แยกแบรนด์)</span></div>
       <div class="row" id="statsRow" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))"></div>
 
-      <div class="row" style="grid-template-columns:1fr">
+      <div class="row" id="sec-traffic" style="grid-template-columns:1fr">
         <div class="card pad">
-          <div class="card-h"><span>การเข้าชม &amp; ROAS · ดูควบคู่</span>
+          <div class="card-h"><span>การเข้าชม &amp; ROAS</span>
             <span class="tag" id="trafTag"></span>
           </div>
           <div class="split2">
@@ -364,7 +378,7 @@
         </div>
       </div>
 
-      <div class="sec-label" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div class="sec-label" id="sec-prod" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
         <span>อันดับสินค้า · <span id="prBrand" style="color:var(--brand-accent,var(--s1))"></span> <span style="font-weight:400;text-transform:none;color:var(--muted)">(Top 10 · แยก TikTok / Shopee)</span></span>
         <span class="seg sm" id="prLevel" style="text-transform:none"><button data-lv="parent" class="active">ตะกร้า (รายการ)</button><button data-lv="sku">SKU ย่อย</button></span>
         <span style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);text-transform:none;font-weight:400">เรียงตาม <select class="mini" id="prSort"><option value="gmv">ยอดขาย / GMV</option><option value="reach">การเข้าชม / แสดงผล</option><option value="clicks">คลิก</option></select></span>
@@ -1063,6 +1077,12 @@ function stickChk(){const g=$("dashOnly1");if(g)g.classList.toggle("stuck",g.get
 document.addEventListener("scroll",stickChk,true);window.addEventListener("resize",stickChk);
 buildBrandBar();
 setupExpand();
+/* sidebar section navigation (click to scroll + scrollspy) */
+(function(){const nav=$("sideNav");if(!nav)return;const ids=["sec-gmv","sec-mix","sec-stats","sec-traffic","sec-prod"];
+  function smoothScrollTo(ty){ty=Math.max(0,ty);const sy=window.scrollY,d=ty-sy,dur=450,t0=performance.now();(function step(now){const p=Math.min(1,(now-t0)/dur),e=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;window.scrollTo(0,sy+d*e);if(p<1)requestAnimationFrame(step);})(t0);}
+  nav.addEventListener("click",e=>{const a=e.target.closest("a[data-t]");if(!a)return;const el=$(a.dataset.t);if(!el)return;smoothScrollTo(el.getBoundingClientRect().top+window.scrollY-72);nav.querySelectorAll("a").forEach(x=>x.classList.toggle("active",x===a));});
+  const spy=()=>{let cur=ids[0];ids.forEach(id=>{const el=$(id);if(el&&el.getBoundingClientRect().top<=96)cur=id;});nav.querySelectorAll("a").forEach(x=>x.classList.toggle("active",x.dataset.t===cur));};
+  document.addEventListener("scroll",spy,{passive:true});spy();})();
 (async function(){ await loadCore(); populate(); initRange(); renderAll(); await Promise.all([loadAllTraffic(),loadAllProducts()]); renderTrafficSection(); renderProducts2(); })();
 </script>
 </body>
