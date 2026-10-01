@@ -1034,18 +1034,59 @@ shell.style.cssText = 'display:flex;align-items:flex-start;width:100%';
 appEl.parentNode.insertBefore(shell, appEl);
 const aside = document.createElement('aside');
 aside.id = 'upLog';
-aside.style.cssText = 'flex:none;width:236px;position:sticky;top:0;height:100dvh;overflow:auto;border-right:1px solid var(--line);background:var(--surface);padding:16px 13px';
+aside.style.cssText = 'flex:none;width:280px;position:sticky;top:0;height:100dvh;overflow:auto;border-right:1px solid var(--line);background:var(--surface);padding:16px 13px';
+aside.innerHTML = '<div id="upLogSec"></div><div id="prodSec" style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px"></div>';
 shell.appendChild(aside); shell.appendChild(appEl);
 appEl.style.flex = '1'; appEl.style.minWidth = '0';
-const rs = document.createElement('style'); rs.textContent = '@media(max-width:820px){#upLog{display:none}}'; document.head.appendChild(rs);
+const rs = document.createElement('style'); rs.textContent = '@media(max-width:900px){#upLog{display:none}}'; document.head.appendChild(rs);
 
 function renderLog(){
   const log = loadLog();
-  aside.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px"><b style="font-family:var(--f-display);font-size:15px">ประวัติการอัปโหลด</b>' + (log.length ? '<button id="clrLog" class="btn small" type="button">ล้าง</button>' : '') + '</div>' +
+  const host = aside.querySelector('#upLogSec');
+  host.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px"><b style="font-family:var(--f-display);font-size:15px">ประวัติการอัปโหลด</b>' + (log.length ? '<button id="clrLog" class="btn small" type="button">ล้าง</button>' : '') + '</div>' +
     (log.length ? log.map(e => '<div style="border:1px solid var(--line);border-radius:10px;padding:9px 10px;margin-bottom:8px;background:var(--surface-2)"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-weight:700;color:' + (BRAND_COL[e.brand] || 'var(--accent)') + '">' + esc(e.brand) + '</span><span style="font-size:11px;padding:1px 7px;border-radius:999px;background:var(--accent-wash);color:var(--accent);font-weight:500">' + esc(e.platform) + '</span></div><div style="font-size:12px;color:var(--ink-2);margin-top:4px">' + esc(fmtWhen(e.at)) + ' น.</div><div style="font-size:11px;color:var(--muted);margin-top:2px">' + nf.format(e.count || 0) + ' ออเดอร์</div>' + (e.file ? '<div style="font-size:10.5px;color:var(--muted);margin-top:2px;word-break:break-all">' + esc(e.file) + '</div>' : '') + '</div>').join('') : '<div style="font-size:12.5px;color:var(--muted);line-height:1.65">ยังไม่มีประวัติ<br>กด “อัปโหลดไฟล์ออเดอร์” แล้วเลือกแบรนด์/แพลตฟอร์ม เพื่อบันทึก</div>');
-  const c = aside.querySelector('#clrLog'); if (c) c.addEventListener('click', () => { if (confirm('ล้างประวัติการอัปโหลดทั้งหมด?')) { saveLog([]); renderLog(); } });
+  const c = host.querySelector('#clrLog'); if (c) c.addEventListener('click', () => { if (confirm('ล้างประวัติการอัปโหลดทั้งหมด?')) { saveLog([]); renderLog(); } });
 }
 renderLog();
+
+// ---- product summary (per สินค้า/SKU, split by status) for the management report ----
+function productSummary(){
+  const map = new Map();
+  for (const o of (state.orders || [])) {
+    const seen = new Set();
+    for (const it of o.items) {
+      const key = (it.sku || it.name || '').trim(); if (!key) continue;
+      let p = map.get(key); if (!p) { p = { name: it.name || key, sku: it.sku || '', orders:0, units:0, toship:0, shipped:0, done:0, cancel:0, unpaid:0 }; map.set(key, p); }
+      if (it.name) p.name = it.name; if (it.sku) p.sku = it.sku;
+      p.units += it.qty || 0; seen.add(key);
+    }
+    for (const key of seen) {
+      const p = map.get(key); p.orders++;
+      const st = o.stage;
+      if (st === 'toship') p.toship++;
+      else if (st === 'shipping' || st === 'delivered' || st === 'received') p.shipped++;
+      else if (st === 'completed') p.done++;
+      else if (st === 'cancelled') p.cancel++;
+      else if (st === 'unpaid') p.unpaid++;
+    }
+  }
+  return [...map.values()].sort((a, b) => b.orders - a.orders);
+}
+function renderProducts(){
+  const rows = productSummary();
+  const host = aside.querySelector('#prodSec');
+  const totUnits = rows.reduce((a, p) => a + p.units, 0);
+  host.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px"><b style="font-family:var(--f-display);font-size:15px">สรุปสินค้า</b>' + (rows.length ? '<button id="copyProd" class="btn small" type="button">คัดลอกตาราง</button>' : '') + '</div>' +
+    '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">' + (rows.length ? rows.length + ' สินค้า · รวม ' + nf.format(totUnits) + ' ชิ้น · ไว้รีพอร์ตผู้บริหาร' : 'อัปโหลด/โหลดไฟล์เพื่อดูสรุปสินค้า') + '</div>' +
+    rows.map(p => '<div style="border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:7px;background:var(--surface-2)"><div style="font-size:12.5px;font-weight:600;line-height:1.35">' + esc(p.name) + '</div>' + (p.sku ? '<div style="font-size:10.5px;color:var(--muted);font-family:var(--f-mono)">' + esc(p.sku) + '</div>' : '') + '<div style="font-size:11.5px;margin-top:3px"><b>' + nf.format(p.orders) + '</b> ออเดอร์ · <b>' + nf.format(p.units) + '</b> ชิ้น</div><div style="font-size:10.5px;color:var(--ink-2);margin-top:2px;display:flex;flex-wrap:wrap;gap:1px 8px">' + [p.toship ? 'ต้องส่ง ' + nf.format(p.toship) : '', p.shipped ? 'ส่งแล้ว ' + nf.format(p.shipped) : '', p.done ? 'สำเร็จ ' + nf.format(p.done) : '', p.cancel ? '<span style="color:var(--t-cancelled)">ยกเลิก ' + nf.format(p.cancel) + '</span>' : '', p.unpaid ? 'ค้างจ่าย ' + nf.format(p.unpaid) : ''].filter(Boolean).join(' · ') + '</div></div>').join('');
+  const cp = host.querySelector('#copyProd');
+  if (cp) cp.addEventListener('click', () => {
+    const head = ['สินค้า', 'SKU', 'ออเดอร์', 'ชิ้น', 'ต้องส่ง', 'ส่งแล้ว', 'สำเร็จ', 'ยกเลิก', 'ค้างจ่าย'];
+    const tsv = [head.join('\t'), ...rows.map(p => [p.name, p.sku, p.orders, p.units, p.toship, p.shipped, p.done, p.cancel, p.unpaid].join('\t'))].join('\n');
+    copyText(tsv, 'ตารางสรุปสินค้า ' + rows.length + ' รายการ');
+  });
+}
+renderProducts();
 
 function askUpload(){
   return new Promise(resolve => {
@@ -1075,7 +1116,7 @@ const _handleFiles = handleFiles;
 handleFiles = async function(list){ if (!pendingUpload) { const c = await askUpload(); if (!c) return; pendingUpload = c; } return _handleFiles(list); };
 // wrap setData so each REAL upload (not the preloaded sample) is logged
 const _setData = setData;
-setData = function(orders, meta){ _setData(orders, meta); if (meta && meta.sample === false && pendingUpload) { const log = loadLog(); log.unshift({ brand: pendingUpload.brand, platform: pendingUpload.platform, at: Date.now(), count: orders.length, file: meta.file || '' }); saveLog(log); pendingUpload = null; renderLog(); } };
+setData = function(orders, meta){ _setData(orders, meta); renderProducts(); if (meta && meta.sample === false && pendingUpload) { const log = loadLog(); log.unshift({ brand: pendingUpload.brand, platform: pendingUpload.platform, at: Date.now(), count: orders.length, file: meta.file || '' }); saveLog(log); pendingUpload = null; renderLog(); } };
 
 loadSample();
 setTimeout(() => { loadXLSX().catch(() => {}); }, 1500);
