@@ -452,7 +452,7 @@ const COLN = Object.fromEntries(Object.entries(COL).map(([k, a]) => [k, a.map(no
 
 const FLAGS = {
   noTrack:      {label:'รอส่งแต่ยังไม่มีเลขพัสดุ',  test:o => o.stage === 'toship' && !o.tracking},
-  flood:        {label:'พักส่งชั่วคราว (น้ำท่วม)',  test:o => o.stage === 'toship' && o.flood},
+  flood:        {label:'พักส่งชั่วคราว (ขนส่ง On-hold/น้ำท่วม)',  test:o => o.stage === 'toship' && o.flood},
   instant:      {label:'ส่งด่วน',               test:o => o.instant && o.stage !== 'cancelled'},
   cod:          {label:'เก็บเงินปลายทาง',         test:o => o.cod && o.stage !== 'cancelled'},
   lateShip:     {label:'ส่งออกช้ากว่ากำหนด',       test:o => o.lateShip},
@@ -519,7 +519,7 @@ function enrich(o){
   const m = o.statusRaw.match(/(\d{4}-\d{2}-\d{2})/);
   o.returnDeadline = (o.stage === 'received' && m) ? parseDate(m[1] + ' 23:59') : null;
   if (o.tracking === '-') o.tracking = '';
-  o.flood = /น้ำท่วม|flood/i.test(o.shipOpt);
+  o.flood = /น้ำท่วม|flood|on-?hold|arrangement|พักการดำเนินการ|ดำเนินการชั่วคราว/i.test(o.shipOpt);
   o.instant = /instant|ส่งทันที/i.test(o.shipOpt);
   o.cod = /ปลายทาง|\bcod\b|cash on delivery/i.test(o.pay);
   o.qty = o.items.reduce((a, b) => a + b.qty, 0);
@@ -583,7 +583,7 @@ function subs(o){
   switch (o.stage) {
     case 'toship':
       s.push(o.tracking ? {text:'มีเลขพัสดุแล้ว รอขนส่งเข้ารับ'} : {text:'ยังไม่มีเลขพัสดุ', tone:'warn'});
-      if (o.flood) s.push({text:'พักส่งชั่วคราว: น้ำท่วม', tone:'warn'});
+      if (o.flood) s.push({text:'พักส่งชั่วคราว (ขนส่ง On-hold / น้ำท่วม)', tone:'warn'});
       break;
     case 'shipping': s.push({text:'อยู่ระหว่างขนส่ง'}); break;
     case 'delivered': s.push({text:'ถึงผู้ซื้อแล้ว รอกดยืนยัน'}); break;
