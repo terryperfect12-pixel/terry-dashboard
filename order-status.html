@@ -1111,6 +1111,14 @@ function askUpload(){
 const upBtn = $('#uploadBtn'), upClone = upBtn.cloneNode(true);
 upBtn.parentNode.replaceChild(upClone, upBtn);
 upClone.addEventListener('click', async () => { const c = await askUpload(); if (!c) return; pendingUpload = c; $('#file').click(); });
+// move the upload controls + file-source box into the LEFT rail (top) so the main area's
+// top reads as a clean status report (title + summary + tiles) for screenshotting.
+const uploadBox = upClone.closest('.upload'), srcBox = document.querySelector('.source');
+const railTop = document.createElement('div');
+railTop.style.cssText = 'display:flex;flex-direction:column;gap:12px;margin-bottom:18px';
+aside.insertBefore(railTop, aside.firstChild);
+if (uploadBox) { uploadBox.style.justifyItems = 'stretch'; upClone.style.width = '100%'; upClone.style.justifyContent = 'center'; railTop.appendChild(uploadBox); }
+if (srcBox) { srcBox.style.flexDirection = 'column'; srcBox.style.alignItems = 'stretch'; srcBox.style.gap = '8px'; railTop.appendChild(srcBox); }
 // wrap handleFiles (also covers drag-drop) so a choice is always captured
 const _handleFiles = handleFiles;
 handleFiles = async function(list){ if (!pendingUpload) { const c = await askUpload(); if (!c) return; pendingUpload = c; } return _handleFiles(list); };
