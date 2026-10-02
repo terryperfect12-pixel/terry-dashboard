@@ -36,6 +36,16 @@
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.55}
 button,input,select,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+button:not(:disabled){transition:transform .12s cubic-bezier(.22,1,.36,1),background-color .15s,border-color .15s,color .15s,box-shadow .18s}
+button:not(:disabled):active{transform:scale(.97)}
+.col:disabled{cursor:default}
+.ob-n{white-space:nowrap}
+@keyframes dropFade{from{opacity:0}to{opacity:1}}
+@keyframes dropPop{0%{transform:scale(.9);opacity:0}60%{transform:scale(1.02)}100%{transform:scale(1);opacity:1}}
+@keyframes dashPulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 38%,transparent)}50%{box-shadow:0 0 0 16px color-mix(in srgb,var(--accent) 0%,transparent)}}
+.drop{animation:dropFade .18s ease both}
+.drop div{animation:dropPop .34s cubic-bezier(.22,1,.36,1) both,dashPulse 1.5s ease-in-out .34s infinite}
+@media (prefers-reduced-motion:reduce){*,::before,::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
 .wrap{max-width:1260px;margin:0 auto;padding:28px 20px 64px;display:grid;gap:22px}
 h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:-.005em}
 small{font-size:12px}
@@ -145,7 +155,7 @@ details.howto summary{cursor:pointer;font-weight:500;color:var(--ink-2)}
 #orderLegend li{cursor:pointer;padding:3px 9px;border-radius:999px;border:1px solid var(--line);transition:background .12s,border-color .12s;user-select:none}
 #orderLegend li:hover{background:var(--surface-2)}
 #orderLegend li.sel{background:var(--accent-wash);border-color:color-mix(in srgb,var(--c) 70%,var(--line));font-weight:600;color:var(--ink)}
-.ob.foc .ob-row{grid-template-columns:86px minmax(0,1fr) 62px}
+.ob.foc .ob-row{grid-template-columns:86px minmax(0,1fr) 74px}
 .ob.foc .ob-bar i:not(.foc){opacity:.14}
 .ob.foc .ob-row.dim{opacity:.45}
 .ob-foc{display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;margin:0 0 11px;font-size:12.5px;color:var(--ink-2);line-height:1.5}
@@ -175,7 +185,7 @@ details.howto summary{cursor:pointer;font-weight:500;color:var(--ink-2)}
 .cxd-bar{display:flex;gap:2px;height:15px;border-radius:4px;overflow:hidden;min-width:2px}
 .cxd-bar i{display:block;min-width:2px}
 .cxd-sub{font-size:11.5px;color:var(--ink-2);display:flex;flex-wrap:wrap;gap:1px 10px}
-.cxd .warnTx{color:#e5484d;font-weight:600}
+.cxd .warnTx{color:var(--crit-ink);font-weight:600}
 .callouts{display:flex;flex-wrap:wrap;gap:8px}
 .callout{display:flex;gap:8px;align-items:center;text-align:left;border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px;color:var(--ink-2)}
 .callout b{color:var(--ink)}
@@ -285,7 +295,7 @@ select{border:1px solid var(--line-2);border-radius:8px;background:var(--surface
   .upload{justify-items:start}
   .hint{text-align:left}
   .ob-row,.ob-axis{grid-template-columns:72px minmax(0,1fr) 40px;gap:8px}
-  .ob.foc .ob-row{grid-template-columns:72px minmax(0,1fr) 54px}
+  .ob.foc .ob-row{grid-template-columns:72px minmax(0,1fr) 64px}
 }
 @media (prefers-reduced-motion: reduce){ *{transition:none!important;animation:none!important} }
 </style>
@@ -816,7 +826,7 @@ const OB_CATS = ['delivered','shipping','overdue','today','upcoming','unpaid','c
 const obCat = o => o.tag === 'completed' ? 'delivered' : o.tag;
 const obLabel = t => t === 'delivered' ? 'ส่งถึงแล้ว/สำเร็จ' : TAGS[t].label;
 // who cancelled → colour (for the daily-cancellation panel)
-const WHO = { buyer:{label:'ผู้ซื้อยกเลิก',c:'#3987e5'}, system:{label:'ระบบยกเลิกอัตโนมัติ',c:'#8b8a84'}, seller:{label:'ผู้ขายยกเลิก',c:'#e5484d'}, other:{label:'อื่นๆ',c:'#c7c6bf'} };
+const WHO = { buyer:{label:'ผู้ซื้อยกเลิก',c:'var(--t-upcoming)'}, system:{label:'ระบบยกเลิกอัตโนมัติ',c:'var(--t-today)'}, seller:{label:'ผู้ขายยกเลิก',c:'var(--t-overdue)'}, other:{label:'อื่นๆ',c:'var(--muted)'} };
 function cancelByDayData(){
   const cs = state.orders.filter(o => o.stage === 'cancelled' && o.orderAt);
   const totalByDay = new Map();
@@ -1169,6 +1179,7 @@ async function openUpload(id){
 // left rail: move #app into a flex shell and prepend an <aside>
 const appEl = $('#app');
 const shell = document.createElement('div');
+shell.id = 'appShell';
 shell.style.cssText = 'display:flex;align-items:flex-start;width:100%';
 appEl.parentNode.insertBefore(shell, appEl);
 const aside = document.createElement('aside');
@@ -1177,7 +1188,7 @@ aside.style.cssText = 'flex:none;width:280px;position:sticky;top:0;height:100dvh
 aside.innerHTML = '<div id="upLogSec"></div><div id="prodSec" style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px"></div>';
 shell.appendChild(aside); shell.appendChild(appEl);
 appEl.style.flex = '1'; appEl.style.minWidth = '0';
-const rs = document.createElement('style'); rs.textContent = '@media(max-width:900px){#upLog{display:none}} .upEntry{transition:border-color .12s,background .12s} .upEntry[data-upid]:hover{border-color:var(--accent)}'; document.head.appendChild(rs);
+const rs = document.createElement('style'); rs.textContent = '@media(max-width:900px){#appShell{flex-direction:column}#upLog{flex:none!important;width:auto!important;position:static!important;height:auto!important;max-height:58vh;border-right:none;border-bottom:1px solid var(--line)}#shipChart,#orderChart,#cancelChart,#cxDayChart{min-width:0}.panel>*{min-width:0}} .upEntry{transition:border-color .12s,background .12s} .upEntry[data-upid]:hover{border-color:var(--accent)}'; document.head.appendChild(rs);
 
 function renderLog(){
   const log = loadLog();
