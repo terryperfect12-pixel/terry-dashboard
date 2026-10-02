@@ -140,7 +140,16 @@ details.howto summary{cursor:pointer;font-weight:500;color:var(--ink-2)}
 .ob-track{display:block;min-width:0}
 .ob-bar{display:flex;gap:2px;height:20px;border-radius:0 4px 4px 0;overflow:hidden}
 .ob-n{font-size:13px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.ob-n b{color:color-mix(in srgb,var(--c) 82%,var(--ink))} .ob-n small{color:var(--muted);font-weight:400;font-size:11px}
 .ob-axis{display:grid;grid-template-columns:86px minmax(0,1fr) 46px;gap:10px;padding:0 4px;font-size:12px;color:var(--muted)}
+#orderLegend li{cursor:pointer;padding:3px 9px;border-radius:999px;border:1px solid var(--line);transition:background .12s,border-color .12s;user-select:none}
+#orderLegend li:hover{background:var(--surface-2)}
+#orderLegend li.sel{background:var(--accent-wash);border-color:color-mix(in srgb,var(--c) 70%,var(--line));font-weight:600;color:var(--ink)}
+.ob.foc .ob-row{grid-template-columns:86px minmax(0,1fr) 62px}
+.ob.foc .ob-bar i:not(.foc){opacity:.14}
+.ob.foc .ob-row.dim{opacity:.45}
+.ob-foc{display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;margin:0 0 11px;font-size:12.5px;color:var(--ink-2);line-height:1.5}
+.ob-foc b{display:inline-flex;align-items:center;gap:5px;color:var(--ink)}
 
 .cx{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:18px 32px}
 .cx-group{display:grid;gap:4px;align-content:start;min-width:0}
@@ -261,6 +270,7 @@ select{border:1px solid var(--line-2);border-radius:8px;background:var(--surface
   .upload{justify-items:start}
   .hint{text-align:left}
   .ob-row,.ob-axis{grid-template-columns:72px minmax(0,1fr) 40px;gap:8px}
+  .ob.foc .ob-row{grid-template-columns:72px minmax(0,1fr) 54px}
 }
 @media (prefers-reduced-motion: reduce){ *{transition:none!important;animation:none!important} }
 </style>
@@ -460,7 +470,7 @@ const FLAGS = {
   sellerLate:   {label:'ระบบยกเลิกเพราะส่งไม่ทัน',   test:o => !!(o.cancel && o.cancel.sellerFault)}
 };
 
-const state = { orders:[], meta:null, now:new Date(), tag:null, shipDay:null, orderDay:null, reason:null, flag:null, q:'', sort:'urgent', limit:100, current:[] };
+const state = { orders:[], meta:null, now:new Date(), tag:null, shipDay:null, orderDay:null, obStatus:null, reason:null, flag:null, q:'', sort:'urgent', limit:100, current:[] };
 
 /* ---------- parsing ---------- */
 function parseDate(v){
@@ -789,16 +799,27 @@ function renderOrderChart(){
     const c = obCat(o); b[c] = (b[c] || 0) + 1; b.total++;
   }
   const present = OB_CATS.filter(c => [...byDay.values()].some(b => b[c]));
-  $('#orderLegend').innerHTML = present.map(t => `<li class="t-${t}"><span class="sw"></span>${obLabel(t)}</li>`).join('');
+  const foc = state.obStatus && present.includes(state.obStatus) ? state.obStatus : null;
+  $('#orderLegend').innerHTML = present.map(t => `<li class="t-${t}${foc === t ? ' sel' : ''}" data-obc="${t}" role="button" tabindex="0" title="ดูเฉพาะ ${esc(obLabel(t))} แยกตามวันสั่งซื้อ"><span class="sw"></span>${obLabel(t)}</li>`).join('');
   const keys = [...byDay.keys()].sort(), max = Math.max(...[...byDay.values()].map(b => b.total));
-  el.innerHTML = `<div class="ob${state.orderDay ? ' has-sel' : ''}">${keys.map(k => {
+  const focTotal = foc ? keys.reduce((a, k) => a + (byDay.get(k)[foc] || 0), 0) : 0;
+  const focBar = foc ? `<div class="ob-foc"><span>กำลังดู <b class="t-${foc}"><span class="sw"></span>${obLabel(foc)}</b> แยกตามวันสั่งซื้อ · ตัวเลขขวา = จำนวนของวันนั้น · รวม ${nf.format(focTotal)} ออเดอร์</span><button type="button" class="btn small" id="copyObDay">${svg('table')}คัดลอกตารางรายวัน</button></div>` : '';
+  el.innerHTML = focBar + `<div class="ob${state.orderDay ? ' has-sel' : ''}${foc ? ' foc' : ''}">${keys.map(k => {
     const d = keyToDate(k), b = byDay.get(k);
-    return `<button type="button" class="ob-row${state.orderDay === k ? ' sel' : ''}" data-oday="${k}" aria-label="สั่งซื้อ ${esc(fmtDay(d))} ${b.total} ออเดอร์">
+    return `<button type="button" class="ob-row${state.orderDay === k ? ' sel' : ''}${foc && !b[foc] ? ' dim' : ''}" data-oday="${k}" aria-label="สั่งซื้อ ${esc(fmtDay(d))} ${b.total} ออเดอร์${foc ? ` (${obLabel(foc)} ${b[foc] || 0})` : ''}">
       <span class="ob-label">${fmtDay(d)}</span>
       <span class="ob-track"><span class="ob-bar" style="width:${(b.total / max * 100).toFixed(2)}%">${present.filter(c => b[c]).map(c =>
-        `<i class="t-${c}" style="flex:${b[c]} 1 0" data-tip="${esc(`<b>สั่งซื้อ ${fmtDay(d)}</b><br>${obLabel(c)} ${nf.format(b[c])} จาก ${nf.format(b.total)} ออเดอร์ (${Math.round(b[c] / b.total * 100)}%)`)}"></i>`).join('')}</span></span>
-      <span class="ob-n">${nf.format(b.total)}</span></button>`;
+        `<i class="t-${c}${foc === c ? ' foc' : ''}" style="flex:${b[c]} 1 0" data-tip="${esc(`<b>สั่งซื้อ ${fmtDay(d)}</b><br>${obLabel(c)} ${nf.format(b[c])} จาก ${nf.format(b.total)} ออเดอร์ (${Math.round(b[c] / b.total * 100)}%)`)}"></i>`).join('')}</span></span>
+      <span class="ob-n">${foc ? `<b class="t-${foc}">${nf.format(b[foc] || 0)}</b><small>/${nf.format(b.total)}</small>` : nf.format(b.total)}</span></button>`;
   }).join('')}</div>`;
+  const cp = el.querySelector('#copyObDay');
+  if (cp) cp.addEventListener('click', () => {
+    const head = ['วันที่สั่งซื้อ', 'วัน', 'จำนวน ' + obLabel(foc), 'รวมทั้งวัน', 'สัดส่วน%'];
+    const body = keys.map(k => { const b = byDay.get(k), n = b[foc] || 0; return [k, fmtDay(keyToDate(k)), n, b.total, b.total ? Math.round(n / b.total * 100) : 0].join('\t'); });
+    const totAll = keys.reduce((a, k) => a + byDay.get(k).total, 0);
+    body.push(['รวม', '', focTotal, totAll, totAll ? Math.round(focTotal / totAll * 100) : 0].join('\t'));
+    copyText([head.join('\t'), ...body].join('\n'), 'ตาราง ' + obLabel(foc) + ' รายวันสั่งซื้อ ' + keys.length + ' วัน');
+  });
 }
 
 function renderCancel(){
@@ -837,6 +858,7 @@ function filtered(){
     if (state.tag) { if (state.tag === 'return') { if (!o.isReturn) return false; } else if (o.tag !== state.tag) return false; }
     if (state.shipDay && !(o.stage === 'toship' && o.shipBy && dayKey(o.shipBy) === state.shipDay)) return false;
     if (state.orderDay && !(o.orderAt && dayKey(o.orderAt) === state.orderDay)) return false;
+    if (state.obStatus && obCat(o) !== state.obStatus) return false;
     if (state.reason && !(o.cancel && `${o.cancel.by}|${o.cancel.reason}` === state.reason)) return false;
     if (state.flag && !FLAGS[state.flag].test(o)) return false;
     if (q && !o.search.includes(q)) return false;
@@ -924,6 +946,7 @@ function renderActive(){
   if (state.tag) a.push(['tag', `แท็ก: ${TAGS[state.tag].label}`]);
   if (state.shipDay) a.push(['shipDay', `กำหนดส่ง ${fmtDay(keyToDate(state.shipDay))}`]);
   if (state.orderDay) a.push(['orderDay', `สั่งซื้อ ${fmtDay(keyToDate(state.orderDay))}`]);
+  if (state.obStatus) a.push(['obStatus', `สถานะรายวันสั่งซื้อ: ${obLabel(state.obStatus)}`]);
   if (state.reason) a.push(['reason', `เหตุผลยกเลิก: ${state.reason.split('|')[1]}`]);
   if (state.flag) a.push(['flag', FLAGS[state.flag].label]);
   if (state.q.trim()) a.push(['q', `ค้นหา: ${state.q.trim()}`]);
@@ -968,15 +991,18 @@ $('#uploadBtn').innerHTML = `${svg('upload')}อัปโหลดไฟล์�
 $('#searchIc').innerHTML = svg('search');
 $('#uploadBtn').addEventListener('click', () => $('#file').click());
 $('#file').addEventListener('change', e => { if (e.target.files.length) handleFiles(e.target.files); e.target.value = ''; });
-$('#tiles').addEventListener('click', e => { const b = e.target.closest('[data-tag]'); if (!b) return; state.tag = state.tag === b.dataset.tag ? null : b.dataset.tag; refilter(); });
+$('#tiles').addEventListener('click', e => { const b = e.target.closest('[data-tag]'); if (!b) return; state.tag = state.tag === b.dataset.tag ? null : b.dataset.tag; if (state.tag) state.obStatus = null; refilter(); });
 $('#shipChart').addEventListener('click', e => { const b = e.target.closest('[data-ship]'); if (!b) return; state.shipDay = state.shipDay === b.dataset.ship ? null : b.dataset.ship; refilter(); });
 $('#orderChart').addEventListener('click', e => { const b = e.target.closest('[data-oday]'); if (!b) return; state.orderDay = state.orderDay === b.dataset.oday ? null : b.dataset.oday; refilter(); });
+const focStatus = v => { state.obStatus = state.obStatus === v ? null : v; if (state.obStatus) state.tag = null; refilter(); };
+$('#orderLegend').addEventListener('click', e => { const b = e.target.closest('[data-obc]'); if (b) focStatus(b.dataset.obc); });
+$('#orderLegend').addEventListener('keydown', e => { if (e.key !== 'Enter' && e.key !== ' ') return; const b = e.target.closest('[data-obc]'); if (!b) return; e.preventDefault(); focStatus(b.dataset.obc); });
 $('#cancelChart').addEventListener('click', e => { const b = e.target.closest('[data-reason]'); if (!b) return; state.reason = state.reason === b.dataset.reason ? null : b.dataset.reason; refilter(); });
 document.addEventListener('click', e => { const b = e.target.closest('[data-flag]'); if (!b) return; state.flag = state.flag === b.dataset.flag ? null : b.dataset.flag; refilter(); });
 $('#active').addEventListener('click', e => {
   const b = e.target.closest('[data-clear]'); if (!b) return;
   const k = b.dataset.clear;
-  if (k === 'all') Object.assign(state, {tag:null, shipDay:null, orderDay:null, reason:null, flag:null, q:''});
+  if (k === 'all') Object.assign(state, {tag:null, shipDay:null, orderDay:null, obStatus:null, reason:null, flag:null, q:''});
   else state[k] = k === 'q' ? '' : null;
   if (k === 'q' || k === 'all') $('#q').value = '';
   refilter();
