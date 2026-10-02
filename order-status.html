@@ -1272,7 +1272,7 @@ if (uploadBox) { uploadBox.style.justifyItems = 'stretch'; upClone.style.width =
 if (srcBox) { srcBox.style.flexDirection = 'column'; srcBox.style.alignItems = 'stretch'; srcBox.style.gap = '8px'; railTop.appendChild(srcBox); }
 // wrap handleFiles (also covers drag-drop) so a choice is always captured
 const _handleFiles = handleFiles;
-handleFiles = async function(list){ if (!pendingUpload) { const c = await askUpload(); if (!c) return; pendingUpload = c; } pendingFiles = [...list].filter(f => /\.(xlsx|xls|csv)$/i.test(f.name)); return _handleFiles(list); };
+handleFiles = async function(list){ const files = [...list]; if (!pendingUpload) { const c = await askUpload(); if (!c) return; pendingUpload = c; } pendingFiles = files.filter(f => /\.(xlsx|xls|csv)$/i.test(f.name)); return _handleFiles(files); };
 // wrap setData so each REAL upload (not the preloaded sample) is logged AND its raw file saved for re-opening
 const _setData = setData;
 setData = function(orders, meta){ _setData(orders, meta); renderProducts(); if (meta && meta.sample === false && pendingUpload) { const at = Date.now(), id = 'up_' + at + '_' + Math.random().toString(36).slice(2, 7); const log = loadLog(); log.unshift({ id, brand: pendingUpload.brand, platform: pendingUpload.platform, at, count: orders.length, file: meta.file || '' }); saveLog(log); if (pendingFiles && pendingFiles.length) storeUploadFiles(id, pendingFiles).catch(() => {}); activeUploadId = id; pendingUpload = null; pendingFiles = null; renderLog(); } };
