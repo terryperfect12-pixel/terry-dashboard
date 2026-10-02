@@ -109,7 +109,7 @@ details.howto summary{cursor:pointer;font-weight:500;color:var(--ink-2)}
 /* panels + charts */
 .panels{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:18px}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px 18px;min-width:0;display:grid;gap:12px;align-content:start}
-#shipPanel{grid-column:span 7} #orderPanel{grid-column:span 5} #cancelPanel{grid-column:1/-1}
+#shipPanel{grid-column:span 7} #orderPanel{grid-column:span 5} #cancelPanel{grid-column:1/-1} #cxDayPanel{grid-column:1/-1}
 .panel h2{font-size:18px;font-weight:600}
 .panel .sub-h{margin:2px 0 0;color:var(--muted);font-size:13px}
 .legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--ink-2);margin:0;padding:0;list-style:none}
@@ -161,6 +161,21 @@ details.howto summary{cursor:pointer;font-weight:500;color:var(--ink-2)}
 .cx-label{font-size:13px;line-height:1.35;min-width:0}
 .cx-bar{display:block;height:12px;border-radius:0 4px 4px 0;background:var(--c);min-width:2px}
 .cx-n{text-align:right;font-weight:600;font-variant-numeric:tabular-nums;font-size:13px}
+.cxd-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#cxDaySub b{color:var(--ink);font-variant-numeric:tabular-nums}
+.cxd{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:8px 16px}
+.cxd-row{display:grid;gap:5px;align-content:start;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:9px 11px;text-align:left;cursor:pointer;transition:border-color .12s,background .12s}
+.cxd-row:hover{border-color:var(--line-2)}
+.cxd-row.sel{background:var(--accent-wash);border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.cxd-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.cxd-label{font-size:13.5px;font-weight:600}
+.cxd-n{font-variant-numeric:tabular-nums;font-size:14px;white-space:nowrap}
+.cxd-n b{font-size:17px} .cxd-n small{color:var(--muted);font-weight:400;font-size:11.5px}
+.cxd-track{display:block}
+.cxd-bar{display:flex;gap:2px;height:15px;border-radius:4px;overflow:hidden;min-width:2px}
+.cxd-bar i{display:block;min-width:2px}
+.cxd-sub{font-size:11.5px;color:var(--ink-2);display:flex;flex-wrap:wrap;gap:1px 10px}
+.cxd .warnTx{color:#e5484d;font-weight:600}
 .callouts{display:flex;flex-wrap:wrap;gap:8px}
 .callout{display:flex;gap:8px;align-items:center;text-align:left;border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px;color:var(--ink-2)}
 .callout b{color:var(--ink)}
@@ -323,6 +338,17 @@ select{border:1px solid var(--line-2);border-radius:8px;background:var(--surface
       </div>
       <ul class="legend" id="orderLegend"></ul>
       <div id="orderChart"></div>
+    </article>
+    <article class="panel" id="cxDayPanel">
+      <div class="cxd-head">
+        <div>
+          <h2>ยกเลิกรายวัน (ตามวันที่สั่งซื้อ)</h2>
+          <p class="sub-h" id="cxDaySub"></p>
+        </div>
+        <button class="btn small" type="button" id="copyCxDay"></button>
+      </div>
+      <ul class="legend" id="cxDayLegend"></ul>
+      <div id="cxDayChart"></div>
     </article>
     <article class="panel" id="cancelPanel">
       <div>
@@ -789,6 +815,47 @@ function renderShip(){
 const OB_CATS = ['delivered','shipping','overdue','today','upcoming','unpaid','cancelled','other'];
 const obCat = o => o.tag === 'completed' ? 'delivered' : o.tag;
 const obLabel = t => t === 'delivered' ? 'ส่งถึงแล้ว/สำเร็จ' : TAGS[t].label;
+// who cancelled → colour (for the daily-cancellation panel)
+const WHO = { buyer:{label:'ผู้ซื้อยกเลิก',c:'#3987e5'}, system:{label:'ระบบยกเลิกอัตโนมัติ',c:'#8b8a84'}, seller:{label:'ผู้ขายยกเลิก',c:'#e5484d'}, other:{label:'อื่นๆ',c:'#c7c6bf'} };
+function cancelByDayData(){
+  const cs = state.orders.filter(o => o.stage === 'cancelled' && o.orderAt);
+  const totalByDay = new Map();
+  for (const o of state.orders) if (o.orderAt) { const k = dayKey(o.orderAt); totalByDay.set(k, (totalByDay.get(k) || 0) + 1); }
+  const byDay = new Map();
+  for (const o of cs) {
+    const k = dayKey(o.orderAt);
+    let b = byDay.get(k); if (!b) byDay.set(k, b = {total:0, buyer:0, system:0, seller:0, other:0, paid:0, unpaid:0, tracked:0, sellerFault:0});
+    b.total++; b[o.cancel.by] = (b[o.cancel.by] || 0) + 1;
+    if (o.paidAt) b.paid++; else b.unpaid++;
+    if (o.tracking) b.tracked++;
+    if (o.cancel.sellerFault) b.sellerFault++;
+  }
+  const keys = [...byDay.keys()].sort();
+  const whoTot = {buyer:0, system:0, seller:0, other:0}; for (const o of cs) whoTot[o.cancel.by]++;
+  const sum = f => keys.reduce((a, k) => a + f(byDay.get(k)), 0);
+  return { cs, byDay, totalByDay, keys, whoTot, grand: cs.length,
+    paid: sum(b => b.paid), unpaid: sum(b => b.unpaid), tracked: sum(b => b.tracked), sellerFault: sum(b => b.sellerFault),
+    totAll: keys.reduce((a, k) => a + (totalByDay.get(k) || 0), 0) };
+}
+function renderCancelByDay(){
+  const el = $('#cxDayChart'), D = cancelByDayData();
+  if (!D.cs.length) { el.innerHTML = '<p class="empty">ไม่มีออเดอร์ที่ถูกยกเลิก</p>'; $('#cxDaySub').textContent = ''; $('#cxDayLegend').innerHTML = ''; return; }
+  const { byDay, totalByDay, keys, whoTot, grand } = D;
+  const max = Math.max(...keys.map(k => byDay.get(k).total));
+  $('#cxDaySub').innerHTML = `ยกเลิกรวม <b>${nf.format(grand)}</b> ออเดอร์ (${Math.round(grand / (D.totAll || 1) * 100)}% ของทั้งหมด) · จ่ายเงินแล้วก่อนยกเลิก <b>${nf.format(D.paid)}</b> · ยังไม่จ่าย <b>${nf.format(D.unpaid)}</b> · ยกเลิกหลังออกเลขพัสดุ <b>${nf.format(D.tracked)}</b> · ระบบยกเลิกเพราะร้านส่งไม่ทัน <b>${nf.format(D.sellerFault)}</b> · แตะวันเพื่อดูรายการที่ยกเลิกของวันนั้น`;
+  const present = ['buyer','system','seller','other'].filter(w => whoTot[w]);
+  $('#cxDayLegend').innerHTML = present.map(w => `<li><span class="sw" style="background:${WHO[w].c}"></span>${WHO[w].label} ${nf.format(whoTot[w])}</li>`).join('');
+  const selDay = state.obStatus === 'cancelled' ? state.orderDay : null;
+  el.innerHTML = `<div class="cxd">` + keys.map(k => {
+    const d = keyToDate(k), b = byDay.get(k), dayTot = totalByDay.get(k) || 0, pct = dayTot ? Math.round(b.total / dayTot * 100) : 0;
+    const seg = present.filter(w => b[w]).map(w => `<i style="flex:${b[w]} 1 0;background:${WHO[w].c}" data-tip="${esc(`<b>สั่งซื้อ ${fmtDay(d)}</b><br>${WHO[w].label} ${nf.format(b[w])} / ยกเลิกทั้งวัน ${nf.format(b.total)}`)}"></i>`).join('');
+    const sub = [b.paid ? `จ่ายแล้ว ${nf.format(b.paid)}` : '', b.unpaid ? `ยังไม่จ่าย ${nf.format(b.unpaid)}` : '', b.tracked ? `หลังออกเลขพัสดุ ${nf.format(b.tracked)}` : '', b.sellerFault ? `<span class="warnTx">ส่งไม่ทัน ${nf.format(b.sellerFault)}</span>` : ''].filter(Boolean).join(' · ');
+    return `<button type="button" class="cxd-row${selDay === k ? ' sel' : ''}" data-oday="${k}" aria-label="สั่งซื้อ ${esc(fmtDay(d))} ยกเลิก ${b.total} จาก ${dayTot}">
+      <div class="cxd-top"><span class="cxd-label">${fmtDay(d)}</span><span class="cxd-n"><b>${nf.format(b.total)}</b><small> /${nf.format(dayTot)} · ${pct}%</small></span></div>
+      <span class="cxd-track"><span class="cxd-bar" style="width:${(b.total / max * 100).toFixed(2)}%">${seg}</span></span>
+      ${sub ? `<div class="cxd-sub">${sub}</div>` : ''}</button>`;
+  }).join('') + `</div>`;
+}
 function renderOrderChart(){
   const os = state.orders.filter(o => o.orderAt), el = $('#orderChart');
   if (!os.length) { el.innerHTML = '<p class="empty">ไม่มีข้อมูลวันที่สั่งซื้อ</p>'; $('#orderLegend').innerHTML = ''; return; }
@@ -966,8 +1033,8 @@ function renderList(){
   $('#copyIds').disabled = $('#copyTable').disabled = !list.length;
   renderActive();
 }
-function renderAll(){ renderHeader(); renderTiles(); renderShip(); renderOrderChart(); renderCancel(); renderFlags(); renderList(); }
-function refilter(){ state.limit = 100; renderTiles(); renderShip(); renderOrderChart(); renderCancel(); renderFlags(); renderList(); }
+function renderAll(){ renderHeader(); renderTiles(); renderShip(); renderOrderChart(); renderCancelByDay(); renderCancel(); renderFlags(); renderList(); }
+function refilter(){ state.limit = 100; renderTiles(); renderShip(); renderOrderChart(); renderCancelByDay(); renderCancel(); renderFlags(); renderList(); }
 
 /* ---------- copy ---------- */
 let toastT;
@@ -989,6 +1056,7 @@ function tableTSV(list){
 /* ---------- events ---------- */
 $('#uploadBtn').innerHTML = `${svg('upload')}อัปโหลดไฟล์ออเดอร์`;
 $('#searchIc').innerHTML = svg('search');
+$('#copyCxDay').innerHTML = `${svg('table')}คัดลอกตาราง`;
 $('#uploadBtn').addEventListener('click', () => $('#file').click());
 $('#file').addEventListener('change', e => { if (e.target.files.length) handleFiles(e.target.files); e.target.value = ''; });
 $('#tiles').addEventListener('click', e => { const b = e.target.closest('[data-tag]'); if (!b) return; state.tag = state.tag === b.dataset.tag ? null : b.dataset.tag; if (state.tag) state.obStatus = null; refilter(); });
@@ -997,6 +1065,16 @@ $('#orderChart').addEventListener('click', e => { const b = e.target.closest('[d
 const focStatus = v => { state.obStatus = state.obStatus === v ? null : v; if (state.obStatus) state.tag = null; refilter(); };
 $('#orderLegend').addEventListener('click', e => { const b = e.target.closest('[data-obc]'); if (b) focStatus(b.dataset.obc); });
 $('#orderLegend').addEventListener('keydown', e => { if (e.key !== 'Enter' && e.key !== ' ') return; const b = e.target.closest('[data-obc]'); if (!b) return; e.preventDefault(); focStatus(b.dataset.obc); });
+// daily-cancellation panel: tap a day → show that day's cancelled orders in the list
+$('#cxDayChart').addEventListener('click', e => { const b = e.target.closest('[data-oday]'); if (!b) return; const k = b.dataset.oday; const on = state.orderDay === k && state.obStatus === 'cancelled'; if (on) { state.orderDay = null; state.obStatus = null; } else { state.orderDay = k; state.obStatus = 'cancelled'; state.tag = null; } refilter(); });
+$('#copyCxDay').addEventListener('click', () => {
+  const D = cancelByDayData(); if (!D.keys.length) return;
+  const head = ['วันที่สั่งซื้อ','วัน','ยกเลิก','รวมทั้งวัน','%ยกเลิก','ผู้ซื้อยกเลิก','ระบบยกเลิก','ผู้ขายยกเลิก','อื่นๆ','จ่ายแล้วก่อนยกเลิก','ยังไม่จ่าย','หลังออกเลขพัสดุ','ร้านส่งไม่ทัน'];
+  const line = (dk, dl, b, tot) => [dk, dl, b.total, tot, tot ? Math.round(b.total / tot * 100) : 0, b.buyer, b.system, b.seller, b.other, b.paid, b.unpaid, b.tracked, b.sellerFault].join('\t');
+  const body = D.keys.map(k => line(k, fmtDay(keyToDate(k)), D.byDay.get(k), D.totalByDay.get(k) || 0));
+  body.push(line('รวม', '', {total:D.grand, buyer:D.whoTot.buyer, system:D.whoTot.system, seller:D.whoTot.seller, other:D.whoTot.other, paid:D.paid, unpaid:D.unpaid, tracked:D.tracked, sellerFault:D.sellerFault}, D.totAll));
+  copyText([head.join('\t'), ...body].join('\n'), 'ตารางยกเลิกรายวัน ' + D.keys.length + ' วัน');
+});
 $('#cancelChart').addEventListener('click', e => { const b = e.target.closest('[data-reason]'); if (!b) return; state.reason = state.reason === b.dataset.reason ? null : b.dataset.reason; refilter(); });
 document.addEventListener('click', e => { const b = e.target.closest('[data-flag]'); if (!b) return; state.flag = state.flag === b.dataset.flag ? null : b.dataset.flag; refilter(); });
 $('#active').addEventListener('click', e => {
