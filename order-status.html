@@ -1129,7 +1129,42 @@ const BRAND_COL = { Benutra:'#16a34a', Terry:'#2563eb', Gala:'#e11d48' };
 const loadLog = () => { try { return JSON.parse(localStorage.getItem(UP_KEY) || '[]'); } catch { return []; } };
 const saveLog = a => { try { localStorage.setItem(UP_KEY, JSON.stringify(a.slice(0, 80))); } catch {} };
 const fmtWhen = at => new Date(at).toLocaleString('th-TH-u-ca-gregory', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
-let pendingUpload = null;
+let pendingUpload = null, pendingFiles = null, activeUploadId = null;
+
+// ---- remember each uploaded file (raw bytes) in IndexedDB so a history entry re-opens its data WITHOUT re-uploading ----
+const IDB_NAME = 'orderTagStore', IDB_STORE = 'files', STORE_KEEP = 40;
+let _dbP = null;
+function idb(){ if (_dbP) return _dbP; _dbP = new Promise((res, rej) => { const r = indexedDB.open(IDB_NAME, 1); r.onupgradeneeded = () => { const db = r.result; if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE, { keyPath:'id' }); }; r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); return _dbP; }
+function idbReq(mode, fn){ return idb().then(db => new Promise((res, rej) => { const tx = db.transaction(IDB_STORE, mode); const rq = fn(tx.objectStore(IDB_STORE)); tx.oncomplete = () => res(rq ? rq.result : undefined); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error); })); }
+const idbGet = id => idbReq('readonly', s => s.get(id));
+const idbKeys = () => idbReq('readonly', s => s.getAllKeys());
+const idbPut = val => idbReq('readwrite', s => s.put(val));
+const idbDel = id => idbReq('readwrite', s => s.delete(id));
+const idbClear = () => idbReq('readwrite', s => s.clear());
+async function storeUploadFiles(id, files){
+  const recs = [];
+  for (const f of files) { const csv = /\.csv$/i.test(f.name); recs.push(csv ? { name:f.name, csv:true, text: await f.text() } : { name:f.name, csv:false, buf: await f.arrayBuffer() }); }
+  await idbPut({ id, files: recs });
+  try { const keep = new Set(loadLog().slice(0, STORE_KEEP).map(e => e.id).filter(Boolean)); for (const k of await idbKeys()) if (!keep.has(k)) await idbDel(k); } catch {}
+}
+async function openUpload(id){
+  let rec; try { rec = await idbGet(id); } catch { rec = null; }
+  if (!rec || !rec.files || !rec.files.length) { showMsg('error', 'ไฟล์ของรายการนี้ไม่ได้ถูกบันทึกไว้ (อัปโหลดก่อนมีฟีเจอร์นี้) — กรุณาอัปโหลดไฟล์ใหม่'); return; }
+  showMsg('', 'กำลังเปิดข้อมูลที่บันทึกไว้ …');
+  try {
+    const XLSX = await loadXLSX(); const merged = new Map(); let lines = 0;
+    for (const rf of rec.files) {
+      const wb = rf.csv ? XLSX.read(rf.text, {type:'string', raw:true}) : XLSX.read(rf.buf, {type:'array'});
+      let res = null;
+      for (const name of wb.SheetNames) { const ws = wb.Sheets[name]; fixRange(XLSX, ws); res = buildOrders(XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''}), rf.name); if (res) break; }
+      if (res) { lines += res.lines; for (const o of res.orders) merged.set(o.id, o); }
+    }
+    const e = loadLog().find(x => x.id === id);
+    setData([...merged.values()], { file: (e && e.file) || rec.files.map(f => f.name).join(', '), lines, sample:false });
+    activeUploadId = id; renderLog();
+    showMsg('ok', 'เปิดข้อมูลที่บันทึกไว้แล้ว ' + nf.format(merged.size) + ' ออเดอร์' + (e ? ' · ' + e.brand + ' · ' + e.platform : ''));
+  } catch (err) { showMsg('error', (err && err.message) || String(err)); }
+}
 
 // left rail: move #app into a flex shell and prepend an <aside>
 const appEl = $('#app');
@@ -1142,16 +1177,28 @@ aside.style.cssText = 'flex:none;width:280px;position:sticky;top:0;height:100dvh
 aside.innerHTML = '<div id="upLogSec"></div><div id="prodSec" style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px"></div>';
 shell.appendChild(aside); shell.appendChild(appEl);
 appEl.style.flex = '1'; appEl.style.minWidth = '0';
-const rs = document.createElement('style'); rs.textContent = '@media(max-width:900px){#upLog{display:none}}'; document.head.appendChild(rs);
+const rs = document.createElement('style'); rs.textContent = '@media(max-width:900px){#upLog{display:none}} .upEntry{transition:border-color .12s,background .12s} .upEntry[data-upid]:hover{border-color:var(--accent)}'; document.head.appendChild(rs);
 
 function renderLog(){
   const log = loadLog();
   const host = aside.querySelector('#upLogSec');
-  host.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px"><b style="font-family:var(--f-display);font-size:15px">ประวัติการอัปโหลด</b>' + (log.length ? '<button id="clrLog" class="btn small" type="button">ล้าง</button>' : '') + '</div>' +
-    (log.length ? log.map(e => '<div style="border:1px solid var(--line);border-radius:10px;padding:9px 10px;margin-bottom:8px;background:var(--surface-2)"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-weight:700;color:' + (BRAND_COL[e.brand] || 'var(--accent)') + '">' + esc(e.brand) + '</span><span style="font-size:11px;padding:1px 7px;border-radius:999px;background:var(--accent-wash);color:var(--accent);font-weight:500">' + esc(e.platform) + '</span></div><div style="font-size:12px;color:var(--ink-2);margin-top:4px">' + esc(fmtWhen(e.at)) + ' น.</div><div style="font-size:11px;color:var(--muted);margin-top:2px">' + nf.format(e.count || 0) + ' ออเดอร์</div>' + (e.file ? '<div style="font-size:10.5px;color:var(--muted);margin-top:2px;word-break:break-all">' + esc(e.file) + '</div>' : '') + '</div>').join('') : '<div style="font-size:12.5px;color:var(--muted);line-height:1.65">ยังไม่มีประวัติ<br>กด “อัปโหลดไฟล์ออเดอร์” แล้วเลือกแบรนด์/แพลตฟอร์ม เพื่อบันทึก</div>');
-  const c = host.querySelector('#clrLog'); if (c) c.addEventListener('click', () => { if (confirm('ล้างประวัติการอัปโหลดทั้งหมด?')) { saveLog([]); renderLog(); } });
+  host.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px"><b style="font-family:var(--f-display);font-size:15px">ประวัติการอัปโหลด</b>' + (log.length ? '<button id="clrLog" class="btn small" type="button">ล้าง</button>' : '') + '</div>' +
+    '<div style="font-size:11px;color:var(--muted);margin-bottom:11px">' + (log.length ? 'แตะรายการเพื่อเปิดดูข้อมูลเดิม ไม่ต้องอัปโหลดใหม่' : '') + '</div>' +
+    (log.length ? log.map(e => {
+      const active = e.id && e.id === activeUploadId, clickable = !!e.id;
+      return '<button type="button" ' + (clickable ? 'data-upid="' + esc(e.id) + '"' : 'disabled') + ' class="upEntry' + (active ? ' active' : '') + '" style="display:block;width:100%;text-align:left;font:inherit;border:1px solid ' + (active ? 'var(--accent)' : 'var(--line)') + ';border-radius:10px;padding:9px 10px;margin-bottom:8px;background:' + (active ? 'var(--accent-wash)' : 'var(--surface-2)') + ';color:inherit;cursor:' + (clickable ? 'pointer' : 'default') + '">' +
+        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-weight:700;color:' + (BRAND_COL[e.brand] || 'var(--accent)') + '">' + esc(e.brand) + '</span><span style="font-size:11px;padding:1px 7px;border-radius:999px;background:var(--accent-wash);color:var(--accent);font-weight:500">' + esc(e.platform) + '</span>' + (active ? '<span style="font-size:10.5px;color:var(--accent);font-weight:700;margin-left:auto">● กำลังดูอยู่</span>' : '') + '</div>' +
+        '<div style="font-size:12px;color:var(--ink-2);margin-top:4px">' + esc(fmtWhen(e.at)) + ' น.</div>' +
+        '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + nf.format(e.count || 0) + ' ออเดอร์</div>' +
+        (e.file ? '<div style="font-size:10.5px;color:var(--muted);margin-top:2px;word-break:break-all">' + esc(e.file) + '</div>' : '') +
+        (clickable ? '' : '<div style="font-size:10.5px;color:var(--muted);margin-top:3px">ไฟล์เดิมไม่ได้บันทึก — อัปโหลดใหม่เพื่อดู</div>') +
+      '</button>';
+    }).join('') : '<div style="font-size:12.5px;color:var(--muted);line-height:1.65">ยังไม่มีประวัติ<br>กด “อัปโหลดไฟล์ออเดอร์” แล้วเลือกแบรนด์/แพลตฟอร์ม เพื่อบันทึก</div>');
+  const c = host.querySelector('#clrLog'); if (c) c.addEventListener('click', () => { if (confirm('ล้างประวัติการอัปโหลดทั้งหมด? (รวมไฟล์ที่บันทึกไว้)')) { saveLog([]); idbClear().catch(() => {}); activeUploadId = null; renderLog(); } });
 }
 renderLog();
+// delegate: tap a history entry to re-open its saved data
+aside.querySelector('#upLogSec').addEventListener('click', e => { const b = e.target.closest('[data-upid]'); if (!b) return; if (b.dataset.upid === activeUploadId) return; openUpload(b.dataset.upid); });
 
 // ---- product summary (per สินค้า/SKU, split by status) for the management report ----
 function productSummary(){
@@ -1225,10 +1272,10 @@ if (uploadBox) { uploadBox.style.justifyItems = 'stretch'; upClone.style.width =
 if (srcBox) { srcBox.style.flexDirection = 'column'; srcBox.style.alignItems = 'stretch'; srcBox.style.gap = '8px'; railTop.appendChild(srcBox); }
 // wrap handleFiles (also covers drag-drop) so a choice is always captured
 const _handleFiles = handleFiles;
-handleFiles = async function(list){ if (!pendingUpload) { const c = await askUpload(); if (!c) return; pendingUpload = c; } return _handleFiles(list); };
-// wrap setData so each REAL upload (not the preloaded sample) is logged
+handleFiles = async function(list){ if (!pendingUpload) { const c = await askUpload(); if (!c) return; pendingUpload = c; } pendingFiles = [...list].filter(f => /\.(xlsx|xls|csv)$/i.test(f.name)); return _handleFiles(list); };
+// wrap setData so each REAL upload (not the preloaded sample) is logged AND its raw file saved for re-opening
 const _setData = setData;
-setData = function(orders, meta){ _setData(orders, meta); renderProducts(); if (meta && meta.sample === false && pendingUpload) { const log = loadLog(); log.unshift({ brand: pendingUpload.brand, platform: pendingUpload.platform, at: Date.now(), count: orders.length, file: meta.file || '' }); saveLog(log); pendingUpload = null; renderLog(); } };
+setData = function(orders, meta){ _setData(orders, meta); renderProducts(); if (meta && meta.sample === false && pendingUpload) { const at = Date.now(), id = 'up_' + at + '_' + Math.random().toString(36).slice(2, 7); const log = loadLog(); log.unshift({ id, brand: pendingUpload.brand, platform: pendingUpload.platform, at, count: orders.length, file: meta.file || '' }); saveLog(log); if (pendingFiles && pendingFiles.length) storeUploadFiles(id, pendingFiles).catch(() => {}); activeUploadId = id; pendingUpload = null; pendingFiles = null; renderLog(); } };
 
 loadSample();
 setTimeout(() => { loadXLSX().catch(() => {}); }, 1500);
