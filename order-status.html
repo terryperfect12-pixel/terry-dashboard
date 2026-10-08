@@ -298,12 +298,35 @@ select{border:1px solid var(--line-2);border-radius:8px;background:var(--surface
   .ob.foc .ob-row{grid-template-columns:72px minmax(0,1fr) 64px}
 }
 @media (prefers-reduced-motion: reduce){ *{transition:none!important;animation:none!important} }
+/* per-SKU summary panel */
+.sku-panel{gap:14px}
+.sku-head{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-start;justify-content:space-between}
+.sku-tools{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.sku-chk{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-2);cursor:pointer;user-select:none}
+.sku-count{font-size:12.5px;font-variant-numeric:tabular-nums}
+.sku-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+.skutbl{width:100%;border-collapse:collapse;font-size:13px;min-width:540px}
+.skutbl th{position:sticky;top:0;background:var(--surface-2);text-align:left;font-weight:600;font-size:11.5px;color:var(--muted);letter-spacing:.02em;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.skutbl th.num{text-align:right}
+.skutbl th[data-sks]{cursor:pointer}
+.skutbl th[data-sks]:hover{color:var(--ink)}
+.skutbl th[aria-sort=descending]{color:var(--accent)}
+.skutbl th[aria-sort=descending]::after{content:" ▾"}
+.skutbl td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+.skutbl td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.skutbl tbody tr{cursor:pointer;transition:background-color .12s}
+.skutbl tbody tr:hover{background:var(--surface-2)}
+.skutbl tbody tr:last-child td{border-bottom:0}
+.skutbl tr.on{background:var(--accent-wash)}
+.skutbl tr.on td{box-shadow:inset 2px 0 0 var(--accent)}
+.skc code{font-family:var(--f-mono);font-size:12.5px;font-weight:600;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:2px 7px;white-space:nowrap}
+.skn .nm{display:block;max-width:46ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 
 <div class="wrap" id="app">
   <header class="top">
     <div>
-      <p class="eyebrow">ไฟล์คำสั่งซื้อจาก Shopee Seller Centre</p>
+      <p class="eyebrow">ไฟล์คำสั่งซื้อจาก Shopee / TikTok Seller Centre</p>
       <h1>แท็กสถานะออเดอร์</h1>
       <p class="lede" id="lede">กำลังเตรียมข้อมูล…</p>
     </div>
@@ -368,6 +391,31 @@ select{border:1px solid var(--line-2);border-radius:8px;background:var(--surface
       <div class="callouts" id="callouts"></div>
       <div id="cancelChart"></div>
     </article>
+  </section>
+
+  <section class="panel sku-panel" id="skuPanel" aria-label="สรุปตามรหัสสินค้า">
+    <div class="sku-head">
+      <div>
+        <h2>สรุปตามรหัสสินค้า (SKU)</h2>
+        <p class="sub-h">แต่ละ SKU ผู้ขาย ขายไปกี่ชิ้น กี่ออเดอร์ ยอดเท่าไหร่ · แตะหัวคอลัมน์เพื่อเรียง · แตะแถวเพื่อกรองออเดอร์ของ SKU นั้น</p>
+      </div>
+      <button class="btn small" type="button" id="copySku"></button>
+    </div>
+    <div class="sku-tools">
+      <label class="search" for="skuQ"><span id="skuSearchIc"></span><span class="vh">ค้นหา SKU</span><input id="skuQ" type="search" placeholder="ค้นหารหัส SKU หรือชื่อสินค้า เช่น NB2SM1" autocomplete="off"></label>
+      <label class="sku-chk"><input type="checkbox" id="skuExcl" checked> ไม่นับออเดอร์ที่ยกเลิก</label>
+      <span class="sku-count muted" id="skuCount"></span>
+    </div>
+    <div class="sku-scroll">
+      <table class="skutbl" id="skuTbl">
+        <thead><tr>
+          <th data-sks="sku">รหัส SKU</th><th>สินค้า</th>
+          <th class="num" data-sks="orders">ออเดอร์</th><th class="num" data-sks="units">ชิ้น</th><th class="num" data-sks="gmv">ยอดขาย</th>
+        </tr></thead>
+        <tbody id="skuBody"></tbody>
+      </table>
+    </div>
+    <div class="more" id="skuMoreWrap" hidden><button class="btn" type="button" id="skuMore"></button></div>
   </section>
 
   <section class="list" aria-label="รายการออเดอร์">
@@ -484,12 +532,13 @@ const COL = {
   shipBy:['วันที่คาดว่าจะทำการจัดส่งสินค้า','Estimated Ship Out Date'],
   shippedAt:['เวลาส่งสินค้า','Ship Time'],
   product:['ชื่อสินค้า','Product Name'],
-  sku:['เลขอ้างอิง SKU (SKU Reference No.)','SKU Reference No.'],
-  variation:['ชื่อตัวเลือก','Variation Name'],
+  sku:['Seller SKU','SKU ผู้ขาย','เลขอ้างอิง SKU (SKU Reference No.)','SKU Reference No.'],
+  variation:['ชื่อตัวเลือก','Variation Name','Variation'],
   qty:['จำนวน','Quantity'],
-  retQty:['จำนวนที่ส่งคืน','Returned quantity'],
+  retQty:['จำนวนที่ส่งคืน','Returned quantity','Sku Quantity of return'],
   value:['ราคาสินค้าที่ชำระโดยผู้ซื้อ (THB)','Product Subtotal'],
-  total:['จำนวนเงินทั้งหมด','Grand Total','Total Amount'],
+  lineVal:['SKU Subtotal After Discount','ราคาสินค้าที่ชำระโดยผู้ซื้อ (THB)','Product Subtotal','SKU Subtotal after discount'],
+  total:['จำนวนเงินทั้งหมด','Grand Total','Total Amount','Order Amount'],
   province:['จังหวัด','Province'],
   completedAt:['เวลาที่ทำการสั่งซื้อสำเร็จ','Order Complete Time']
 };
@@ -506,7 +555,7 @@ const FLAGS = {
   sellerLate:   {label:'ระบบยกเลิกเพราะส่งไม่ทัน',   test:o => !!(o.cancel && o.cancel.sellerFault)}
 };
 
-const state = { orders:[], meta:null, now:new Date(), tag:null, shipDay:null, orderDay:null, obStatus:null, reason:null, flag:null, q:'', sort:'urgent', limit:100, current:[] };
+const state = { orders:[], meta:null, now:new Date(), tag:null, shipDay:null, orderDay:null, obStatus:null, reason:null, flag:null, q:'', sort:'urgent', limit:100, current:[], sku:null, skuExclCancel:true, skuQ:'', skuSort:'units', skuLimit:30 };
 
 /* ---------- parsing ---------- */
 function parseDate(v){
@@ -541,7 +590,7 @@ function classify(raw){
   const s = String(raw || '').trim();
   if (/ยังไม่ชำระ|unpaid/i.test(s)) return 'unpaid';
   if (/ยกเลิก|cancel/i.test(s)) return 'cancelled';
-  if (/ที่ต้องจัดส่ง|to ship/i.test(s)) return 'toship';
+  if (/ที่ต้องจัดส่ง|ที่จะจัดส่ง|รอจัดส่ง|to ship|awaiting ?shipment/i.test(s)) return 'toship';
   if (/ผู้ซื้อได้รับสินค้าแล้ว|received/i.test(s)) return 'received';
   if (/จัดส่งสำเร็จ|delivered/i.test(s)) return 'delivered';
   if (/^สำเร็จ|completed/i.test(s)) return 'completed';
@@ -572,7 +621,7 @@ function enrich(o){
   o.retQty = o.items.reduce((a, b) => a + b.retQty, 0);
   o.isReturn = !!o.returnStatus || o.retQty > 0;
   o.lateShip = !!(o.shippedAt && o.shipBy && o.shippedAt > o.shipBy);
-  o.amount = o.total > 0 ? o.total : o.value;
+  o.amount = o.total > 0 ? o.total : (o.value > 0 ? o.value : o.items.reduce((a, b) => a + (b.val || 0), 0));
   o.search = [o.id, o.tracking, o.buyer, o.province, o.pay, o.shipOpt, ...o.items.flatMap(i => [i.name, i.sku, i.variation])].join(' ').toLowerCase();
 }
 function buildOrders(aoa, fileName){
@@ -594,7 +643,7 @@ function buildOrders(aoa, fileName){
         total:num(g('total')), value:num(g('value')), items:[], file:fileName };
       map.set(id, o);
     }
-    o.items.push({name:str(g('product')), sku:str(g('sku')), variation:str(g('variation')), qty:num(g('qty')), retQty:num(g('retQty'))});
+    o.items.push({name:str(g('product')), sku:str(g('sku')), variation:str(g('variation')), qty:num(g('qty')), retQty:num(g('retQty')), val:num(g('lineVal'))});
   }
   const orders = [...map.values()];
   orders.forEach(enrich);
@@ -938,6 +987,7 @@ function filtered(){
     if (state.obStatus && obCat(o) !== state.obStatus) return false;
     if (state.reason && !(o.cancel && `${o.cancel.by}|${o.cancel.reason}` === state.reason)) return false;
     if (state.flag && !FLAGS[state.flag].test(o)) return false;
+    if (state.sku && !o.items.some(it => (it.sku || '(ไม่มีรหัส SKU)') === state.sku)) return false;
     if (q && !o.search.includes(q)) return false;
     return true;
   });
@@ -1026,9 +1076,49 @@ function renderActive(){
   if (state.obStatus) a.push(['obStatus', `สถานะรายวันสั่งซื้อ: ${obLabel(state.obStatus)}`]);
   if (state.reason) a.push(['reason', `เหตุผลยกเลิก: ${state.reason.split('|')[1]}`]);
   if (state.flag) a.push(['flag', FLAGS[state.flag].label]);
+  if (state.sku) a.push(['sku', `SKU: ${state.sku}`]);
   if (state.q.trim()) a.push(['q', `ค้นหา: ${state.q.trim()}`]);
   $('#active').innerHTML = a.length ? a.map(([k, t]) => `<button type="button" class="fchip" data-clear="${k}" aria-label="เอาตัวกรอง ${esc(t)} ออก">${esc(t)} <span>×</span></button>`).join('') + (a.length > 1 ? '<button type="button" class="linkbtn" data-clear="all">ล้างตัวกรองทั้งหมด</button>' : '') : '';
 }
+/* ---------- per-SKU summary ---------- */
+function skuData(){
+  const m = new Map();
+  for (const o of state.orders){
+    if (state.skuExclCancel && o.stage === 'cancelled') continue;
+    for (const it of o.items){
+      const key = it.sku || '(ไม่มีรหัส SKU)';
+      let e = m.get(key); if (!e){ e = {sku:key, name:it.name || '', units:0, ret:0, gmv:0, ord:new Set(), vars:new Set()}; m.set(key, e); }
+      e.units += it.qty || 0; e.ret += it.retQty || 0; e.gmv += it.val || 0; e.ord.add(o.id);
+      if (!e.name && it.name) e.name = it.name;
+      if (it.variation && it.variation !== 'ค่าเริ่มต้น') e.vars.add(it.variation);
+    }
+  }
+  return [...m.values()].map(e => ({sku:e.sku, name:e.name, units:e.units, ret:e.ret, gmv:e.gmv, orders:e.ord.size, vars:e.vars.size}));
+}
+function renderSku(){
+  let rows = skuData();
+  const totUnits = rows.reduce((a, r) => a + r.units, 0), totGmv = rows.reduce((a, r) => a + r.gmv, 0);
+  const distinct = new Set(); state.orders.forEach(o => { if (!(state.skuExclCancel && o.stage === 'cancelled')) distinct.add(o.id); });
+  const q = state.skuQ.trim().toLowerCase();
+  const shownRows = q ? rows.filter(r => (r.sku + ' ' + r.name).toLowerCase().includes(q)) : rows;
+  const srt = {units:(a, b) => b.units - a.units, orders:(a, b) => b.orders - a.orders, gmv:(a, b) => b.gmv - a.gmv, sku:(a, b) => String(a.sku).localeCompare(String(b.sku))}[state.skuSort] || ((a, b) => b.units - a.units);
+  const sorted = shownRows.slice().sort(srt);
+  $('#skuCount').textContent = rows.length ? `${nf.format(rows.length)} รหัส SKU · ${nf.format(distinct.size)} ออเดอร์ · ${nf.format(totUnits)} ชิ้น · ${money(totGmv)}` : '';
+  const shown = sorted.slice(0, state.skuLimit);
+  $('#skuBody').innerHTML = shown.length ? shown.map(r => `<tr class="sku-row${state.sku === r.sku ? ' on' : ''}" data-sku="${esc(r.sku)}" tabindex="0" role="button" aria-pressed="${state.sku === r.sku}">
+      <td class="skc"><code>${esc(r.sku)}</code></td>
+      <td class="skn"><span class="nm">${esc(r.name || '—')}</span>${r.vars > 1 ? `<small class="muted"> · ${r.vars} ตัวเลือก</small>` : ''}</td>
+      <td class="num">${nf.format(r.orders)}</td>
+      <td class="num"><b>${nf.format(r.units)}</b>${r.ret ? `<small class="muted"> · คืน ${nf.format(r.ret)}</small>` : ''}</td>
+      <td class="num">${r.gmv ? money(r.gmv) : '—'}</td>
+    </tr>`).join('') : `<tr><td colspan="5" class="muted" style="padding:16px;text-align:center">${state.orders.length ? 'ไม่พบ SKU ที่ตรงกับคำค้น' : 'อัปโหลดไฟล์ออเดอร์เพื่อดูสรุปตามรหัสสินค้า'}</td></tr>`;
+  const left = sorted.length - shown.length;
+  $('#skuMoreWrap').hidden = left <= 0;
+  if (left > 0) $('#skuMore').textContent = `แสดงเพิ่มอีก ${nf.format(Math.min(30, left))} (เหลือ ${nf.format(left)})`;
+  $('#copySku').disabled = !rows.length;
+  document.querySelectorAll('#skuTbl th[data-sks]').forEach(th => th.setAttribute('aria-sort', th.dataset.sks === state.skuSort ? 'descending' : 'none'));
+}
+
 function renderList(){
   const list = sortList(filtered());
   state.current = list;
@@ -1043,8 +1133,8 @@ function renderList(){
   $('#copyIds').disabled = $('#copyTable').disabled = !list.length;
   renderActive();
 }
-function renderAll(){ renderHeader(); renderTiles(); renderShip(); renderOrderChart(); renderCancelByDay(); renderCancel(); renderFlags(); renderList(); }
-function refilter(){ state.limit = 100; renderTiles(); renderShip(); renderOrderChart(); renderCancelByDay(); renderCancel(); renderFlags(); renderList(); }
+function renderAll(){ renderHeader(); renderTiles(); renderShip(); renderOrderChart(); renderCancelByDay(); renderCancel(); renderFlags(); renderSku(); renderList(); }
+function refilter(){ state.limit = 100; renderTiles(); renderShip(); renderOrderChart(); renderCancelByDay(); renderCancel(); renderFlags(); renderSku(); renderList(); }
 
 /* ---------- copy ---------- */
 let toastT;
@@ -1066,7 +1156,25 @@ function tableTSV(list){
 /* ---------- events ---------- */
 $('#uploadBtn').innerHTML = `${svg('upload')}อัปโหลดไฟล์ออเดอร์`;
 $('#searchIc').innerHTML = svg('search');
+$('#skuSearchIc').innerHTML = svg('search');
 $('#copyCxDay').innerHTML = `${svg('table')}คัดลอกตาราง`;
+$('#copySku').innerHTML = `${svg('table')}คัดลอกตาราง SKU`;
+// per-SKU summary interactions
+$('#skuBody').addEventListener('click', e => { const tr = e.target.closest('[data-sku]'); if (!tr) return; state.sku = state.sku === tr.dataset.sku ? null : tr.dataset.sku; refilter(); if (state.sku) $('#skuPanel').scrollIntoView({behavior:'smooth', block:'nearest'}); });
+$('#skuBody').addEventListener('keydown', e => { if (e.key !== 'Enter' && e.key !== ' ') return; const tr = e.target.closest('[data-sku]'); if (!tr) return; e.preventDefault(); state.sku = state.sku === tr.dataset.sku ? null : tr.dataset.sku; refilter(); });
+$('#skuTbl').addEventListener('click', e => { const th = e.target.closest('th[data-sks]'); if (!th) return; state.skuSort = th.dataset.sks; state.skuLimit = 30; renderSku(); });
+let skuQT; $('#skuQ').addEventListener('input', e => { clearTimeout(skuQT); skuQT = setTimeout(() => { state.skuQ = e.target.value; state.skuLimit = 30; renderSku(); }, 150); });
+$('#skuExcl').addEventListener('change', e => { state.skuExclCancel = e.target.checked; renderSku(); });
+$('#skuMore').addEventListener('click', () => { state.skuLimit += 30; renderSku(); });
+$('#copySku').addEventListener('click', () => {
+  let rows = skuData(); const q = state.skuQ.trim().toLowerCase();
+  if (q) rows = rows.filter(r => (r.sku + ' ' + r.name).toLowerCase().includes(q));
+  const srt = {units:(a, b) => b.units - a.units, orders:(a, b) => b.orders - a.orders, gmv:(a, b) => b.gmv - a.gmv, sku:(a, b) => String(a.sku).localeCompare(String(b.sku))}[state.skuSort] || ((a, b) => b.units - a.units);
+  rows.sort(srt);
+  const head = ['รหัส SKU','สินค้า','ออเดอร์','ชิ้น','คืน','ยอดขาย(฿)'];
+  const body = rows.map(r => [r.sku, String(r.name || '').replace(/[\t\r\n]+/g, ' '), r.orders, r.units, r.ret, Math.round(r.gmv)].join('\t'));
+  copyText([head.join('\t'), ...body].join('\n'), `ตาราง SKU ${nf.format(rows.length)} รหัส`);
+});
 $('#uploadBtn').addEventListener('click', () => $('#file').click());
 $('#file').addEventListener('change', e => { if (e.target.files.length) handleFiles(e.target.files); e.target.value = ''; });
 $('#tiles').addEventListener('click', e => { const b = e.target.closest('[data-tag]'); if (!b) return; state.tag = state.tag === b.dataset.tag ? null : b.dataset.tag; if (state.tag) state.obStatus = null; refilter(); });
@@ -1090,7 +1198,7 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-flag
 $('#active').addEventListener('click', e => {
   const b = e.target.closest('[data-clear]'); if (!b) return;
   const k = b.dataset.clear;
-  if (k === 'all') Object.assign(state, {tag:null, shipDay:null, orderDay:null, obStatus:null, reason:null, flag:null, q:''});
+  if (k === 'all') Object.assign(state, {tag:null, shipDay:null, orderDay:null, obStatus:null, reason:null, flag:null, sku:null, q:''});
   else state[k] = k === 'q' ? '' : null;
   if (k === 'q' || k === 'all') $('#q').value = '';
   refilter();
