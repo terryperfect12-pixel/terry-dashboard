@@ -321,6 +321,16 @@ select{border:1px solid var(--line-2);border-radius:8px;background:var(--surface
 .skutbl tr.on td{box-shadow:inset 2px 0 0 var(--accent)}
 .skc code{font-family:var(--f-mono);font-size:12.5px;font-weight:600;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:2px 7px;white-space:nowrap}
 .skn .nm{display:block;max-width:46ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.skst{display:grid;gap:9px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.skst-h{font-size:13px;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.skst-h code{font-family:var(--f-mono);font-weight:700;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:2px 8px}
+.skst-chips{display:flex;flex-wrap:wrap;gap:8px}
+.skst-chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;line-height:1;border:1px solid color-mix(in srgb,var(--c) 42%,var(--line));background:color-mix(in srgb,var(--c) 10%,var(--surface));color:var(--ink);border-radius:999px;padding:6px 11px;cursor:pointer}
+.skst-chip .ic{width:14px;height:14px;color:var(--c)}
+.skst-chip b{font-weight:600}
+.skst-chip .c{font-variant-numeric:tabular-nums;font-weight:700;color:var(--c);margin-left:1px}
+button.skst-chip:hover{background:color-mix(in srgb,var(--c) 18%,var(--surface))}
+button.skst-chip[aria-pressed=true]{box-shadow:0 0 0 2px var(--c) inset}
 </style>
 
 <div class="wrap" id="app">
@@ -406,6 +416,7 @@ select{border:1px solid var(--line-2);border-radius:8px;background:var(--surface
       <label class="sku-chk"><input type="checkbox" id="skuExcl" checked> ไม่นับออเดอร์ที่ยกเลิก</label>
       <span class="sku-count muted" id="skuCount"></span>
     </div>
+    <div class="skst" id="skuStatus" hidden></div>
     <div class="sku-scroll">
       <table class="skutbl" id="skuTbl">
         <thead><tr>
@@ -1117,6 +1128,27 @@ function renderSku(){
   if (left > 0) $('#skuMore').textContent = `แสดงเพิ่มอีก ${nf.format(Math.min(30, left))} (เหลือ ${nf.format(left)})`;
   $('#copySku').disabled = !rows.length;
   document.querySelectorAll('#skuTbl th[data-sks]').forEach(th => th.setAttribute('aria-sort', th.dataset.sks === state.skuSort ? 'descending' : 'none'));
+  // show the status breakdown for the SKU you tapped, or the single SKU a search narrowed to
+  const focusSku = state.sku || (state.skuQ.trim() && sorted.length === 1 ? sorted[0].sku : null);
+  renderSkuStatus(focusSku);
+}
+function skuStatusBreakdown(sku){
+  const cnt = {}; let total = 0, ret = 0;
+  for (const o of state.orders){
+    if (!o.items.some(it => (it.sku || '(ไม่มีรหัส SKU)') === sku)) continue;
+    cnt[o.tag] = (cnt[o.tag] || 0) + 1; total++; if (o.isReturn) ret++;
+  }
+  return {cnt, total, ret};
+}
+function renderSkuStatus(sku){
+  const el = $('#skuStatus');
+  if (!sku){ el.hidden = true; el.innerHTML = ''; return; }
+  const {cnt, total, ret} = skuStatusBreakdown(sku);
+  const order = Object.keys(TAGS).sort((a, b) => TAGS[a].pri - TAGS[b].pri).filter(t => cnt[t]);
+  const chips = order.map(t => `<button type="button" class="skst-chip t-${t}" data-sku="${esc(sku)}" data-tag="${t}" aria-pressed="${state.sku === sku && state.tag === t}" title="กรองเฉพาะ ‘${esc(TAGS[t].label)}’ ของ ${esc(sku)}">${svg(TAGS[t].icon)}<b>${esc(TAGS[t].label)}</b> <span class="c">${nf.format(cnt[t])}</span></button>`).join('');
+  const retChip = ret ? `<span class="skst-chip t-return" title="มีคำขอคืนเงิน/คืนสินค้า (ซ้อนกับสถานะหลัก)">${svg('ret')}<b>คืนเงิน/คืนสินค้า</b> <span class="c">${nf.format(ret)}</span></span>` : '';
+  el.hidden = false;
+  el.innerHTML = `<div class="skst-h"><code>${esc(sku)}</code> <span class="muted">ทั้งหมด ${nf.format(total)} ออเดอร์ · แยกตามสถานะ (กดเพื่อกรอง)</span></div><div class="skst-chips">${chips || '<span class="muted">—</span>'}${retChip}</div>`;
 }
 
 function renderList(){
@@ -1163,6 +1195,7 @@ $('#copySku').innerHTML = `${svg('table')}คัดลอกตาราง SKU`
 $('#skuBody').addEventListener('click', e => { const tr = e.target.closest('[data-sku]'); if (!tr) return; state.sku = state.sku === tr.dataset.sku ? null : tr.dataset.sku; refilter(); if (state.sku) $('#skuPanel').scrollIntoView({behavior:'smooth', block:'nearest'}); });
 $('#skuBody').addEventListener('keydown', e => { if (e.key !== 'Enter' && e.key !== ' ') return; const tr = e.target.closest('[data-sku]'); if (!tr) return; e.preventDefault(); state.sku = state.sku === tr.dataset.sku ? null : tr.dataset.sku; refilter(); });
 $('#skuTbl').addEventListener('click', e => { const th = e.target.closest('th[data-sks]'); if (!th) return; state.skuSort = th.dataset.sks; state.skuLimit = 30; renderSku(); });
+$('#skuStatus').addEventListener('click', e => { const b = e.target.closest('button[data-tag]'); if (!b) return; state.sku = b.dataset.sku; state.tag = (state.sku === b.dataset.sku && state.tag === b.dataset.tag) ? null : b.dataset.tag; if (state.tag) state.obStatus = null; refilter(); });
 let skuQT; $('#skuQ').addEventListener('input', e => { clearTimeout(skuQT); skuQT = setTimeout(() => { state.skuQ = e.target.value; state.skuLimit = 30; renderSku(); }, 150); });
 $('#skuExcl').addEventListener('change', e => { state.skuExclCancel = e.target.checked; renderSku(); });
 $('#skuMore').addEventListener('click', () => { state.skuLimit += 30; renderSku(); });
