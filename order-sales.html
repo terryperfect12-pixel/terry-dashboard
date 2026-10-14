@@ -91,8 +91,9 @@
   <div class="up">
     <div style="flex:1;min-width:200px">
       <div class="t">ยอดขายรายวัน &amp; รายชั่วโมง</div>
-      <p class="hint">อัปโหลดไฟล์คำสั่งซื้อ (.xlsx / .csv) จาก Seller Centre — ดูว่าแต่ละวันขายกี่ออเดอร์ สินค้าไหน ยอดเท่าไหร่ และแต่ละชั่วโมงมีซื้อเข้ามาเท่าไหร่ · อ่านในเบราว์เซอร์นี้เท่านั้น ไม่ส่งไฟล์ออกนอก</p>
+      <p class="hint">โหลดข้อมูลออเดอร์สดจาก Google Sheet อัตโนมัติ — ดูว่าแต่ละวันขายกี่ออเดอร์ สินค้าไหน ยอดเท่าไหร่ เพิ่ม/ลดเท่าไหร่ และแต่ละชั่วโมงมีซื้อเข้ามาเท่าไหร่ · หรืออัปโหลดไฟล์ .xlsx/.csv เองก็ได้</p>
     </div>
+    <button class="btn" id="refreshSheet" type="button">↻ รีเฟรชจากชีต</button>
     <button class="btn primary" id="uploadBtn" type="button">อัปโหลดไฟล์ออเดอร์</button>
     <input class="vh" style="display:none" type="file" id="file" accept=".xlsx,.xls,.csv" multiple>
   </div>
@@ -359,6 +360,29 @@ async function handleFiles(list){
   } catch (e){ showMsg('error', (e && e.message) ? e.message : String(e)); }
 }
 
+/* ---------- live load from the order Google Sheet (embedded) ---------- */
+const ORDER_SHEET_ID = '1uc46n128puQkaUQJ_eiy3ZhRgSUeSRcE50HKB3H5a-Q';
+async function loadFromSheet(){
+  showMsg('info', 'กำลังโหลดข้อมูลออเดอร์จาก Google Sheet …');
+  try {
+    const XLSX = await loadXLSX();
+    let tabs = [];
+    try { const html = await (await fetch('https://docs.google.com/spreadsheets/d/' + ORDER_SHEET_ID + '/htmlview')).text(); const re = /items\.push\(\{name:\s*"([^"]+)"/g; let m; while ((m = re.exec(html))) tabs.push(m[1]); } catch {}
+    if (!tabs.length) tabs = [''];
+    const merged = new Map();
+    for (const tab of tabs){
+      const url = 'https://docs.google.com/spreadsheets/d/' + ORDER_SHEET_ID + '/gviz/tq?tqx=out:csv' + (tab ? '&sheet=' + encodeURIComponent(tab) : '');
+      const txt = await (await fetch(url)).text();
+      if (!txt || txt.trim().startsWith('<')) continue;
+      const wb = XLSX.read(txt, { type:'string', raw:true });
+      for (const nm of wb.SheetNames){ const ws = wb.Sheets[nm]; fixRange(XLSX, ws); const res = buildOrders(XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''}), tab || 'sheet'); if (res){ for (const o of res.orders) merged.set(o.id, o); break; } }
+    }
+    if (!merged.size) throw new Error('ไม่พบออเดอร์ในชีต — ตรวจว่าแชร์ “ทุกคนที่มีลิงก์ดูได้” และมีคอลัมน์ Order ID / Product Name');
+    state.orders = [...merged.values()]; state.day = null; render();
+    showMsg('ok', 'โหลดจาก Google Sheet แล้ว ' + nf.format(merged.size) + ' ออเดอร์ · ' + tabs.length + ' แท็บ · อัปเดต ' + new Date().toLocaleString('th-TH', {hour:'2-digit', minute:'2-digit'}) + ' น.');
+  } catch (e){ showMsg('error', 'โหลดจากชีตไม่สำเร็จ: ' + ((e && e.message) ? e.message : String(e))); }
+}
+
 /* ---------- copy ---------- */
 function toast(t){ let el = document.querySelector('.toast'); if (!el){ el = document.createElement('div'); el.className='toast'; document.body.appendChild(el); } el.textContent = t; el.style.display=''; clearTimeout(el._t); el._t = setTimeout(()=>el.style.display='none', 2000); }
 function copyText(text, label){ (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('คัดลอกแล้ว · ' + label)).catch(() => { const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy'); toast('คัดลอกแล้ว · '+label);}catch{} ta.remove(); }); }
@@ -394,6 +418,9 @@ window.addEventListener('dragenter', e => { e.preventDefault(); dc++; drop.class
 window.addEventListener('dragover', e => e.preventDefault());
 window.addEventListener('dragleave', e => { e.preventDefault(); if (--dc <= 0){ dc=0; drop.classList.remove('on'); } });
 window.addEventListener('drop', e => { e.preventDefault(); dc=0; drop.classList.remove('on'); if (e.dataTransfer && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
+$('#refreshSheet').addEventListener('click', loadFromSheet);
+// auto-load from the embedded order Google Sheet on open
+loadFromSheet();
 </script>
 </body>
 </html>
