@@ -91,11 +91,9 @@
   <div class="up">
     <div style="flex:1;min-width:200px">
       <div class="t">ยอดขายรายวัน &amp; รายชั่วโมง</div>
-      <p class="hint">โหลดข้อมูลออเดอร์สดจาก Google Sheet อัตโนมัติ — ดูว่าแต่ละวันขายกี่ออเดอร์ สินค้าไหน ยอดเท่าไหร่ เพิ่ม/ลดเท่าไหร่ และแต่ละชั่วโมงมีซื้อเข้ามาเท่าไหร่ · หรืออัปโหลดไฟล์ .xlsx/.csv เองก็ได้</p>
+      <p class="hint">โหลดข้อมูลออเดอร์สดจาก Google Sheet อัตโนมัติ — <b>TikTok + Shopee</b> รวมกัน · ดูว่าแต่ละวันขายกี่ออเดอร์ สินค้าไหน ยอดเท่าไหร่ เพิ่ม/ลดเท่าไหร่ และแต่ละชั่วโมงมีซื้อเข้ามาเท่าไหร่ · กดปุ่มด้านขวาเพื่อโหลดข้อมูลล่าสุด</p>
     </div>
-    <button class="btn" id="refreshSheet" type="button">↻ รีเฟรชจากชีต</button>
-    <button class="btn primary" id="uploadBtn" type="button">อัปโหลดไฟล์ออเดอร์</button>
-    <input class="vh" style="display:none" type="file" id="file" accept=".xlsx,.xls,.csv" multiple>
+    <button class="btn primary" id="refreshSheet" type="button">↻ รีเฟรชข้อมูลจากชีต</button>
   </div>
   <div class="msg" id="msg"></div>
 
@@ -186,7 +184,7 @@ const COL = {
   sku:['Seller SKU','SKU ผู้ขาย','เลขอ้างอิง SKU (SKU Reference No.)','SKU Reference No.'],
   variation:['ชื่อตัวเลือก','Variation Name','Variation'],
   qty:['จำนวน','Quantity'],
-  lineVal:['SKU Subtotal After Discount','ราคาสินค้าที่ชำระโดยผู้ซื้อ (THB)','Product Subtotal','SKU Subtotal after discount'],
+  lineVal:['ราคาขายสุทธิ','SKU Subtotal After Discount','ราคาสินค้าที่ชำระโดยผู้ซื้อ (THB)','Product Subtotal','SKU Subtotal after discount'],
   total:['จำนวนเงินทั้งหมด','Grand Total','Total Amount','Order Amount'],
   orderAt:['เวลาที่ทำการสั่งซื้อ','วันที่ทำการสั่งซื้อ','Order Creation Date','Created Time','เวลาที่สร้างคำสั่งซื้อ']
 };
@@ -204,7 +202,7 @@ function parseDate(v){
 }
 const isCancel = raw => /ยกเลิก|cancel/i.test(String(raw || ''));
 
-function buildOrders(aoa, fileName){
+function buildOrders(aoa, fileName, platform){
   const h = findHeader(aoa); if (!h) return null;
   const {row, idx} = h, map = new Map(); let lines = 0;
   for (let r = row + 1; r < aoa.length; r++) {
@@ -213,7 +211,7 @@ function buildOrders(aoa, fileName){
     const id = str(g('id')); if (!id) continue;
     lines++;
     let o = map.get(id);
-    if (!o) { o = { id, statusRaw:str(g('status')), orderAt:parseDate(g('orderAt')), items:[], file:fileName }; o.cancel = isCancel(o.statusRaw); map.set(id, o); }
+    if (!o) { o = { id, statusRaw:str(g('status')), orderAt:parseDate(g('orderAt')), items:[], file:fileName, platform:platform || '' }; o.cancel = isCancel(o.statusRaw); map.set(id, o); }
     o.items.push({ name:str(g('product')), sku:str(g('sku')), variation:str(g('variation')), qty:num(g('qty')), val:num(g('lineVal')) });
   }
   return { orders:[...map.values()], lines };
@@ -254,9 +252,11 @@ function render(){
   const keys = [...A.days.keys()].filter(k => k !== '(ไม่มีวันที่)').sort();
   const allKeys = [...A.days.keys()].sort();
   // tiles
+  const platC = {}; for (const o of state.orders){ if (state.exclCancel && o.cancel) continue; const pl = o.platform || 'อื่นๆ'; platC[pl] = (platC[pl] || 0) + 1; }
+  const platSub = Object.entries(platC).map(([k,v]) => k + ' ' + nf.format(v)).join(' · ');
   $('#tiles').innerHTML =
-    tile('ออเดอร์รวม', nf.format(A.tOrders), keys.length + ' วัน') +
-    tile('จำนวนชิ้นรวม', nf.format(A.tUnits)) +
+    tile('ออเดอร์รวม', nf.format(A.tOrders), platSub || (keys.length + ' วัน')) +
+    tile('จำนวนชิ้นรวม', nf.format(A.tUnits), keys.length + ' วัน') +
     tile('ยอดขายรวม', money(A.tSales)) +
     tile('ช่วงวันที่', keys.length ? (dLabel(keys[0]) + (keys.length>1 ? ' – ' + dLabel(keys[keys.length-1]) : '')) : '—');
   $('#rangeNote').textContent = state.exclCancel ? '(ตัดออเดอร์ที่ยกเลิกออกแล้ว)' : '(รวมออเดอร์ที่ยกเลิก)';
@@ -360,26 +360,42 @@ async function handleFiles(list){
   } catch (e){ showMsg('error', (e && e.message) ? e.message : String(e)); }
 }
 
-/* ---------- live load from the order Google Sheet (embedded) ---------- */
-const ORDER_SHEET_ID = '1uc46n128puQkaUQJ_eiy3ZhRgSUeSRcE50HKB3H5a-Q';
+/* ---------- live load from the order Google Sheets (embedded) ----------
+   Two order sheets are wired in. We read every tab of each via the plain CSV
+   export endpoint (export?format=csv&gid=…) — reliable for both TikTok and
+   Shopee exports (gviz mangles the Shopee sheet). Orders from both platforms
+   merge by Order ID (id formats don't collide). */
+const ORDER_SHEETS = [
+  { platform:'TikTok', id:'1uc46n128puQkaUQJ_eiy3ZhRgSUeSRcE50HKB3H5a-Q' },
+  { platform:'Shopee', id:'1xWW-u1ebmnpmlde4k7GsXUCJLgecfOqWOkEyWbouAHY' },
+];
+async function sheetTabs(id){
+  try { const html = await (await fetch('https://docs.google.com/spreadsheets/d/' + id + '/htmlview')).text();
+    const re = /\{name:\s*"([^"]+)"[^}]*?gid:\s*"?(\d+)"?/g; const out = []; let m;
+    while ((m = re.exec(html))) out.push({ name:m[1], gid:m[2] });
+    return out.length ? out : [{ name:'', gid:'0' }];
+  } catch { return [{ name:'', gid:'0' }]; }
+}
 async function loadFromSheet(){
   showMsg('info', 'กำลังโหลดข้อมูลออเดอร์จาก Google Sheet …');
   try {
     const XLSX = await loadXLSX();
-    let tabs = [];
-    try { const html = await (await fetch('https://docs.google.com/spreadsheets/d/' + ORDER_SHEET_ID + '/htmlview')).text(); const re = /items\.push\(\{name:\s*"([^"]+)"/g; let m; while ((m = re.exec(html))) tabs.push(m[1]); } catch {}
-    if (!tabs.length) tabs = [''];
-    const merged = new Map();
-    for (const tab of tabs){
-      const url = 'https://docs.google.com/spreadsheets/d/' + ORDER_SHEET_ID + '/gviz/tq?tqx=out:csv' + (tab ? '&sheet=' + encodeURIComponent(tab) : '');
-      const txt = await (await fetch(url)).text();
-      if (!txt || txt.trim().startsWith('<')) continue;
-      const wb = XLSX.read(txt, { type:'string', raw:true });
-      for (const nm of wb.SheetNames){ const ws = wb.Sheets[nm]; fixRange(XLSX, ws); const res = buildOrders(XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''}), tab || 'sheet'); if (res){ for (const o of res.orders) merged.set(o.id, o); break; } }
+    const merged = new Map(); let tabCount = 0; const byPlat = {};
+    for (const S of ORDER_SHEETS){
+      const tabs = await sheetTabs(S.id);
+      for (const tab of tabs){
+        tabCount++;
+        const url = 'https://docs.google.com/spreadsheets/d/' + S.id + '/export?format=csv&gid=' + tab.gid;
+        let txt = ''; try { txt = await (await fetch(url)).text(); } catch { continue; }
+        if (!txt || txt.trim().startsWith('<')) continue;
+        const wb = XLSX.read(txt, { type:'string', raw:true });
+        for (const nm of wb.SheetNames){ const ws = wb.Sheets[nm]; fixRange(XLSX, ws); const res = buildOrders(XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''}), S.platform + ' · ' + tab.name, S.platform); if (res){ for (const o of res.orders) merged.set(o.id, o); byPlat[S.platform] = (byPlat[S.platform] || 0) + res.orders.length; break; } }
+      }
     }
     if (!merged.size) throw new Error('ไม่พบออเดอร์ในชีต — ตรวจว่าแชร์ “ทุกคนที่มีลิงก์ดูได้” และมีคอลัมน์ Order ID / Product Name');
     state.orders = [...merged.values()]; state.day = null; render();
-    showMsg('ok', 'โหลดจาก Google Sheet แล้ว ' + nf.format(merged.size) + ' ออเดอร์ · ' + tabs.length + ' แท็บ · อัปเดต ' + new Date().toLocaleString('th-TH', {hour:'2-digit', minute:'2-digit'}) + ' น.');
+    const platTxt = Object.entries(byPlat).map(([k,v]) => k + ' ' + nf.format(v)).join(' · ');
+    showMsg('ok', 'โหลดจาก Google Sheet แล้ว ' + nf.format(merged.size) + ' ออเดอร์ (' + platTxt + ') · อัปเดต ' + new Date().toLocaleString('th-TH', {hour:'2-digit', minute:'2-digit'}) + ' น.');
   } catch (e){ showMsg('error', 'โหลดจากชีตไม่สำเร็จ: ' + ((e && e.message) ? e.message : String(e))); }
 }
 
@@ -390,8 +406,6 @@ function curView(){ const A = aggregate(); const cur = state.day; return cur==='
 function curLabel(){ return state.day==='all' ? 'ทุกวัน' : (state.day==='(ไม่มีวันที่)'?'ไม่มีวันที่':dLabel(state.day)); }
 
 /* ---------- events ---------- */
-$('#uploadBtn').addEventListener('click', () => $('#file').click());
-$('#file').addEventListener('change', e => { handleFiles(e.target.files); e.target.value = ''; });
 $('#exclCancel').addEventListener('change', e => { state.exclCancel = e.target.checked; render(); });
 $('#days').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (!b) return; state.day = b.dataset.k; render(); });
 $('#dailyBody').addEventListener('click', e => { const tr = e.target.closest('[data-k]'); if (!tr) return; state.day = tr.dataset.k; render(); $('#prodPanel').scrollIntoView({behavior:'smooth', block:'nearest'}); });
@@ -412,14 +426,8 @@ $('#copyHour').addEventListener('click', () => {
   const body = v.hours.map((h,i) => [pad(i)+':00-'+pad(i)+':59', h.ord.size, h.units, Math.round(h.sales)].join('\t'));
   copyText(['รายชั่วโมง · ' + curLabel(), head.join('\t'), ...body].join('\n'), 'ตารางรายชั่วโมง');
 });
-// drag & drop
-const drop = $('#drop'); let dc = 0;
-window.addEventListener('dragenter', e => { e.preventDefault(); dc++; drop.classList.add('on'); });
-window.addEventListener('dragover', e => e.preventDefault());
-window.addEventListener('dragleave', e => { e.preventDefault(); if (--dc <= 0){ dc=0; drop.classList.remove('on'); } });
-window.addEventListener('drop', e => { e.preventDefault(); dc=0; drop.classList.remove('on'); if (e.dataTransfer && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
 $('#refreshSheet').addEventListener('click', loadFromSheet);
-// auto-load from the embedded order Google Sheet on open
+// auto-load from the embedded order Google Sheets (TikTok + Shopee) on open
 loadFromSheet();
 </script>
 </body>
