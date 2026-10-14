@@ -429,6 +429,25 @@ button.skst-chip[aria-pressed=true]{box-shadow:0 0 0 2px var(--c) inset}
     <div class="more" id="skuMoreWrap" hidden><button class="btn" type="button" id="skuMore"></button></div>
   </section>
 
+  <section class="panel sku-panel" id="timePanel" aria-label="สินค้าขายเวลาไหน">
+    <div class="sku-head">
+      <div>
+        <h2>สินค้าขายเวลาไหน · รายวัน × รายชั่วโมง</h2>
+        <p class="sub-h">ขายออกเวลาไหน นับเที่ยงคืน (00:00) ถึง 23:59 ของแต่ละวัน · เลือกวัน แล้วดูยอดขายแต่ละชั่วโมง + สินค้าขายดีของวันนั้น · ใช้เวลาที่ “สั่งซื้อ” (Created Time)</p>
+      </div>
+      <button class="btn small" type="button" id="copyTime"></button>
+    </div>
+    <div class="sku-tools">
+      <label class="vh" for="timeDay">เลือกวัน</label>
+      <select id="timeDay" style="padding:7px 10px;border:1px solid var(--line-2);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px"></select>
+      <label class="search" for="timeQ"><span id="timeSearchIc"></span><span class="vh">ค้นหาสินค้า</span><input id="timeQ" type="search" placeholder="กรองเฉพาะสินค้า/รหัส SKU (เว้นว่าง = ทุกสินค้า)" autocomplete="off"></label>
+      <label class="sku-chk"><input type="checkbox" id="timeExcl" checked> ไม่นับออเดอร์ที่ยกเลิก</label>
+      <span class="sku-count muted" id="timeSum"></span>
+    </div>
+    <div id="timeChartWrap" style="padding:4px 2px 0"></div>
+    <div id="timeProd" style="margin-top:12px"></div>
+  </section>
+
   <section class="list" aria-label="รายการออเดอร์">
     <div class="list-head">
       <div class="list-top">
@@ -535,7 +554,7 @@ const COL = {
   cancel:['เหตุผลในการยกเลิกคำสั่งซื้อ','Cancel reason','Cancellation Reason'],
   ret:['สถานะการคืนเงินหรือคืนสินค้า','Return / Refund Status','Return/Refund Status'],
   buyer:['ชื่อผู้ใช้ (ผู้ซื้อ)','Username (Buyer)'],
-  orderAt:['วันที่ทำการสั่งซื้อ','Order Creation Date'],
+  orderAt:['วันที่ทำการสั่งซื้อ','Order Creation Date','Created Time','เวลาที่สร้างคำสั่งซื้อ'],
   paidAt:['เวลาการชำระสินค้า','Order Paid Time'],
   pay:['ช่องทางการชำระเงิน','Payment Method'],
   shipOpt:['ตัวเลือกการจัดส่ง','Shipping Option'],
@@ -566,7 +585,7 @@ const FLAGS = {
   sellerLate:   {label:'ระบบยกเลิกเพราะส่งไม่ทัน',   test:o => !!(o.cancel && o.cancel.sellerFault)}
 };
 
-const state = { orders:[], meta:null, now:new Date(), tag:null, shipDay:null, orderDay:null, obStatus:null, reason:null, flag:null, q:'', sort:'urgent', limit:100, current:[], sku:null, skuExclCancel:true, skuQ:'', skuSort:'units', skuLimit:30 };
+const state = { orders:[], meta:null, now:new Date(), tag:null, shipDay:null, orderDay:null, obStatus:null, reason:null, flag:null, q:'', sort:'urgent', limit:100, current:[], sku:null, skuExclCancel:true, skuQ:'', skuSort:'units', skuLimit:30, timeDay:null, timeQ:'', timeExclCancel:true };
 
 /* ---------- parsing ---------- */
 function parseDate(v){
@@ -1151,6 +1170,71 @@ function renderSkuStatus(sku){
   el.innerHTML = `<div class="skst-h"><code>${esc(sku)}</code> <span class="muted">ทั้งหมด ${nf.format(total)} ออเดอร์ · แยกตามสถานะ (กดเพื่อกรอง)</span></div><div class="skst-chips">${chips || '<span class="muted">—</span>'}${retChip}</div>`;
 }
 
+/* ---------- sales by day × hour (เวลาที่สั่งซื้อ) ---------- */
+const TH_DOW = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'], TH_MO = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function dLabel(k){ const [y, m, d] = k.split('-').map(Number); const dt = new Date(y, m-1, d); return `${TH_DOW[dt.getDay()]} ${d} ${TH_MO[m-1]} ${String(y+543).slice(-2)}`; }
+function emptyHours(){ return Array.from({length:24}, () => ({u:0, g:0, ord:new Set()})); }
+function timeData(){
+  const excl = state.timeExclCancel, q = state.timeQ.trim().toLowerCase();
+  const days = new Map(); let anyTime = false;
+  for (const o of state.orders){
+    if (excl && o.stage === 'cancelled') continue;
+    const at = o.orderAt; if (!at) continue;
+    if (at.getHours() || at.getMinutes()) anyTime = true;
+    const dk = dayKey(at), hr = at.getHours();
+    for (const it of o.items){
+      if (q && !((it.sku||'') + ' ' + (it.name||'')).toLowerCase().includes(q)) continue;
+      let d = days.get(dk); if (!d){ d = {dk, hours:emptyHours(), units:0, gmv:0, ord:new Set(), prod:new Map()}; days.set(dk, d); }
+      const u = it.qty||0, v = it.val||0, H = d.hours[hr];
+      H.u += u; H.g += v; H.ord.add(o.id); d.units += u; d.gmv += v; d.ord.add(o.id);
+      const key = it.sku || it.name || '(ไม่ระบุ)';
+      let p = d.prod.get(key); if (!p){ p = {name:it.name||key, sku:it.sku||'', units:0, gmv:0, ord:new Set()}; d.prod.set(key, p); }
+      p.units += u; p.gmv += v; p.ord.add(o.id); if (it.name) p.name = it.name;
+    }
+  }
+  return {days, anyTime};
+}
+function renderTime(){
+  const {days, anyTime} = timeData();
+  const keys = [...days.keys()].sort();
+  const sel = $('#timeDay');
+  let cur = state.timeDay; if (cur !== 'all' && !days.has(cur)) cur = keys.length ? keys[keys.length-1] : 'all';
+  state.timeDay = cur;
+  sel.innerHTML = `<option value="all">ทุกวันรวมกัน (${keys.length} วัน)</option>` + keys.slice().reverse().map(k => `<option value="${k}">${dLabel(k)} · ${nf.format(days.get(k).units)} ชิ้น</option>`).join('');
+  sel.value = cur;
+  let view;
+  if (cur === 'all'){
+    view = {hours:emptyHours(), units:0, gmv:0, ord:new Set(), prod:new Map()};
+    for (const d of days.values()){
+      for (let h=0;h<24;h++){ const S=d.hours[h], T=view.hours[h]; T.u+=S.u; T.g+=S.g; S.ord.forEach(id=>T.ord.add(id)); }
+      view.units+=d.units; view.gmv+=d.gmv; d.ord.forEach(id=>view.ord.add(id));
+      for (const [k,p] of d.prod){ let w=view.prod.get(k); if(!w){w={name:p.name,sku:p.sku,units:0,gmv:0,ord:new Set()};view.prod.set(k,w);} w.units+=p.units; w.gmv+=p.gmv; p.ord.forEach(id=>w.ord.add(id)); if(p.name)w.name=p.name; }
+    }
+  } else view = days.get(cur) || {hours:emptyHours(), units:0, gmv:0, ord:new Set(), prod:new Map()};
+  const maxU = Math.max(1, ...view.hours.map(h=>h.u));
+  let peakH = 0; view.hours.forEach((h,i)=>{ if (h.u > view.hours[peakH].u) peakH = i; });
+  const hasData = view.units > 0;
+  $('#timeSum').textContent = hasData
+    ? `${cur==='all' ? 'ทุกวัน' : dLabel(cur)} · ${nf.format(view.units)} ชิ้น · ${nf.format(view.ord.size)} ออเดอร์ · ${money(view.gmv)} · ขายดีสุด ${pad(peakH)}:00–${pad(peakH)}:59 (${nf.format(view.hours[peakH].u)} ชิ้น)`
+    : '';
+  const wrap = $('#timeChartWrap');
+  if (!state.orders.length){ wrap.innerHTML = '<p class="muted" style="padding:16px;text-align:center">อัปโหลดไฟล์ออเดอร์เพื่อดูยอดขายรายชั่วโมง</p>'; $('#timeProd').innerHTML=''; $('#copyTime').disabled=true; return; }
+  if (!anyTime){ wrap.innerHTML = '<p class="muted" style="padding:16px;text-align:center">ไฟล์นี้ไม่มี “เวลา” ที่สั่งซื้อ (มีแต่วันที่) — ดูรายชั่วโมงไม่ได้<br><small>ไฟล์ที่มีเวลา เช่น TikTok “Created Time”</small></p>'; $('#timeProd').innerHTML=''; $('#copyTime').disabled=true; return; }
+  const bars = view.hours.map((h,i)=>{
+    const pc = h.u ? Math.max(3, Math.round(h.u/maxU*100)) : 0, pk = i===peakH && h.u>0;
+    return `<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center" title="${pad(i)}:00–${pad(i)}:59 · ${nf.format(h.u)} ชิ้น · ${nf.format(h.ord.size)} ออเดอร์${h.g?' · '+money(h.g):''}">
+      <div style="font-size:9px;color:var(--muted);height:12px;line-height:12px">${pk&&h.u?nf.format(h.u):''}</div>
+      <div style="height:104px;width:100%;display:flex;align-items:flex-end"><div style="width:100%;max-width:16px;margin:0 auto;height:${pc}%;border-radius:4px 4px 0 0;background:${pk?'var(--accent)':'var(--line-2)'}"></div></div>
+      <div style="font-size:9px;color:var(--muted);height:14px;line-height:14px">${i%2===0?pad(i):''}</div>
+    </div>`;
+  }).join('');
+  wrap.innerHTML = `<div style="display:flex;align-items:flex-end;gap:2px;border-bottom:1px solid var(--line)">${bars}</div><div style="font-size:10px;color:var(--muted);text-align:center;margin-top:4px">ชั่วโมง 00–23 · แท่งสีเข้ม = ชั่วโมงขายดีสุด · ชี้ที่แท่งเพื่อดูยอด</div>`;
+  const prods = [...view.prod.values()].sort((a,b)=>b.units-a.units).slice(0,8);
+  $('#timeProd').innerHTML = hasData
+    ? `<div style="font-size:12px;font-weight:600;margin-bottom:6px">สินค้าขายดี${cur==='all'?'รวมทุกวัน':'ของวันนี้'} (Top ${prods.length})</div>` + prods.map(p=>`<div style="display:flex;justify-content:space-between;gap:8px;border-top:1px solid var(--line);padding:6px 2px;font-size:12px"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.sku?`<code style="font-family:var(--f-mono);font-size:10.5px;color:var(--muted)">${esc(p.sku)}</code> `:''}${esc(p.name)}</span><b style="white-space:nowrap">${nf.format(p.units)} ชิ้น <span class="muted" style="font-weight:400">· ${nf.format(p.ord.size)} ออเดอร์</span></b></div>`).join('')
+    : '<p class="muted" style="padding:10px 2px">ไม่มียอดขายในช่วงที่เลือก</p>';
+  $('#copyTime').disabled = !hasData;
+}
 function renderList(){
   const list = sortList(filtered());
   state.current = list;
@@ -1165,8 +1249,8 @@ function renderList(){
   $('#copyIds').disabled = $('#copyTable').disabled = !list.length;
   renderActive();
 }
-function renderAll(){ renderHeader(); renderTiles(); renderShip(); renderOrderChart(); renderCancelByDay(); renderCancel(); renderFlags(); renderSku(); renderList(); }
-function refilter(){ state.limit = 100; renderTiles(); renderShip(); renderOrderChart(); renderCancelByDay(); renderCancel(); renderFlags(); renderSku(); renderList(); }
+function renderAll(){ renderHeader(); renderTiles(); renderShip(); renderOrderChart(); renderCancelByDay(); renderCancel(); renderFlags(); renderSku(); renderTime(); renderList(); }
+function refilter(){ state.limit = 100; renderTiles(); renderShip(); renderOrderChart(); renderCancelByDay(); renderCancel(); renderFlags(); renderSku(); renderTime(); renderList(); }
 
 /* ---------- copy ---------- */
 let toastT;
@@ -1191,6 +1275,21 @@ $('#searchIc').innerHTML = svg('search');
 $('#skuSearchIc').innerHTML = svg('search');
 $('#copyCxDay').innerHTML = `${svg('table')}คัดลอกตาราง`;
 $('#copySku').innerHTML = `${svg('table')}คัดลอกตาราง SKU`;
+$('#timeSearchIc').innerHTML = svg('search');
+$('#copyTime').innerHTML = `${svg('table')}คัดลอกตารางเวลา`;
+// sales-by-hour interactions
+$('#timeDay').addEventListener('change', e => { state.timeDay = e.target.value; renderTime(); });
+let timeQT; $('#timeQ').addEventListener('input', e => { clearTimeout(timeQT); timeQT = setTimeout(() => { state.timeQ = e.target.value; renderTime(); }, 150); });
+$('#timeExcl').addEventListener('change', e => { state.timeExclCancel = e.target.checked; renderTime(); });
+$('#copyTime').addEventListener('click', () => {
+  const {days} = timeData(), cur = state.timeDay;
+  const scope = cur === 'all' ? [...days.values()] : (days.has(cur) ? [days.get(cur)] : []);
+  const agg = emptyHours();
+  scope.forEach(d => d.hours.forEach((h, i) => { agg[i].u += h.u; agg[i].g += h.g; h.ord.forEach(id => agg[i].ord.add(id)); }));
+  const head = ['ชั่วโมง','ชิ้น','ออเดอร์','ยอดขาย(฿)'];
+  const body = agg.map((h, i) => [`${pad(i)}:00-${pad(i)}:59`, h.u, h.ord.size, Math.round(h.g)].join('\t'));
+  copyText([`เวลาขาย · ${cur === 'all' ? 'ทุกวัน' : dLabel(cur)}`, head.join('\t'), ...body].join('\n'), 'ตารางยอดขายรายชั่วโมง');
+});
 // per-SKU summary interactions
 $('#skuBody').addEventListener('click', e => { const tr = e.target.closest('[data-sku]'); if (!tr) return; state.sku = state.sku === tr.dataset.sku ? null : tr.dataset.sku; refilter(); if (state.sku) $('#skuPanel').scrollIntoView({behavior:'smooth', block:'nearest'}); });
 $('#skuBody').addEventListener('keydown', e => { if (e.key !== 'Enter' && e.key !== ' ') return; const tr = e.target.closest('[data-sku]'); if (!tr) return; e.preventDefault(); state.sku = state.sku === tr.dataset.sku ? null : tr.dataset.sku; refilter(); });
