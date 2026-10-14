@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ยอดขายรายวัน & รายชั่วโมง</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --surface:#ffffff; --surface-2:#f1f3f6; --line:#e5e8ec; --line-2:#d3d8df;
+    --ink:#121619; --ink-2:#3b434c; --muted:#8a929c; --accent:#2563eb; --accent-soft:#e8effe;
+    --good:#16a34a; --bad:#e11d48; --warn:#d97706;
+    --f:"Segoe UI",system-ui,-apple-system,"Sarabun",sans-serif; --f-mono:ui-monospace,"Cascadia Mono",Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#0f1317; --surface:#171c22; --surface-2:#1e242c; --line:#2a313a; --line-2:#394250;
+    --ink:#eef1f4; --ink-2:#c3cad2; --muted:#8893a0; --accent:#5b9bff; --accent-soft:#1b2740;
+  }}
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1120px;margin:0 auto;padding:16px 16px 60px}
+  .muted{color:var(--muted)}
+  code{font-family:var(--f-mono)}
+  .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);border-radius:9px;padding:8px 13px;font:inherit;font-weight:600;cursor:pointer}
+  .btn:hover{background:var(--surface-2)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.small{padding:6px 10px;font-size:12.5px}
+  .btn:disabled{opacity:.45;cursor:default}
+  .ic{width:16px;height:16px;flex:none}
+
+  /* upload */
+  .up{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+  .up .t{font-size:18px;font-weight:800;font-family:var(--f)}
+  .up .hint{font-size:12px;color:var(--muted);margin:2px 0 0}
+  .msg{margin-top:10px;font-size:13px;padding:9px 12px;border-radius:9px;display:none}
+  .msg.ok{display:block;background:color-mix(in oklab,var(--good) 14%,var(--surface));color:var(--good)}
+  .msg.error{display:block;background:color-mix(in oklab,var(--bad) 13%,var(--surface));color:var(--bad)}
+  .msg.info{display:block;background:var(--surface-2);color:var(--ink-2)}
+
+  /* summary tiles */
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}
+  .tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .tile .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+  .tile .v{font-size:23px;font-weight:800;margin-top:3px;font-variant-numeric:tabular-nums}
+  .tile .s{font-size:11px;color:var(--muted);margin-top:2px}
+
+  .toolrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:16px 0 8px}
+  .chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-2);cursor:pointer}
+
+  /* day chips */
+  .days{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 8px}
+  .day{flex:none;min-width:116px;border:1.5px solid var(--line-2);background:var(--surface);border-radius:12px;padding:9px 12px;cursor:pointer;text-align:left}
+  .day:hover{background:var(--surface-2)}
+  .day.on{border-color:var(--accent);background:var(--accent-soft)}
+  .day .d{font-size:12.5px;font-weight:700}
+  .day .m{font-size:11px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+  .panel h2{font-size:16px;margin:0 0 2px;font-weight:800}
+  .panel .sub{font-size:12px;color:var(--muted);margin:0 0 12px}
+  .ph{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:8px 8px;border-top:1px solid var(--line)}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);border-top:0;cursor:default}
+  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  tbody tr:hover{background:var(--surface-2)}
+  .rank{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:7px;background:var(--surface-2);color:var(--muted);font-size:11px;font-weight:800}
+  .rank.top{background:var(--accent);color:#fff}
+  .nm{display:block;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .scroll{overflow-x:auto}
+
+  /* hourly bar in a table cell */
+  .barwrap{position:relative;height:16px;background:var(--surface-2);border-radius:5px;min-width:90px;overflow:hidden}
+  .bar{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:5px}
+  .bar.pk{background:var(--warn)}
+  tr.pk td{background:color-mix(in oklab,var(--warn) 9%,transparent)}
+
+  .empty{padding:40px 16px;text-align:center;color:var(--muted)}
+  .drop{position:fixed;inset:0;background:color-mix(in oklab,var(--accent) 16%,rgba(0,0,0,.4));display:none;align-items:center;justify-content:center;z-index:50}
+  .drop.on{display:flex}
+  .drop>div{background:var(--surface);border:2px dashed var(--accent);border-radius:16px;padding:40px 54px;font-size:18px;font-weight:700;text-align:center}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:13px;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="up">
+    <div style="flex:1;min-width:200px">
+      <div class="t">ยอดขายรายวัน &amp; รายชั่วโมง</div>
+      <p class="hint">อัปโหลดไฟล์คำสั่งซื้อ (.xlsx / .csv) จาก Seller Centre — ดูว่าแต่ละวันขายกี่ออเดอร์ สินค้าไหน ยอดเท่าไหร่ และแต่ละชั่วโมงมีซื้อเข้ามาเท่าไหร่ · อ่านในเบราว์เซอร์นี้เท่านั้น ไม่ส่งไฟล์ออกนอก</p>
+    </div>
+    <button class="btn primary" id="uploadBtn" type="button">อัปโหลดไฟล์ออเดอร์</button>
+    <input class="vh" style="display:none" type="file" id="file" accept=".xlsx,.xls,.csv" multiple>
+  </div>
+  <div class="msg" id="msg"></div>
+
+  <div id="result" hidden>
+    <div class="tiles" id="tiles"></div>
+
+    <div class="toolrow">
+      <b style="font-size:13px">เลือกวัน</b>
+      <label class="chk"><input type="checkbox" id="exclCancel" checked> ไม่นับออเดอร์ที่ยกเลิก</label>
+      <span class="muted" id="rangeNote" style="font-size:12px"></span>
+    </div>
+    <div class="days" id="days"></div>
+
+    <section class="panel" id="prodPanel">
+      <div class="ph">
+        <div><h2 id="prodTitle">สินค้าที่ขาย</h2><p class="sub" id="prodSub"></p></div>
+        <button class="btn small" id="copyProd" type="button">คัดลอกตาราง</button>
+      </div>
+      <div class="scroll">
+        <table id="prodTbl">
+          <thead><tr><th>#</th><th>สินค้า</th><th>SKU</th><th class="n">ออเดอร์</th><th class="n">ชิ้น</th><th class="n">ยอดขาย</th></tr></thead>
+          <tbody id="prodBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" id="hourPanel">
+      <div class="ph">
+        <div><h2>รายชั่วโมง (00:00–23:59)</h2><p class="sub" id="hourSub">แต่ละชั่วโมงมีคนซื้อเข้ามากี่ออเดอร์ กี่ชิ้น ยอดเท่าไหร่</p></div>
+        <button class="btn small" id="copyHour" type="button">คัดลอกตาราง</button>
+      </div>
+      <div id="hourNote" class="msg info" style="display:none;margin:0 0 12px"></div>
+      <div class="scroll">
+        <table id="hourTbl">
+          <thead><tr><th>ชั่วโมง</th><th class="n">ออเดอร์</th><th class="n">ชิ้น</th><th class="n">ยอดขาย</th><th style="width:40%">สัดส่วน (ชิ้น)</th></tr></thead>
+          <tbody id="hourBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div id="emptyState" class="empty">อัปโหลดไฟล์คำสั่งซื้อเพื่อเริ่มดูยอดขายรายวัน &amp; รายชั่วโมง</div>
+</div>
+
+<div class="drop" id="drop"><div>วางไฟล์ออเดอร์ที่นี่<br><small class="muted">.xlsx .xls หรือ .csv</small></div></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const nf = new Intl.NumberFormat('th-TH');
+const mf = new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 });
+const money = v => '฿' + mf.format(Math.round(v || 0));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+const str = v => (v == null ? '' : String(v)).trim();
+const num = v => { if (typeof v === 'number') return v; const n = parseFloat(String(v ?? '').replace(/[,฿\s]/g, '')); return isFinite(n) ? n : 0; };
+const TH_DOW = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'], TH_MO = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const dayKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+function dLabel(k){ const [y,m,d] = k.split('-').map(Number); const dt = new Date(y, m-1, d); return `${TH_DOW[dt.getDay()]} ${d} ${TH_MO[m-1]} ${String(y+543).slice(-2)}`; }
+
+/* ---------- column detection (Shopee / TikTok / Lazada exports) ---------- */
+const COL = {
+  id:['หมายเลขคำสั่งซื้อ','Order ID','Order SN'],
+  status:['สถานะการสั่งซื้อ','Order Status'],
+  product:['ชื่อสินค้า','Product Name'],
+  sku:['Seller SKU','SKU ผู้ขาย','เลขอ้างอิง SKU (SKU Reference No.)','SKU Reference No.'],
+  variation:['ชื่อตัวเลือก','Variation Name','Variation'],
+  qty:['จำนวน','Quantity'],
+  lineVal:['SKU Subtotal After Discount','ราคาสินค้าที่ชำระโดยผู้ซื้อ (THB)','Product Subtotal','SKU Subtotal after discount'],
+  total:['จำนวนเงินทั้งหมด','Grand Total','Total Amount','Order Amount'],
+  orderAt:['เวลาที่ทำการสั่งซื้อ','วันที่ทำการสั่งซื้อ','Order Creation Date','Created Time','เวลาที่สร้างคำสั่งซื้อ']
+};
+const normH = s => String(s ?? '').replace(/[\s*]/g, '').toLowerCase();
+const COLN = Object.fromEntries(Object.entries(COL).map(([k, a]) => [k, a.map(normH)]));
+function mapHeaders(row){ const n = (row || []).map(normH), idx = {}; for (const k in COLN) for (const a of COLN[k]) { const i = n.indexOf(a); if (i >= 0) { idx[k] = i; break; } } return idx; }
+function findHeader(aoa){ for (let i = 0; i < Math.min(12, aoa.length); i++) { const m = mapHeaders(aoa[i]); if (m.id != null && m.product != null) return {row:i, idx:m}; } return null; }
+function parseDate(v){
+  if (v == null || v === '' || v === '-') return null;
+  if (typeof v === 'number' && isFinite(v)) { const d = new Date(Math.round((v - 25569) * 864e5)); return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes()); }
+  const s = String(v).trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/); if (m) return new Date(+m[1], m[2]-1, +m[3], +(m[4]||0), +(m[5]||0));
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/); if (m) return new Date(+m[3], m[2]-1, +m[1], +(m[4]||0), +(m[5]||0));
+  return null;
+}
+const isCancel = raw => /ยกเลิก|cancel/i.test(String(raw || ''));
+
+function buildOrders(aoa, fileName){
+  const h = findHeader(aoa); if (!h) return null;
+  const {row, idx} = h, map = new Map(); let lines = 0;
+  for (let r = row + 1; r < aoa.length; r++) {
+    const R = aoa[r]; if (!R) continue;
+    const g = k => idx[k] == null ? '' : R[idx[k]];
+    const id = str(g('id')); if (!id) continue;
+    lines++;
+    let o = map.get(id);
+    if (!o) { o = { id, statusRaw:str(g('status')), orderAt:parseDate(g('orderAt')), items:[], file:fileName }; o.cancel = isCancel(o.statusRaw); map.set(id, o); }
+    o.items.push({ name:str(g('product')), sku:str(g('sku')), variation:str(g('variation')), qty:num(g('qty')), val:num(g('lineVal')) });
+  }
+  return { orders:[...map.values()], lines };
+}
+
+/* ---------- state + aggregation ---------- */
+const state = { orders:[], exclCancel:true, day:null };
+function emptyHours(){ return Array.from({length:24}, () => ({ ord:new Set(), units:0, sales:0 })); }
+function aggregate(){
+  const days = new Map(); let anyTime = false, tOrd = new Set(), tUnits = 0, tSales = 0;
+  for (const o of state.orders){
+    if (state.exclCancel && o.cancel) continue;
+    const at = o.orderAt; const dk = at ? dayKey(at) : '(ไม่มีวันที่)'; const hr = at ? at.getHours() : 0;
+    if (at && (at.getHours() || at.getMinutes())) anyTime = true;
+    let d = days.get(dk);
+    if (!d){ d = { dk, at, ord:new Set(), units:0, sales:0, hours:emptyHours(), prod:new Map() }; days.set(dk, d); }
+    d.ord.add(o.id); tOrd.add(o.id);
+    const H = d.hours[hr]; H.ord.add(o.id);
+    for (const it of o.items){
+      const u = it.qty || 0, v = it.val || 0;
+      d.units += u; d.sales += v; H.units += u; H.sales += v; tUnits += u; tSales += v;
+      const key = it.sku || it.name || '(ไม่ระบุ)';
+      let p = d.prod.get(key); if (!p){ p = { name:it.name || key, sku:it.sku || '', units:0, sales:0, ord:new Set() }; d.prod.set(key, p); }
+      p.units += u; p.sales += v; p.ord.add(o.id); if (it.name) p.name = it.name;
+    }
+  }
+  return { days, anyTime, tOrders:tOrd.size, tUnits, tSales };
+}
+
+/* ---------- render ---------- */
+function render(){
+  const A = aggregate();
+  const hasAny = state.orders.length > 0;
+  $('#result').hidden = !hasAny;
+  $('#emptyState').style.display = hasAny ? 'none' : '';
+  if (!hasAny) return;
+
+  const keys = [...A.days.keys()].filter(k => k !== '(ไม่มีวันที่)').sort();
+  const allKeys = [...A.days.keys()].sort();
+  // tiles
+  $('#tiles').innerHTML =
+    tile('ออเดอร์รวม', nf.format(A.tOrders), keys.length + ' วัน') +
+    tile('จำนวนชิ้นรวม', nf.format(A.tUnits)) +
+    tile('ยอดขายรวม', money(A.tSales)) +
+    tile('ช่วงวันที่', keys.length ? (dLabel(keys[0]) + (keys.length>1 ? ' – ' + dLabel(keys[keys.length-1]) : '')) : '—');
+  $('#rangeNote').textContent = state.exclCancel ? '(ตัดออเดอร์ที่ยกเลิกออกแล้ว)' : '(รวมออเดอร์ที่ยกเลิก)';
+
+  // day chips (newest first) + "ทุกวัน"
+  let cur = state.day; if (cur !== 'all' && !A.days.has(cur)) cur = keys.length ? keys[keys.length-1] : 'all';
+  state.day = cur;
+  const chips = ['<button class="day' + (cur==='all'?' on':'') + '" data-k="all"><span class="d">ทุกวันรวมกัน</span><span class="m">' + nf.format(A.tUnits) + ' ชิ้น · ' + money(A.tSales) + '</span></button>'];
+  for (const k of allKeys.slice().reverse()){ const d = A.days.get(k); chips.push('<button class="day' + (cur===k?' on':'') + '" data-k="' + esc(k) + '"><span class="d">' + (k==='(ไม่มีวันที่)'?'ไม่มีวันที่':dLabel(k)) + '</span><span class="m">' + nf.format(d.ord.size) + ' ออเดอร์ · ' + nf.format(d.units) + ' ชิ้น</span></button>'); }
+  $('#days').innerHTML = chips.join('');
+
+  // build the view (a single day or all days aggregated)
+  const view = cur === 'all' ? mergeAll(A.days) : A.days.get(cur);
+  const label = cur === 'all' ? 'ทุกวันรวมกัน' : (cur==='(ไม่มีวันที่)' ? 'ไม่มีวันที่' : dLabel(cur));
+
+  // products
+  const prods = [...view.prod.values()].sort((a,b) => b.sales - a.sales || b.units - a.units);
+  $('#prodTitle').textContent = 'สินค้าที่ขาย · ' + label;
+  $('#prodSub').textContent = nf.format(view.ord.size) + ' ออเดอร์ · ' + nf.format(view.units) + ' ชิ้น · ' + money(view.sales) + ' · ' + prods.length + ' รายการ';
+  $('#prodBody').innerHTML = prods.length ? prods.map((p,i) =>
+    '<tr><td><span class="rank' + (i<3?' top':'') + '">' + (i+1) + '</span></td>' +
+    '<td><span class="nm" title="' + esc(p.name) + '">' + esc(p.name || '—') + '</span></td>' +
+    '<td>' + (p.sku ? '<code>' + esc(p.sku) + '</code>' : '<span class="muted">—</span>') + '</td>' +
+    '<td class="n">' + nf.format(p.ord.size) + '</td><td class="n"><b>' + nf.format(p.units) + '</b></td>' +
+    '<td class="n">' + money(p.sales) + '</td></tr>').join('') : '<tr><td colspan="6" class="empty">ไม่มีสินค้าในวันนี้</td></tr>';
+
+  // hourly
+  const noTime = !A.anyTime;
+  $('#hourNote').style.display = noTime ? 'block' : 'none';
+  if (noTime) $('#hourNote').textContent = 'ไฟล์นี้ไม่มีเวลาที่สั่งซื้อ (มีแต่วันที่) จึงดูรายชั่วโมงไม่ได้ — ใช้ไฟล์ที่มีเวลา เช่น TikTok “Created Time”';
+  const hrs = view.hours;
+  const maxU = Math.max(1, ...hrs.map(h => h.units));
+  let peak = 0; hrs.forEach((h,i) => { if (h.units > hrs[peak].units) peak = i; });
+  $('#hourSub').textContent = noTime ? 'ไม่มีข้อมูลเวลา' : ('ขายดีสุด ' + pad(peak) + ':00–' + pad(peak) + ':59 · ' + nf.format(hrs[peak].units) + ' ชิ้น · ' + label);
+  $('#hourBody').innerHTML = (noTime ? [] : hrs).map((h,i) => {
+    const pk = i === peak && h.units > 0, w = h.units ? Math.max(2, Math.round(h.units/maxU*100)) : 0;
+    return '<tr' + (pk?' class="pk"':'') + '><td><b>' + pad(i) + ':00</b><span class="muted">–' + pad(i) + ':59</span></td>' +
+      '<td class="n">' + (h.ord.size?nf.format(h.ord.size):'—') + '</td>' +
+      '<td class="n">' + (h.units?'<b>'+nf.format(h.units)+'</b>':'—') + '</td>' +
+      '<td class="n">' + (h.sales?money(h.sales):'—') + '</td>' +
+      '<td><div class="barwrap"><div class="bar' + (pk?' pk':'') + '" style="width:' + w + '%"></div></div></td></tr>';
+  }).join('') || '<tr><td colspan="5" class="empty">—</td></tr>';
+}
+function tile(k, v, s){ return '<div class="tile"><div class="k">' + k + '</div><div class="v">' + v + '</div>' + (s?'<div class="s">' + s + '</div>':'') + '</div>'; }
+function mergeAll(days){
+  const view = { ord:new Set(), units:0, sales:0, hours:emptyHours(), prod:new Map() };
+  for (const d of days.values()){
+    d.ord.forEach(id => view.ord.add(id)); view.units += d.units; view.sales += d.sales;
+    for (let h=0;h<24;h++){ const S=d.hours[h], T=view.hours[h]; S.ord.forEach(id=>T.ord.add(id)); T.units+=S.units; T.sales+=S.sales; }
+    for (const [k,p] of d.prod){ let w=view.prod.get(k); if(!w){w={name:p.name,sku:p.sku,units:0,sales:0,ord:new Set()};view.prod.set(k,w);} w.units+=p.units; w.sales+=p.sales; p.ord.forEach(id=>w.ord.add(id)); if(p.name)w.name=p.name; }
+  }
+  return view;
+}
+
+/* ---------- file handling ---------- */
+function showMsg(kind, text){ const m = $('#msg'); m.className = 'msg ' + kind; m.textContent = text || ''; m.style.display = text ? 'block' : 'none'; }
+let xlsxP = null;
+function loadXLSX(){
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (!xlsxP) xlsxP = new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; sc.onload = () => res(window.XLSX); sc.onerror = () => { xlsxP = null; rej(new Error('โหลดตัวอ่านไฟล์ไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่')); }; document.head.appendChild(sc); });
+  return xlsxP;
+}
+function fixRange(XLSX, ws){ let mr=-1, mc=-1; for (const k in ws){ if (k[0]==='!') continue; const c = XLSX.utils.decode_cell(k); if (c.r>mr) mr=c.r; if (c.c>mc) mc=c.c; } if (mr>=0) ws['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:mr,c:mc}}); }
+async function handleFiles(list){
+  const files = [...list].filter(f => /\.(xlsx|xls|csv)$/i.test(f.name));
+  if (!files.length){ showMsg('error', 'รองรับเฉพาะไฟล์ .xlsx .xls หรือ .csv'); return; }
+  showMsg('info', 'กำลังอ่าน ' + files.map(f=>f.name).join(', ') + ' …');
+  try {
+    const XLSX = await loadXLSX();
+    const merged = new Map();
+    for (const f of files){
+      const wb = /\.csv$/i.test(f.name) ? XLSX.read(await f.text(), {type:'string', raw:true}) : XLSX.read(await f.arrayBuffer(), {type:'array'});
+      let res = null;
+      for (const name of wb.SheetNames){ const ws = wb.Sheets[name]; fixRange(XLSX, ws); res = buildOrders(XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''}), f.name); if (res) break; }
+      if (!res) throw new Error('ไฟล์ "' + f.name + '" ไม่พบคอลัมน์ "หมายเลขคำสั่งซื้อ/Order ID" และ "ชื่อสินค้า/Product Name" — ใช้ไฟล์ที่ export จากเมนูคำสั่งซื้อใน Seller Centre');
+      for (const o of res.orders) merged.set(o.id, o);
+    }
+    state.orders = [...merged.values()]; state.day = null;
+    render();
+    showMsg('ok', 'อ่านแล้ว ' + nf.format(merged.size) + ' ออเดอร์ จาก ' + files.length + ' ไฟล์');
+  } catch (e){ showMsg('error', (e && e.message) ? e.message : String(e)); }
+}
+
+/* ---------- copy ---------- */
+function toast(t){ let el = document.querySelector('.toast'); if (!el){ el = document.createElement('div'); el.className='toast'; document.body.appendChild(el); } el.textContent = t; el.style.display=''; clearTimeout(el._t); el._t = setTimeout(()=>el.style.display='none', 2000); }
+function copyText(text, label){ (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('คัดลอกแล้ว · ' + label)).catch(() => { const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy'); toast('คัดลอกแล้ว · '+label);}catch{} ta.remove(); }); }
+function curView(){ const A = aggregate(); const cur = state.day; return cur==='all' ? mergeAll(A.days) : (A.days.get(cur) || {prod:new Map(), hours:emptyHours()}); }
+function curLabel(){ return state.day==='all' ? 'ทุกวัน' : (state.day==='(ไม่มีวันที่)'?'ไม่มีวันที่':dLabel(state.day)); }
+
+/* ---------- events ---------- */
+$('#uploadBtn').addEventListener('click', () => $('#file').click());
+$('#file').addEventListener('change', e => { handleFiles(e.target.files); e.target.value = ''; });
+$('#exclCancel').addEventListener('change', e => { state.exclCancel = e.target.checked; render(); });
+$('#days').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (!b) return; state.day = b.dataset.k; render(); });
+$('#copyProd').addEventListener('click', () => {
+  const v = curView(); const rows = [...v.prod.values()].sort((a,b)=>b.sales-a.sales);
+  const head = ['สินค้า','SKU','ออเดอร์','ชิ้น','ยอดขาย(฿)'];
+  const body = rows.map(p => [String(p.name).replace(/[\t\r\n]+/g,' '), p.sku, p.ord.size, p.units, Math.round(p.sales)].join('\t'));
+  copyText(['สินค้าที่ขาย · ' + curLabel(), head.join('\t'), ...body].join('\n'), 'ตารางสินค้า ' + rows.length + ' รายการ');
+});
+$('#copyHour').addEventListener('click', () => {
+  const v = curView(); const head = ['ชั่วโมง','ออเดอร์','ชิ้น','ยอดขาย(฿)'];
+  const body = v.hours.map((h,i) => [pad(i)+':00-'+pad(i)+':59', h.ord.size, h.units, Math.round(h.sales)].join('\t'));
+  copyText(['รายชั่วโมง · ' + curLabel(), head.join('\t'), ...body].join('\n'), 'ตารางรายชั่วโมง');
+});
+// drag & drop
+const drop = $('#drop'); let dc = 0;
+window.addEventListener('dragenter', e => { e.preventDefault(); dc++; drop.classList.add('on'); });
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('dragleave', e => { e.preventDefault(); if (--dc <= 0){ dc=0; drop.classList.remove('on'); } });
+window.addEventListener('drop', e => { e.preventDefault(); dc=0; drop.classList.remove('on'); if (e.dataTransfer && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
+</script>
+</body>
+</html>
