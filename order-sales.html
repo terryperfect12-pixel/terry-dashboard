@@ -46,6 +46,13 @@
 
   .toolrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:16px 0 8px}
   .chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-2);cursor:pointer}
+  .filterbar{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 14px}
+  .fgroup{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .flbl{font-size:12px;color:var(--muted);font-weight:800}
+  .fchip{border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink);border-radius:999px;padding:5px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
+  .fchip:hover{background:var(--surface-2)}
+  .fchip.on{border-color:var(--accent);background:var(--accent);color:#fff}
+  .fchip .c{opacity:.65;font-weight:400;margin-left:3px}
 
   /* day chips */
   .days{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 8px}
@@ -99,6 +106,11 @@
 
   <div id="result" hidden>
     <div class="tiles" id="tiles"></div>
+
+    <div class="filterbar" id="filterBar">
+      <div class="fgroup"><span class="flbl">ช่องทาง</span><div class="chips" id="platChips"></div></div>
+      <div class="fgroup" id="brandGroup"><span class="flbl">แบรนด์</span><div class="chips" id="brandChips"></div></div>
+    </div>
 
     <section class="panel" id="dailyPanel">
       <div class="ph">
@@ -201,8 +213,10 @@ function parseDate(v){
   return null;
 }
 const isCancel = raw => /ยกเลิก|cancel/i.test(String(raw || ''));
+// brand from the tab name (e.g. "Terry Oct" → Terry · "Benutra ต.ค." → Benutra)
+const brandOf = s => { const n = String(s || '').toLowerCase(); if (/benutra|บีนูทร่า/.test(n)) return 'Benutra'; if (/terry|เธอร์รี่/.test(n)) return 'Terry'; if (/gala|camille|กาล่า/.test(n)) return 'Gala'; return 'อื่นๆ'; };
 
-function buildOrders(aoa, fileName, platform){
+function buildOrders(aoa, fileName, platform, brand){
   const h = findHeader(aoa); if (!h) return null;
   const {row, idx} = h, map = new Map(); let lines = 0;
   for (let r = row + 1; r < aoa.length; r++) {
@@ -211,19 +225,21 @@ function buildOrders(aoa, fileName, platform){
     const id = str(g('id')); if (!id) continue;
     lines++;
     let o = map.get(id);
-    if (!o) { o = { id, statusRaw:str(g('status')), orderAt:parseDate(g('orderAt')), items:[], file:fileName, platform:platform || '' }; o.cancel = isCancel(o.statusRaw); map.set(id, o); }
+    if (!o) { o = { id, statusRaw:str(g('status')), orderAt:parseDate(g('orderAt')), items:[], file:fileName, platform:platform || '', brand:brand || 'อื่นๆ' }; o.cancel = isCancel(o.statusRaw); map.set(id, o); }
     o.items.push({ name:str(g('product')), sku:str(g('sku')), variation:str(g('variation')), qty:num(g('qty')), val:num(g('lineVal')) });
   }
   return { orders:[...map.values()], lines };
 }
 
 /* ---------- state + aggregation ---------- */
-const state = { orders:[], exclCancel:true, day:null };
+const state = { orders:[], exclCancel:true, day:null, platFilter:'all', brandFilter:'all' };
 function emptyHours(){ return Array.from({length:24}, () => ({ ord:new Set(), units:0, sales:0 })); }
 function aggregate(){
   const days = new Map(); let anyTime = false, tOrd = new Set(), tUnits = 0, tSales = 0;
   for (const o of state.orders){
     if (state.exclCancel && o.cancel) continue;
+    if (state.platFilter !== 'all' && o.platform !== state.platFilter) continue;
+    if (state.brandFilter !== 'all' && o.brand !== state.brandFilter) continue;
     const at = o.orderAt; const dk = at ? dayKey(at) : '(ไม่มีวันที่)'; const hr = at ? at.getHours() : 0;
     if (at && (at.getHours() || at.getMinutes())) anyTime = true;
     let d = days.get(dk);
@@ -241,6 +257,25 @@ function aggregate(){
   return { days, anyTime, tOrders:tOrd.size, tUnits, tSales };
 }
 
+/* ---------- platform + brand filter chips ---------- */
+const PLAT_ORDER = ['TikTok','Shopee','Lazada'], BRAND_ORDER = ['Benutra','Terry','Gala'];
+function renderFilters(){
+  const plats = {}, brands = {};
+  for (const o of state.orders){
+    if (state.exclCancel && o.cancel) continue;
+    const pl = o.platform || 'อื่นๆ', br = o.brand || 'อื่นๆ';
+    if (state.brandFilter === 'all' || o.brand === state.brandFilter) plats[pl] = (plats[pl] || 0) + 1;
+    if (state.platFilter === 'all' || o.platform === state.platFilter) brands[br] = (brands[br] || 0) + 1;
+  }
+  const order = (obj, pref) => [...pref.filter(k => k in obj), ...Object.keys(obj).filter(k => !pref.includes(k))];
+  const PL = order(plats, PLAT_ORDER), BR = order(brands, BRAND_ORDER);
+  const totP = Object.values(plats).reduce((a,b) => a+b, 0), totB = Object.values(brands).reduce((a,b) => a+b, 0);
+  const chip = (kind, val, on, label, count) => `<button class="fchip${on?' on':''}" data-kind="${kind}" data-val="${esc(val)}">${esc(label)}<span class="c">${nf.format(count)}</span></button>`;
+  $('#platChips').innerHTML = chip('plat','all', state.platFilter==='all', 'ทั้งหมด', totP) + PL.map(p => chip('plat', p, state.platFilter===p, p, plats[p])).join('');
+  $('#brandChips').innerHTML = chip('brand','all', state.brandFilter==='all', 'ทั้งหมด', totB) + BR.map(b => chip('brand', b, state.brandFilter===b, b, brands[b])).join('');
+  $('#brandGroup').style.display = BR.length > 1 ? '' : 'none';   // hide brand row until there are ≥2 brands
+}
+
 /* ---------- render ---------- */
 function render(){
   const A = aggregate();
@@ -252,7 +287,8 @@ function render(){
   const keys = [...A.days.keys()].filter(k => k !== '(ไม่มีวันที่)').sort();
   const allKeys = [...A.days.keys()].sort();
   // tiles
-  const platC = {}; for (const o of state.orders){ if (state.exclCancel && o.cancel) continue; const pl = o.platform || 'อื่นๆ'; platC[pl] = (platC[pl] || 0) + 1; }
+  renderFilters();
+  const platC = {}; for (const o of state.orders){ if (state.exclCancel && o.cancel) continue; if (state.brandFilter !== 'all' && o.brand !== state.brandFilter) continue; if (state.platFilter !== 'all' && o.platform !== state.platFilter) continue; const pl = o.platform || 'อื่นๆ'; platC[pl] = (platC[pl] || 0) + 1; }
   const platSub = Object.entries(platC).map(([k,v]) => k + ' ' + nf.format(v)).join(' · ');
   $('#tiles').innerHTML =
     tile('ออเดอร์รวม', nf.format(A.tOrders), platSub || (keys.length + ' วัน')) +
@@ -389,7 +425,8 @@ async function loadFromSheet(){
         let txt = ''; try { txt = await (await fetch(url)).text(); } catch { continue; }
         if (!txt || txt.trim().startsWith('<')) continue;
         const wb = XLSX.read(txt, { type:'string', raw:true });
-        for (const nm of wb.SheetNames){ const ws = wb.Sheets[nm]; fixRange(XLSX, ws); const res = buildOrders(XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''}), S.platform + ' · ' + tab.name, S.platform); if (res){ for (const o of res.orders) merged.set(o.id, o); byPlat[S.platform] = (byPlat[S.platform] || 0) + res.orders.length; break; } }
+        const brand = brandOf(tab.name);
+        for (const nm of wb.SheetNames){ const ws = wb.Sheets[nm]; fixRange(XLSX, ws); const res = buildOrders(XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''}), S.platform + ' · ' + tab.name, S.platform, brand); if (res){ for (const o of res.orders) merged.set(o.id, o); byPlat[S.platform] = (byPlat[S.platform] || 0) + res.orders.length; break; } }
       }
     }
     if (!merged.size) throw new Error('ไม่พบออเดอร์ในชีต — ตรวจว่าแชร์ “ทุกคนที่มีลิงก์ดูได้” และมีคอลัมน์ Order ID / Product Name');
@@ -407,6 +444,7 @@ function curLabel(){ return state.day==='all' ? 'ทุกวัน' : (state.da
 
 /* ---------- events ---------- */
 $('#exclCancel').addEventListener('change', e => { state.exclCancel = e.target.checked; render(); });
+$('#filterBar').addEventListener('click', e => { const b = e.target.closest('.fchip'); if (!b) return; if (b.dataset.kind === 'plat') state.platFilter = b.dataset.val; else state.brandFilter = b.dataset.val; state.day = null; render(); });
 $('#days').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (!b) return; state.day = b.dataset.k; render(); });
 $('#dailyBody').addEventListener('click', e => { const tr = e.target.closest('[data-k]'); if (!tr) return; state.day = tr.dataset.k; render(); $('#prodPanel').scrollIntoView({behavior:'smooth', block:'nearest'}); });
 $('#copyDaily').addEventListener('click', () => {
