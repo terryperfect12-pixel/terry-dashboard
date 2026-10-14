@@ -39,7 +39,11 @@
 
   /* summary tiles */
   .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}
-  .tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .datein{border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink);border-radius:9px;padding:6px 11px;font:inherit;font-size:13px}
+  .nm2{display:inline-block;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+  .tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px 12px 16px;position:relative;overflow:hidden}
+  .tile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent);opacity:.85}
+  #hourTbl thead th{position:sticky;top:0;background:var(--surface);z-index:1}
   .tile .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
   .tile .v{font-size:23px;font-weight:800;margin-top:3px;font-variant-numeric:tabular-nums}
   .tile .s{font-size:11px;color:var(--muted);margin-top:2px}
@@ -126,7 +130,9 @@
     </section>
 
     <div class="toolrow">
-      <b style="font-size:13px">เลือกวัน</b>
+      <b style="font-size:13px">เลือกวันที่</b>
+      <input type="date" id="datePick" class="datein">
+      <button class="btn small" id="allDaysBtn" type="button">ทุกวันรวมกัน</button>
       <label class="chk"><input type="checkbox" id="exclCancel" checked> ไม่นับออเดอร์ที่ยกเลิก</label>
       <span class="muted" id="rangeNote" style="font-size:12px"></span>
     </div>
@@ -147,13 +153,13 @@
 
     <section class="panel" id="hourPanel">
       <div class="ph">
-        <div><h2>รายชั่วโมง (00:00–23:59)</h2><p class="sub" id="hourSub">แต่ละชั่วโมงมีคนซื้อเข้ามากี่ออเดอร์ กี่ชิ้น ยอดเท่าไหร่</p></div>
+        <div><h2>รายชั่วโมง · สินค้าขายดีแต่ละชั่วโมง</h2><p class="sub" id="hourSub">ตั้งแต่ 00:00–23:59 · แต่ละชั่วโมงสินค้าไหนขายดีสุด ยอดเท่าไหร่ กี่ชิ้น กี่ออเดอร์</p></div>
         <button class="btn small" id="copyHour" type="button">คัดลอกตาราง</button>
       </div>
       <div id="hourNote" class="msg info" style="display:none;margin:0 0 12px"></div>
       <div class="scroll">
         <table id="hourTbl">
-          <thead><tr><th>ชั่วโมง</th><th class="n">ออเดอร์</th><th class="n">ชิ้น</th><th class="n">ยอดขาย</th><th style="width:40%">สัดส่วน (ชิ้น)</th></tr></thead>
+          <thead><tr><th>ชั่วโมง</th><th style="width:34%">🏆 สินค้าขายดีชั่วโมงนี้</th><th class="n">ยอดขาย(ชิ้นนี้)</th><th class="n">ยอดรวม</th><th class="n">ชิ้น</th><th class="n">ออเดอร์</th><th style="width:16%">สัดส่วน</th></tr></thead>
           <tbody id="hourBody"></tbody>
         </table>
       </div>
@@ -233,7 +239,7 @@ function buildOrders(aoa, fileName, platform, brand){
 
 /* ---------- state + aggregation ---------- */
 const state = { orders:[], exclCancel:true, day:null, platFilter:'all', brandFilter:'all' };
-function emptyHours(){ return Array.from({length:24}, () => ({ ord:new Set(), units:0, sales:0 })); }
+function emptyHours(){ return Array.from({length:24}, () => ({ ord:new Set(), units:0, sales:0, prod:new Map() })); }
 function aggregate(){
   const days = new Map(); let anyTime = false, tOrd = new Set(), tUnits = 0, tSales = 0;
   for (const o of state.orders){
@@ -252,6 +258,9 @@ function aggregate(){
       const key = it.sku || it.name || '(ไม่ระบุ)';
       let p = d.prod.get(key); if (!p){ p = { name:it.name || key, sku:it.sku || '', units:0, sales:0, ord:new Set() }; d.prod.set(key, p); }
       p.units += u; p.sales += v; p.ord.add(o.id); if (it.name) p.name = it.name;
+      // per-hour product (for "สินค้าขายดีแต่ละชั่วโมง")
+      let hp = H.prod.get(key); if (!hp){ hp = { name:it.name || key, sku:it.sku || '', units:0, sales:0 }; H.prod.set(key, hp); }
+      hp.units += u; hp.sales += v; if (it.name) hp.name = it.name;
     }
   }
   return { days, anyTime, tOrders:tOrd.size, tUnits, tSales };
@@ -297,9 +306,11 @@ function render(){
     tile('ช่วงวันที่', keys.length ? (dLabel(keys[0]) + (keys.length>1 ? ' – ' + dLabel(keys[keys.length-1]) : '')) : '—');
   $('#rangeNote').textContent = state.exclCancel ? '(ตัดออเดอร์ที่ยกเลิกออกแล้ว)' : '(รวมออเดอร์ที่ยกเลิก)';
 
-  // day chips (newest first) + "ทุกวัน"
-  let cur = state.day; if (cur !== 'all' && !A.days.has(cur)) cur = keys.length ? keys[keys.length-1] : 'all';
+  // day chips (newest first) + "ทุกวัน" · default = latest day; a picked date is kept even if it has no orders
+  let cur = state.day; if (cur == null) cur = keys.length ? keys[keys.length-1] : 'all';
   state.day = cur;
+  // sync the date picker (bounds + current value)
+  const dp = $('#datePick'); if (keys.length){ dp.min = keys[0]; dp.max = keys[keys.length-1]; } dp.value = (cur !== 'all' && /^\d{4}-\d{2}-\d{2}$/.test(cur)) ? cur : '';
   const chips = ['<button class="day' + (cur==='all'?' on':'') + '" data-k="all"><span class="d">ทุกวันรวมกัน</span><span class="m">' + nf.format(A.tUnits) + ' ชิ้น · ' + money(A.tSales) + '</span></button>'];
   for (const k of allKeys.slice().reverse()){ const d = A.days.get(k); chips.push('<button class="day' + (cur===k?' on':'') + '" data-k="' + esc(k) + '"><span class="d">' + (k==='(ไม่มีวันที่)'?'ไม่มีวันที่':dLabel(k)) + '</span><span class="m">' + nf.format(d.ord.size) + ' ออเดอร์ · ' + nf.format(d.units) + ' ชิ้น</span></button>'); }
   $('#days').innerHTML = chips.join('');
@@ -316,8 +327,8 @@ function render(){
       '<td><div class="barwrap"><div class="bar" style="width:' + w + '%"></div></div></td></tr>';
   }).join('') : '<tr><td colspan="6" class="empty">ไม่มีข้อมูลรายวัน</td></tr>';
 
-  // build the view (a single day or all days aggregated)
-  const view = cur === 'all' ? mergeAll(A.days) : A.days.get(cur);
+  // build the view (a single day or all days aggregated) · a picked no-order day → empty view
+  const view = cur === 'all' ? mergeAll(A.days) : (A.days.get(cur) || { ord:new Set(), units:0, sales:0, hours:emptyHours(), prod:new Map() });
   const label = cur === 'all' ? 'ทุกวันรวมกัน' : (cur==='(ไม่มีวันที่)' ? 'ไม่มีวันที่' : dLabel(cur));
 
   // previous day (only for a selected specific day) → product-level increase/decrease
@@ -346,22 +357,28 @@ function render(){
   const hrs = view.hours;
   const maxU = Math.max(1, ...hrs.map(h => h.units));
   let peak = 0; hrs.forEach((h,i) => { if (h.units > hrs[peak].units) peak = i; });
-  $('#hourSub').textContent = noTime ? 'ไม่มีข้อมูลเวลา' : ('ขายดีสุด ' + pad(peak) + ':00–' + pad(peak) + ':59 · ' + nf.format(hrs[peak].units) + ' ชิ้น · ' + label);
+  $('#hourSub').textContent = noTime ? 'ไม่มีข้อมูลเวลา' : ('ขายดีสุด ' + pad(peak) + ':00–' + pad(peak) + ':59 · ' + nf.format(hrs[peak].units) + ' ชิ้น · ' + money(hrs[peak].sales) + ' · ' + label);
   $('#hourBody').innerHTML = (noTime ? [] : hrs).map((h,i) => {
     const pk = i === peak && h.units > 0, w = h.units ? Math.max(2, Math.round(h.units/maxU*100)) : 0;
+    const top = h.prod && h.prod.size ? [...h.prod.values()].sort((a,b) => b.sales - a.sales || b.units - a.units)[0] : null;
+    const topCell = top ? '<b class="nm2" title="' + esc(top.name) + '">' + esc(top.name) + '</b>' + (top.sku ? ' <code class="muted">' + esc(top.sku) + '</code>' : '') : '<span class="muted">—</span>';
+    const topVal = top ? money(top.sales) + ' <span class="muted">· ' + nf.format(top.units) + ' ชิ้น</span>' : '<span class="muted">—</span>';
     return '<tr' + (pk?' class="pk"':'') + '><td><b>' + pad(i) + ':00</b><span class="muted">–' + pad(i) + ':59</span></td>' +
-      '<td class="n">' + (h.ord.size?nf.format(h.ord.size):'—') + '</td>' +
-      '<td class="n">' + (h.units?'<b>'+nf.format(h.units)+'</b>':'—') + '</td>' +
+      '<td>' + topCell + '</td>' +
+      '<td class="n">' + (top ? topVal : '—') + '</td>' +
       '<td class="n">' + (h.sales?money(h.sales):'—') + '</td>' +
+      '<td class="n">' + (h.units?'<b>'+nf.format(h.units)+'</b>':'—') + '</td>' +
+      '<td class="n">' + (h.ord.size?nf.format(h.ord.size):'—') + '</td>' +
       '<td><div class="barwrap"><div class="bar' + (pk?' pk':'') + '" style="width:' + w + '%"></div></div></td></tr>';
-  }).join('') || '<tr><td colspan="5" class="empty">—</td></tr>';
+  }).join('') || '<tr><td colspan="7" class="empty">—</td></tr>';
 }
 function tile(k, v, s){ return '<div class="tile"><div class="k">' + k + '</div><div class="v">' + v + '</div>' + (s?'<div class="s">' + s + '</div>':'') + '</div>'; }
 function mergeAll(days){
   const view = { ord:new Set(), units:0, sales:0, hours:emptyHours(), prod:new Map() };
   for (const d of days.values()){
     d.ord.forEach(id => view.ord.add(id)); view.units += d.units; view.sales += d.sales;
-    for (let h=0;h<24;h++){ const S=d.hours[h], T=view.hours[h]; S.ord.forEach(id=>T.ord.add(id)); T.units+=S.units; T.sales+=S.sales; }
+    for (let h=0;h<24;h++){ const S=d.hours[h], T=view.hours[h]; S.ord.forEach(id=>T.ord.add(id)); T.units+=S.units; T.sales+=S.sales;
+      for (const [k,p] of S.prod){ let w=T.prod.get(k); if(!w){w={name:p.name,sku:p.sku,units:0,sales:0};T.prod.set(k,w);} w.units+=p.units; w.sales+=p.sales; if(p.name)w.name=p.name; } }
     for (const [k,p] of d.prod){ let w=view.prod.get(k); if(!w){w={name:p.name,sku:p.sku,units:0,sales:0,ord:new Set()};view.prod.set(k,w);} w.units+=p.units; w.sales+=p.sales; p.ord.forEach(id=>w.ord.add(id)); if(p.name)w.name=p.name; }
   }
   return view;
@@ -446,6 +463,8 @@ function curLabel(){ return state.day==='all' ? 'ทุกวัน' : (state.da
 $('#exclCancel').addEventListener('change', e => { state.exclCancel = e.target.checked; render(); });
 $('#filterBar').addEventListener('click', e => { const b = e.target.closest('.fchip'); if (!b) return; if (b.dataset.kind === 'plat') state.platFilter = b.dataset.val; else state.brandFilter = b.dataset.val; state.day = null; render(); });
 $('#days').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (!b) return; state.day = b.dataset.k; render(); });
+$('#datePick').addEventListener('change', e => { if (e.target.value) { state.day = e.target.value; render(); $('#hourPanel').scrollIntoView({behavior:'smooth', block:'nearest'}); } });
+$('#allDaysBtn').addEventListener('click', () => { state.day = 'all'; render(); });
 $('#dailyBody').addEventListener('click', e => { const tr = e.target.closest('[data-k]'); if (!tr) return; state.day = tr.dataset.k; render(); $('#prodPanel').scrollIntoView({behavior:'smooth', block:'nearest'}); });
 $('#copyDaily').addEventListener('click', () => {
   const A = aggregate(); const keys = [...A.days.keys()].filter(k => k !== '(ไม่มีวันที่)').sort();
@@ -460,8 +479,8 @@ $('#copyProd').addEventListener('click', () => {
   copyText(['สินค้าที่ขาย · ' + curLabel(), head.join('\t'), ...body].join('\n'), 'ตารางสินค้า ' + rows.length + ' รายการ');
 });
 $('#copyHour').addEventListener('click', () => {
-  const v = curView(); const head = ['ชั่วโมง','ออเดอร์','ชิ้น','ยอดขาย(฿)'];
-  const body = v.hours.map((h,i) => [pad(i)+':00-'+pad(i)+':59', h.ord.size, h.units, Math.round(h.sales)].join('\t'));
+  const v = curView(); const head = ['ชั่วโมง','สินค้าขายดีสุด','SKU','ยอดขายสินค้านั้น(฿)','ยอดรวม(฿)','ชิ้น','ออเดอร์'];
+  const body = v.hours.map((h,i) => { const top = h.prod && h.prod.size ? [...h.prod.values()].sort((a,b)=>b.sales-a.sales||b.units-a.units)[0] : null; return [pad(i)+':00-'+pad(i)+':59', top?String(top.name).replace(/[\t\r\n]+/g,' '):'', top?top.sku:'', top?Math.round(top.sales):'', Math.round(h.sales), h.units, h.ord.size].join('\t'); });
   copyText(['รายชั่วโมง · ' + curLabel(), head.join('\t'), ...body].join('\n'), 'ตารางรายชั่วโมง');
 });
 $('#refreshSheet').addEventListener('click', loadFromSheet);
