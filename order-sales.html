@@ -75,7 +75,10 @@
   .bar{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:5px}
   .bar.pk{background:var(--warn)}
   tr.pk td{background:color-mix(in oklab,var(--warn) 9%,transparent)}
+  tr.dayrow{cursor:pointer}
+  tr.dayrow.sel td{background:var(--accent-soft)}
 
+  .up{color:var(--good);font-weight:700}.down{color:var(--bad);font-weight:700}.new{color:var(--accent);font-weight:700}
   .empty{padding:40px 16px;text-align:center;color:var(--muted)}
   .drop{position:fixed;inset:0;background:color-mix(in oklab,var(--accent) 16%,rgba(0,0,0,.4));display:none;align-items:center;justify-content:center;z-index:50}
   .drop.on{display:flex}
@@ -98,6 +101,19 @@
   <div id="result" hidden>
     <div class="tiles" id="tiles"></div>
 
+    <section class="panel" id="dailyPanel">
+      <div class="ph">
+        <div><h2>ภาพรวมรายวัน — ออเดอร์ · ยอดขาย &amp; เพิ่ม/ลด</h2><p class="sub">คำสั่งซื้อเข้ามาต่อวันมากน้อยแค่ไหน เทียบวันก่อนหน้า (▲ เพิ่ม · ▼ ลด) · กดแถวเพื่อดูรายละเอียดของวันนั้น</p></div>
+        <button class="btn small" id="copyDaily" type="button">คัดลอกตาราง</button>
+      </div>
+      <div class="scroll">
+        <table id="dailyTbl">
+          <thead><tr><th>วันที่</th><th class="n">ออเดอร์</th><th class="n">ชิ้น</th><th class="n">ยอดขาย</th><th class="n">เทียบวันก่อน (ชิ้น)</th><th style="width:26%">แนวโน้ม</th></tr></thead>
+          <tbody id="dailyBody"></tbody>
+        </table>
+      </div>
+    </section>
+
     <div class="toolrow">
       <b style="font-size:13px">เลือกวัน</b>
       <label class="chk"><input type="checkbox" id="exclCancel" checked> ไม่นับออเดอร์ที่ยกเลิก</label>
@@ -112,7 +128,7 @@
       </div>
       <div class="scroll">
         <table id="prodTbl">
-          <thead><tr><th>#</th><th>สินค้า</th><th>SKU</th><th class="n">ออเดอร์</th><th class="n">ชิ้น</th><th class="n">ยอดขาย</th></tr></thead>
+          <thead><tr><th>#</th><th>สินค้า</th><th>SKU</th><th class="n">ออเดอร์</th><th class="n">ชิ้น</th><th class="n">ยอดขาย</th><th class="n">เทียบวันก่อน (ชิ้น)</th></tr></thead>
           <tbody id="prodBody"></tbody>
         </table>
       </div>
@@ -150,6 +166,16 @@ const num = v => { if (typeof v === 'number') return v; const n = parseFloat(Str
 const TH_DOW = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'], TH_MO = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const dayKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 function dLabel(k){ const [y,m,d] = k.split('-').map(Number); const dt = new Date(y, m-1, d); return `${TH_DOW[dt.getDay()]} ${d} ${TH_MO[m-1]} ${String(y+543).slice(-2)}`; }
+// day-over-day change badge: prev=null → no comparison; prev=0 → ใหม่; else ▲▼% (+/- count)
+function fmtDelta(cur, prev){
+  if (prev == null) return '<span class="muted">—</span>';
+  if (prev === 0) return cur > 0 ? '<span class="new">ใหม่</span>' : '<span class="muted">—</span>';
+  if (cur === 0) return '<span class="down">▼ หาย (-' + nf.format(prev) + ')</span>';
+  const p = (cur - prev) / prev * 100;
+  if (Math.abs(p) < 0.5) return '<span class="muted">≈ เท่าเดิม</span>';
+  const up = p > 0;
+  return `<span class="${up?'up':'down'}">${up?'▲':'▼'} ${Math.abs(p).toFixed(0)}%</span> <span class="muted" style="font-weight:400">(${up?'+':''}${nf.format(cur-prev)})</span>`;
+}
 
 /* ---------- column detection (Shopee / TikTok / Lazada exports) ---------- */
 const COL = {
@@ -241,20 +267,40 @@ function render(){
   for (const k of allKeys.slice().reverse()){ const d = A.days.get(k); chips.push('<button class="day' + (cur===k?' on':'') + '" data-k="' + esc(k) + '"><span class="d">' + (k==='(ไม่มีวันที่)'?'ไม่มีวันที่':dLabel(k)) + '</span><span class="m">' + nf.format(d.ord.size) + ' ออเดอร์ · ' + nf.format(d.units) + ' ชิ้น</span></button>'); }
   $('#days').innerHTML = chips.join('');
 
+  // daily overview — chronological, day-over-day change (units) + trend bar, clickable rows
+  const maxDayU = Math.max(1, ...keys.map(k => A.days.get(k).units));
+  let prevU = null;
+  $('#dailyBody').innerHTML = keys.length ? keys.map(k => {
+    const d = A.days.get(k), delta = fmtDelta(d.units, prevU); prevU = d.units;
+    const w = Math.max(2, Math.round(d.units / maxDayU * 100));
+    return '<tr class="dayrow' + (cur===k?' sel':'') + '" data-k="' + esc(k) + '"><td><b>' + dLabel(k) + '</b></td>' +
+      '<td class="n">' + nf.format(d.ord.size) + '</td><td class="n"><b>' + nf.format(d.units) + '</b></td>' +
+      '<td class="n">' + money(d.sales) + '</td><td class="n">' + delta + '</td>' +
+      '<td><div class="barwrap"><div class="bar" style="width:' + w + '%"></div></div></td></tr>';
+  }).join('') : '<tr><td colspan="6" class="empty">ไม่มีข้อมูลรายวัน</td></tr>';
+
   // build the view (a single day or all days aggregated)
   const view = cur === 'all' ? mergeAll(A.days) : A.days.get(cur);
   const label = cur === 'all' ? 'ทุกวันรวมกัน' : (cur==='(ไม่มีวันที่)' ? 'ไม่มีวันที่' : dLabel(cur));
 
+  // previous day (only for a selected specific day) → product-level increase/decrease
+  let prevProd = null;
+  if (cur !== 'all' && cur !== '(ไม่มีวันที่)'){ const idx = keys.indexOf(cur); if (idx > 0) prevProd = A.days.get(keys[idx-1]).prod; }
+  const prevUnitsOf = p => { const e = prevProd.get(p.sku || p.name || '(ไม่ระบุ)'); return e ? e.units : 0; };
+
   // products
   const prods = [...view.prod.values()].sort((a,b) => b.sales - a.sales || b.units - a.units);
   $('#prodTitle').textContent = 'สินค้าที่ขาย · ' + label;
-  $('#prodSub').textContent = nf.format(view.ord.size) + ' ออเดอร์ · ' + nf.format(view.units) + ' ชิ้น · ' + money(view.sales) + ' · ' + prods.length + ' รายการ';
+  let moversTxt = '';
+  if (prevProd){ let up=0,down=0,nw=0; for (const p of prods){ const pv = prevUnitsOf(p); if (pv===0 && p.units>0) nw++; else if (p.units>pv) up++; else if (p.units<pv) down++; } moversTxt = ' · เทียบวันก่อน: <span class="up">เพิ่ม ' + up + '</span> · <span class="down">ลด ' + down + '</span> · <span class="new">ใหม่ ' + nw + '</span>'; }
+  $('#prodSub').innerHTML = nf.format(view.ord.size) + ' ออเดอร์ · ' + nf.format(view.units) + ' ชิ้น · ' + money(view.sales) + ' · ' + prods.length + ' รายการ' + moversTxt;
   $('#prodBody').innerHTML = prods.length ? prods.map((p,i) =>
     '<tr><td><span class="rank' + (i<3?' top':'') + '">' + (i+1) + '</span></td>' +
     '<td><span class="nm" title="' + esc(p.name) + '">' + esc(p.name || '—') + '</span></td>' +
     '<td>' + (p.sku ? '<code>' + esc(p.sku) + '</code>' : '<span class="muted">—</span>') + '</td>' +
     '<td class="n">' + nf.format(p.ord.size) + '</td><td class="n"><b>' + nf.format(p.units) + '</b></td>' +
-    '<td class="n">' + money(p.sales) + '</td></tr>').join('') : '<tr><td colspan="6" class="empty">ไม่มีสินค้าในวันนี้</td></tr>';
+    '<td class="n">' + money(p.sales) + '</td>' +
+    '<td class="n">' + (prevProd ? fmtDelta(p.units, prevUnitsOf(p)) : '<span class="muted">—</span>') + '</td></tr>').join('') : '<tr><td colspan="7" class="empty">ไม่มีสินค้าในวันนี้</td></tr>';
 
   // hourly
   const noTime = !A.anyTime;
@@ -324,6 +370,13 @@ $('#uploadBtn').addEventListener('click', () => $('#file').click());
 $('#file').addEventListener('change', e => { handleFiles(e.target.files); e.target.value = ''; });
 $('#exclCancel').addEventListener('change', e => { state.exclCancel = e.target.checked; render(); });
 $('#days').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (!b) return; state.day = b.dataset.k; render(); });
+$('#dailyBody').addEventListener('click', e => { const tr = e.target.closest('[data-k]'); if (!tr) return; state.day = tr.dataset.k; render(); $('#prodPanel').scrollIntoView({behavior:'smooth', block:'nearest'}); });
+$('#copyDaily').addEventListener('click', () => {
+  const A = aggregate(); const keys = [...A.days.keys()].filter(k => k !== '(ไม่มีวันที่)').sort();
+  let prevU = null; const head = ['วันที่','ออเดอร์','ชิ้น','ยอดขาย(฿)','เทียบวันก่อน(ชิ้น)%'];
+  const body = keys.map(k => { const d = A.days.get(k); const pct = prevU == null ? '' : (prevU === 0 ? (d.units>0?'NEW':'') : (((d.units-prevU)/prevU*100).toFixed(0) + '%')); prevU = d.units; return [dLabel(k), d.ord.size, d.units, Math.round(d.sales), pct].join('\t'); });
+  copyText([head.join('\t'), ...body].join('\n'), 'ตารางภาพรวมรายวัน');
+});
 $('#copyProd').addEventListener('click', () => {
   const v = curView(); const rows = [...v.prod.values()].sort((a,b)=>b.sales-a.sales);
   const head = ['สินค้า','SKU','ออเดอร์','ชิ้น','ยอดขาย(฿)'];
