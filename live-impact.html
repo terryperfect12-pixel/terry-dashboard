@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>วิเคราะห์ผลกระทบไลฟ์ (ทดสอบ)</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --surface:#ffffff; --surface-2:#f1f3f6; --line:#e5e8ec; --line-2:#d3d8df;
+    --ink:#121619; --ink-2:#3b434c; --muted:#8a929c; --accent:#2563eb; --accent-soft:#e8effe;
+    --good:#16a34a; --bad:#e11d48; --warn:#d97706;
+    --f:"Segoe UI",system-ui,-apple-system,"Sarabun",sans-serif; --f-mono:ui-monospace,"Cascadia Mono",Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#0f1317; --surface:#171c22; --surface-2:#1e242c; --line:#2a313a; --line-2:#394250;
+    --ink:#eef1f4; --ink-2:#c3cad2; --muted:#8893a0; --accent:#5b9bff; --accent-soft:#1b2740;
+  }}
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:none;margin:0;padding:16px 20px 60px}
+  .muted{color:var(--muted)}
+  code{font-family:var(--f-mono)}
+  .head{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:6px}
+  .head h1{font-size:20px;font-weight:800;margin:0}
+  .tag{font-size:11px;font-weight:700;color:#fff;background:var(--warn);border-radius:999px;padding:2px 9px}
+  .sel{border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink);border-radius:9px;padding:7px 11px;font:inherit;font-size:13px;font-weight:600}
+  .msg{margin:10px 0;font-size:13px;padding:9px 12px;border-radius:9px;background:var(--surface-2);color:var(--ink-2)}
+  .msg.err{background:color-mix(in oklab,var(--bad) 13%,var(--surface));color:var(--bad)}
+
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:14px 0}
+  .tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;position:relative;overflow:hidden}
+  .tile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent);opacity:.85}
+  .tile.warn::before{background:var(--warn)} .tile.bad::before{background:var(--bad)} .tile.good::before{background:var(--good)}
+  .tile .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+  .tile .v{font-size:22px;font-weight:800;margin-top:3px;font-variant-numeric:tabular-nums}
+  .tile .s{font-size:11px;color:var(--muted);margin-top:2px}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+  .panel h2{font-size:16px;margin:0 0 2px;font-weight:800}
+  .panel .sub{font-size:12px;color:var(--muted);margin:0 0 14px}
+
+  /* daily trajectory columns */
+  .traj-wrap{overflow-x:auto;padding-bottom:6px}
+  .traj{display:flex;gap:10px;align-items:flex-end;min-width:min-content;position:relative}
+  .tday{flex:none;width:58px;display:flex;flex-direction:column;align-items:center;gap:5px}
+  .tbarbox{width:100%;height:240px;display:flex;align-items:flex-end;position:relative}
+  .tbar{width:100%;border-radius:7px 7px 0 0;background:#93c5fd;min-height:2px;transition:filter .1s}
+  .tday.live .tbar{background:#f59e0b}
+  .tbar:hover{filter:brightness(1.1)}
+  .tv{font-size:10px;color:var(--ink-2);font-variant-numeric:tabular-nums;text-align:center;line-height:1.2}
+  .tlbl{font-size:10.5px;color:var(--muted);white-space:nowrap}
+  .tlive{font-size:9px;color:var(--warn);font-weight:700}
+  .baseline{position:absolute;left:0;right:0;border-top:2px dashed var(--muted);opacity:.7;pointer-events:none}
+  .baseline span{position:absolute;right:0;top:-16px;font-size:10px;color:var(--muted);background:var(--surface);padding:0 4px}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:8px 8px;border-top:1px solid var(--line)}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);border-top:0}
+  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  tbody tr:hover{background:var(--surface-2)}
+  .scroll{overflow-x:auto}
+  .pill{display:inline-block;font-size:10.5px;font-weight:700;border-radius:999px;padding:2px 8px}
+  .pill.stock{background:color-mix(in oklab,var(--warn) 18%,var(--surface));color:var(--warn)}
+  .pill.disc{background:color-mix(in oklab,var(--bad) 16%,var(--surface));color:var(--bad)}
+  .pill.ok{background:color-mix(in oklab,var(--good) 15%,var(--surface));color:var(--good)}
+  .fire{color:var(--warn)}
+  .note{display:flex;gap:8px;align-items:flex-start;background:var(--surface-2);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--ink-2);margin-top:10px}
+
+  /* repeat purchase */
+  .rp{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+  .rpcard{border:1px solid var(--line);border-radius:12px;padding:13px}
+  .rpcard .k{font-size:11.5px;color:var(--muted)}
+  .rpcard .v{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px}
+  .rpcard .s{font-size:11px;color:var(--muted);margin-top:3px}
+  .gauge{height:9px;border-radius:999px;background:var(--surface-2);overflow:hidden;margin-top:8px}
+  .gauge>div{height:100%;border-radius:999px;background:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <h1>วิเคราะห์ผลกระทบไลฟ์</h1><span class="tag">ตัวทดสอบ</span>
+    <select id="creatorSel" class="sel"></select>
+    <span class="muted" style="font-size:12px">TikTok · Terry · ต.ค. 2026 · ไลฟ์ (self) + ออเดอร์จริง</span>
+  </div>
+  <div class="msg" id="msg">กำลังโหลดข้อมูลสด…</div>
+
+  <div id="result" hidden>
+    <div class="tiles" id="tiles"></div>
+
+    <section class="panel">
+      <h2>1) ยอดขายรายวัน + วันที่มีไลฟ์ (เห็นพีค → การตกหลังไลฟ์)</h2>
+      <p class="sub">แท่ง = ยอดขายสุทธิต่อวัน (ตัดยกเลิก) · <b style="color:#f59e0b">แท่งส้ม = วันที่มีไลฟ์</b> · เส้นประ = ยอดเฉลี่ยวันที่ไม่มีไลฟ์ (baseline) · ชี้ที่แท่งเพื่อดูรายละเอียด</p>
+      <div class="traj-wrap"><div class="traj" id="traj"></div></div>
+      <div class="note" id="trajNote"></div>
+    </section>
+
+    <section class="panel">
+      <h2>2) คุณภาพของแต่ละไลฟ์ — ยอด · ราคาเฉลี่ย · การมองเห็น · การแปลง</h2>
+      <p class="sub">ดูว่าไลฟ์ยอดเยอะมาจาก "ตุนของ (ราคาเฉลี่ยสูง)" หรือ "ลดราคาแรง (ราคาเฉลี่ยต่ำ)" · ยอดต่อการมองเห็น = GMV ต่อการแสดงผล 1,000 ครั้ง</p>
+      <div class="scroll">
+        <table id="liveTbl">
+          <thead><tr>
+            <th>วัน · เวลา</th><th class="n">GMV</th><th class="n">ชิ้น</th><th class="n">ราคาเฉลี่ย</th>
+            <th class="n">การแสดงผล</th><th class="n">ยอดดู</th><th class="n">CTR</th><th class="n">แปลงเป็นออเดอร์</th>
+            <th class="n">ยอด/การเห็น 1k</th><th>ลักษณะยอด</th>
+          </tr></thead>
+          <tbody id="liveBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>3) การซื้อซ้ำ — ลูกค้าวันแคมเปญกลับมาซื้ออีกไหม</h2>
+      <p class="sub" id="rpSub"></p>
+      <div class="rp" id="rp"></div>
+      <div class="note" id="rpNote"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const nf = new Intl.NumberFormat('th-TH');
+const money = v => '฿' + nf.format(Math.round(v||0));
+const kB = v => v>=1e6 ? (v/1e6).toFixed(2)+'M' : v>=1e3 ? (v/1e3).toFixed(1)+'K' : nf.format(Math.round(v||0));
+const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2,'0');
+const num = v => { const n=Number(String(v==null?'':v).replace(/[,฿%\s]/g,'')); return isNaN(n)?0:n; };
+function parseCSV(t){const R=[];let r=[],c="",q=false;for(let i=0;i<t.length;i++){const h=t[i];if(q){if(h==='"'){if(t[i+1]==='"'){c+='"';i++}else q=false}else c+=h}else{if(h==='"')q=true;else if(h===','){r.push(c);c=""}else if(h==='\n'){r.push(c);R.push(r);r=[];c=""}else if(h==='\r'){}else c+=h}}if(c!==""||r.length){r.push(c);R.push(r)}return R}
+const TH_DOW=['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
+const dLabel=k=>{const[y,m,d]=k.split('-').map(Number);const dt=new Date(y,m-1,d);return TH_DOW[dt.getDay()]+' '+d+'/'+m;};
+const affISO=s=>{const m=String(s).match(/(\d{4})\/(\d{1,2})\/(\d{1,2})/);return m?m[1]+'-'+pad(+m[2])+'-'+pad(+m[3]):null;};
+const affHour=s=>{const m=String(s).match(/(\d{4})\/(\d{1,2})\/(\d{1,2})\/?\s*(\d{1,2}):(\d{2})/);return m?+m[4]:null;};
+const ordDay=c=>{const m=String(c).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);return m?m[3]+'-'+pad(+m[2])+'-'+pad(+m[1]):null;};
+const isCancel=s=>/cancel|return|refund|ยกเลิก|คืน/i.test(String(s));
+const brandOf=s=>{const n=String(s||'').toLowerCase();return /terry|เธอร์รี่/.test(n)?'Terry':/benutra/.test(n)?'Benutra':/gala|camille/.test(n)?'Gala':'';};
+
+const F_SELF_LIVE='1PZjve_Ud_JdaMIwzEM5SHcAYsckotMIEdLUahCAvn1s';
+const ORDER='1uc46n128puQkaUQJ_eiy3ZhRgSUeSRcE50HKB3H5a-Q';
+const SL={gmv:5,paidOrd:11,units:13,avgP:16,viewers:18,views:19,imp:25,ctr:27};
+const OC={status:1,product:7,qty:9,sub:15,created:24,handle:56,buyer:38};
+
+async function tabs(id){try{const h=await(await fetch(`https://docs.google.com/spreadsheets/d/${id}/htmlview`)).text();const re=/\{name:\s*"([^"]+)"[^}]*?gid:\s*"?(\d+)"?/g;const o=[];let m;while((m=re.exec(h)))o.push({name:m[1],gid:m[2]});return o;}catch{return[];}}
+async function csvTab(id,gid){try{const t=await(await fetch(`https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`)).text();return t.trim().startsWith('<')?[]:parseCSV(t);}catch{return[];}}
+
+let LIVE_ROWS=[], ORDER_ROWS=[];   // raw parsed (Terry, Oct)
+async function loadAll(){
+  // self-live: Oct Terry
+  const slT=await tabs(F_SELF_LIVE); const slTerry=slT.find(t=>brandOf(t.name)==='Terry'&&/oct/i.test(t.name))||slT.find(t=>brandOf(t.name)==='Terry');
+  const g = slTerry ? await csvTab(F_SELF_LIVE, slTerry.gid) : [];
+  for(let i=1;i<g.length;i++){const r=g[i];const handle=String(r[2]||'').trim().toLowerCase();const name=String(r[1]||'').trim();if(!handle&&!name)continue;
+    LIVE_ROWS.push({handle, name, d:affISO(r[3]), hr:affHour(r[3]), dur:String(r[4]||''), gmv:num(r[SL.gmv]), paidOrd:num(r[SL.paidOrd]), units:num(r[SL.units]), avgP:num(r[SL.avgP]), views:num(r[SL.views]), imp:num(r[SL.imp]), ctr:String(r[SL.ctr]||'')});}
+  // orders: Terry tab
+  const oT=await tabs(ORDER); const oTerry=oT.find(t=>brandOf(t.name)==='Terry')||oT[0];
+  const og = oTerry ? await csvTab(ORDER, oTerry.gid) : [];
+  for(let i=1;i<og.length;i++){const r=og[i];if(!r||!r[0])continue;if(isCancel(r[OC.status]))continue;const handle=String(r[OC.handle]||'').trim().toLowerCase();if(!handle)continue;
+    ORDER_ROWS.push({handle, d:ordDay(r[OC.created]), qty:num(r[OC.qty]), sub:num(r[OC.sub]), buyer:String(r[OC.buyer]||'').trim(), oid:String(r[0]).trim()});}
+}
+
+function buildCreators(){
+  const g=new Map();
+  for(const l of LIVE_ROWS){ if(l.gmv<=0||!l.handle)continue; const x=g.get(l.handle)||{handle:l.handle,name:l.name,gmv:0}; x.gmv+=l.gmv; if(l.name)x.name=l.name; g.set(l.handle,x); }
+  const arr=[...g.values()].sort((a,b)=>b.gmv-a.gmv);
+  const sel=$('#creatorSel'); sel.innerHTML=arr.map(c=>`<option value="${esc(c.handle)}">${esc(c.name||c.handle)} (@${esc(c.handle)})</option>`).join('');
+  const def=arr.find(c=>c.handle==='yodcherryceoterry')||arr[0];
+  if(def) sel.value=def.handle;
+  return def?def.handle:null;
+}
+
+function render(handle){
+  const lives=LIVE_ROWS.filter(l=>l.handle===handle&&l.gmv>0).sort((a,b)=>(a.d+pad(a.hr)).localeCompare(b.d+pad(b.hr)));
+  const ords=ORDER_ROWS.filter(o=>o.handle===handle&&o.d);
+  // daily order agg
+  const byDay=new Map();
+  for(const o of ords){const D=byDay.get(o.d)||{sales:0,units:0,ord:new Set(),buyers:new Set()};D.sales+=o.sub;D.units+=o.qty;D.ord.add(o.oid);if(o.buyer)D.buyers.add(o.buyer);byDay.set(o.d,D);}
+  const days=[...byDay.keys()].sort();
+  // live by day
+  const liveByDay=new Map();
+  for(const l of lives){if(!l.d)continue;const x=liveByDay.get(l.d)||{gmv:0,n:0};x.gmv+=l.gmv;x.n++;liveByDay.set(l.d,x);}
+  // totals
+  const totSales=days.reduce((s,d)=>s+byDay.get(d).sales,0);
+  const totUnits=days.reduce((s,d)=>s+byDay.get(d).units,0);
+  const liveGmv=lives.reduce((s,l)=>s+l.gmv,0);
+  const liveUnits=lives.reduce((s,l)=>s+l.units,0);
+  const overallASP=liveUnits?liveGmv/liveUnits:0;
+  // top day (by sales) = the campaign peak
+  let topDay=days[0]||null; for(const d of days) if(byDay.get(d).sales>(byDay.get(topDay)?.sales||0)) topDay=d;
+  const topShare=totSales?byDay.get(topDay).sales/totSales*100:0;
+  // baseline = avg sales on NO-live days
+  const noLive=days.filter(d=>!liveByDay.has(d)); const baseAvg=noLive.length?noLive.reduce((s,d)=>s+byDay.get(d).sales,0)/noLive.length:0;
+  const liveDaysArr=days.filter(d=>liveByDay.has(d)); const liveAvg=liveDaysArr.length?liveDaysArr.reduce((s,d)=>s+byDay.get(d).sales,0)/liveDaysArr.length:0;
+
+  // ---- tiles ----
+  $('#tiles').innerHTML =
+    tile('ยอดขายสุทธิรวม', money(totSales), days.length+' วัน', '') +
+    tile('% จากวันพีคสุด', topShare.toFixed(0)+'%', (topDay?dLabel(topDay):'')+' วันเดียว', topShare>=45?'bad':'warn') +
+    tile('ยอดเฉลี่ยวันมีไลฟ์', money(liveAvg), liveDaysArr.length+' วัน', 'good') +
+    tile('ยอดเฉลี่ยวันไม่มีไลฟ์', money(baseAvg), noLive.length+' วัน (baseline)', baseAvg<liveAvg*0.3?'bad':'') +
+    tile('พึ่งไลฟ์แค่ไหน', liveAvg&&baseAvg?('×'+(liveAvg/baseAvg).toFixed(1)):'—', 'วันมีไลฟ์ขายได้มากกว่า', 'warn') +
+    tile('ราคาเฉลี่ย/ชิ้น (ไลฟ์)', money(overallASP), 'ทั้งเดือน', '');
+
+  // ---- 1) trajectory ----
+  const maxS=Math.max(1,...days.map(d=>byDay.get(d).sales));
+  const H=240;
+  let bars = days.map(d=>{
+    const x=byDay.get(d), isLive=liveByDay.has(d), lg=isLive?liveByDay.get(d).gmv:0;
+    const h=Math.max(2,Math.round(x.sales/maxS*H));
+    const tip=`${dLabel(d)} · ยอด ${money(x.sales)} · ${x.units} ชิ้น · ${x.ord.size} ออเดอร์`+(isLive?` · ไลฟ์ ${liveByDay.get(d).n} รอบ (${money(lg)})`:' · ไม่มีไลฟ์');
+    return `<div class="tday${isLive?' live':''}"><div class="tv">${kB(x.sales)}</div><div class="tbarbox"><div class="tbar" style="height:${h}px" title="${esc(tip)}"></div></div>`+
+      `<div class="tlbl">${dLabel(d)}</div>${isLive?`<div class="tlive">📺 ${liveByDay.get(d).n} ไลฟ์</div>`:'<div class="tlive" style="color:var(--muted)">—</div>'}</div>`;
+  }).join('');
+  // baseline line position (within the 240px bar area)
+  const baseY=Math.round(baseAvg/maxS*H);
+  bars += `<div class="baseline" style="bottom:${28+baseY}px"><span>baseline ${kB(baseAvg)}</span></div>`;
+  $('#traj').innerHTML=bars;
+  // decay note: sales the day(s) after topDay
+  const ti=days.indexOf(topDay); let decayTxt='';
+  if(ti>=0&&ti<days.length-1){const nextSum=byDay.get(days[ti+1]).sales;const drop=byDay.get(topDay).sales?(1-nextSum/byDay.get(topDay).sales)*100:0;decayTxt=`วันถัดจากพีค (${dLabel(days[ti+1])}) ยอดตกลง <b style="color:var(--bad)">${drop.toFixed(0)}%</b> จากพีค`;}
+  $('#trajNote').innerHTML=`💡 วันพีค <b>${topDay?dLabel(topDay):''}</b> = <b>${topShare.toFixed(0)}%</b> ของยอดทั้งเดือน · ${decayTxt} · วันมีไลฟ์ขายได้เฉลี่ย <b>×${liveAvg&&baseAvg?(liveAvg/baseAvg).toFixed(1):'—'}</b> ของวันไม่มีไลฟ์ → ยอดพึ่งไลฟ์สูงมาก ถ้าไม่มีไลฟ์ยอดฐานจะเหลือ ~${money(baseAvg)}/วัน`;
+
+  // ---- 2) live quality table ----
+  // flags use the MEDIAN live-ASP (robust) so big campaign lives read as "เซ็ต/ตุน" vs "ลดราคา"
+  const aspArr=lives.map(l=>l.units?l.gmv/l.units:0).filter(a=>a>0).sort((a,b)=>a-b);
+  const medASP=aspArr.length?aspArr[Math.floor(aspArr.length/2)]:overallASP;
+  const avgLiveGmv=lives.length?liveGmv/lives.length:0;
+  $('#liveBody').innerHTML = lives.length ? lives.map(l=>{
+    const asp=l.units?l.gmv/l.units:0, conv=l.views?l.paidOrd/l.views*100:0, gpi=l.imp?l.gmv/l.imp*1000:0;
+    const hot=l.gmv>=avgLiveGmv*1.5;
+    let pill;
+    if(hot&&asp>=medASP*1.08) pill='<span class="pill stock">เซ็ต/ตุนของ (ยอดใหญ่)</span>';
+    else if(hot&&asp<=medASP*0.9) pill='<span class="pill disc">ลดราคาแรง (ยอดใหญ่)</span>';
+    else if(hot) pill='<span class="pill ok">ยอดใหญ่</span>';
+    else if(asp<=medASP*0.85) pill='<span class="pill disc">ราคาถูก</span>';
+    else pill='<span class="pill ok">ปกติ</span>';
+    return `<tr><td>${l.d?dLabel(l.d):'—'} ${pad(l.hr)}:00 ${hot?'<span class="fire">🔥</span>':''}</td>`+
+      `<td class="n"><b>${money(l.gmv)}</b></td><td class="n">${nf.format(l.units)}</td><td class="n">${money(asp)}</td>`+
+      `<td class="n">${kB(l.imp)}</td><td class="n">${kB(l.views)}</td><td class="n">${l.ctr||'—'}</td>`+
+      `<td class="n">${conv.toFixed(1)}%</td><td class="n">${money(gpi)}</td><td>${pill}</td></tr>`;
+  }).join('') : '<tr><td colspan="10" class="muted" style="padding:20px;text-align:center">ไม่มีข้อมูลไลฟ์</td></tr>';
+
+  // ---- 3) repeat purchase (by buyer id, aggregate only) ----
+  const byBuyer=new Map();
+  for(const o of ords){ if(!o.buyer)continue; const b=byBuyer.get(o.buyer)||new Set(); b.add(o.d); byBuyer.set(o.buyer,b); }
+  const buyers=[...byBuyer.values()]; const totalBuyers=buyers.length;
+  const repeat=buyers.filter(s=>s.size>=2).length;
+  const repeatRate=totalBuyers?repeat/totalBuyers*100:0;
+  // campaign cohort = buyers who bought on topDay; of those, how many bought a LATER day too
+  let cohort=0, returned=0;
+  for(const [b,ds] of byBuyer){ if(ds.has(topDay)){ cohort++; for(const d of ds){ if(d>topDay){ returned++; break; } } } }
+  const cohortRate=cohort?returned/cohort*100:0;
+  $('#rpSub').textContent=`นับจาก Buyer ID (ไม่โชว์ข้อมูลส่วนตัว) · ข้อมูลช่วง ${days[0]?dLabel(days[0]):''}–${days[days.length-1]?dLabel(days[days.length-1]):''} (สั้น ~${days.length} วัน)`;
+  $('#rp').innerHTML =
+    rpCard('ผู้ซื้อทั้งหมด', nf.format(totalBuyers)+' คน', 'ไม่ซ้ำ') +
+    rpCard('ซื้อซ้ำ ≥2 วัน', repeatRate.toFixed(1)+'%', nf.format(repeat)+' คน', repeatRate) +
+    rpCard('ลูกค้าวันพีคกลับมาซื้ออีก', cohortRate.toFixed(1)+'%', nf.format(returned)+'/'+nf.format(cohort)+' คน (หลัง '+(topDay?dLabel(topDay):'')+')', cohortRate);
+  $('#rpNote').innerHTML=`💡 ลูกค้าวันแคมเปญกลับมาซื้ออีกเพียง <b>${cohortRate.toFixed(1)}%</b> ภายในช่วงที่มีข้อมูล — ถ้าต่ำ แปลว่าคน "ตุนของแล้วหายไป" (สอดคล้องกับราคาเฉลี่ยสูง = ซื้อเซ็ต) · หมายเหตุ: ช่วงข้อมูลสั้น (${days.length} วัน) เป็นแค่สัญญาณเบื้องต้น ถ้าต่อข้อมูลหลายเดือนจะชัดขึ้น`;
+
+  $('#msg').style.display='none'; $('#result').hidden=false;
+}
+function tile(k,v,s,cls){return `<div class="tile ${cls||''}"><div class="k">${k}</div><div class="v">${v}</div>${s?`<div class="s">${s}</div>`:''}</div>`;}
+function rpCard(k,v,s,pct){return `<div class="rpcard"><div class="k">${k}</div><div class="v">${v}</div>${s?`<div class="s">${s}</div>`:''}${pct!=null?`<div class="gauge"><div style="width:${Math.max(2,Math.min(100,pct))}%"></div></div>`:''}</div>`;}
+
+$('#creatorSel').addEventListener('change', e=>render(e.target.value));
+(async()=>{
+  try{ await loadAll();
+    if(!LIVE_ROWS.length&&!ORDER_ROWS.length){ $('#msg').className='msg err'; $('#msg').textContent='โหลดข้อมูลไม่สำเร็จ — ตรวจการแชร์ชีต'; return; }
+    const def=buildCreators();
+    if(def) render(def); else { $('#msg').textContent='ไม่พบครีเอเตอร์ที่มีไลฟ์'; }
+  }catch(e){ $('#msg').className='msg err'; $('#msg').textContent='ผิดพลาด: '+((e&&e.message)||e); }
+})();
+</script>
+</body>
+</html>
