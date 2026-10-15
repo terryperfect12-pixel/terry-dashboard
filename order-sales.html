@@ -148,11 +148,11 @@
   .col .seg:hover{filter:brightness(1.16)}
   .collbl{font-size:11px;color:var(--ink-2);white-space:nowrap;text-align:center;line-height:1.2}
   .colday.sel .collbl{color:var(--accent);font-weight:700}
-  .plegend{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:2px 0 14px}
-  .plegend .it{display:flex;align-items:center;gap:5px}
-  .plegend .sw{width:12px;height:12px;border-radius:3px;flex:none}
-  .plegend img{width:32px;height:32px;border-radius:7px;object-fit:cover;border:1px solid var(--line);flex:none;background:var(--surface-2)}
-  .plegend .oth{font-size:12px;color:var(--muted)}
+  .plegend{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:4px 0 16px}
+  .plegend .it{display:flex;align-items:center;gap:7px}
+  .plegend .sw{width:18px;height:18px;border-radius:5px;flex:none}
+  .plegend img{width:50px;height:50px;border-radius:10px;object-fit:cover;border:1px solid var(--line);flex:none;background:var(--surface-2)}
+  .plegend .oth{font-size:13px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -406,7 +406,8 @@ function render(){
   // daily overview — chronological, day-over-day change (units) + trend bar, clickable rows
   // top products across the shown days → a STABLE COLOUR each (colours represent products in the
   // bars). The legend maps each colour to the product's IMAGE (no names). Rest → grey "อื่นๆ".
-  const PROD_PAL = ['#2563eb','#16a34a','#f59e0b','#e11d48','#8b5cf6','#06b6d4','#ec4899','#84cc16'];
+  // soft pastel palette (less vivid) — each colour represents a product
+  const PROD_PAL = ['#93c5fd','#86efac','#fcd34d','#fca5a5','#c4b5fd','#5eead4','#f9a8d4','#bef264'];
   const gSales = new Map();
   for (const k of keys){ for (const [key,p] of A.days.get(k).prod){ gSales.set(key, (gSales.get(key)||0) + p.sales); } }
   const topProds = [...gSales.entries()].sort((a,b)=>b[1]-a[1]).slice(0, PROD_PAL.length);
