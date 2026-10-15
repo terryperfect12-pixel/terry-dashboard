@@ -18,7 +18,7 @@
   *{box-sizing:border-box}
   html,body{margin:0}
   body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1340px;margin:0;padding:14px 18px 60px}
+  .wrap{max-width:none;margin:0;padding:14px 18px 60px}
   .muted{color:var(--muted)}
   code{font-family:var(--f-mono)}
   .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);border-radius:9px;padding:8px 13px;font:inherit;font-weight:600;cursor:pointer}
@@ -135,6 +135,16 @@
   .side-nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .side-c{font-variant-numeric:tabular-nums;font-size:12px;opacity:.72;font-weight:600}
   @media(max-width:860px){ .layout{flex-direction:column} .side{width:100%;position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line);border-radius:14px 14px 0 0} .main{width:100%;padding:14px 2px 60px} }
+
+  /* 100% stacked product-composition bar (daily "which products made up the day") */
+  .stackbar{display:flex;height:18px;width:100%;border-radius:6px;overflow:hidden;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line)}
+  .seg{height:100%;transition:opacity .1s}
+  .seg:hover{opacity:.78}
+  .plegend{display:flex;flex-wrap:wrap;gap:6px 12px;margin:2px 0 12px}
+  .plegend .it{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-2);max-width:230px}
+  .plegend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+  .plegend img{width:20px;height:20px;border-radius:5px;object-fit:cover;border:1px solid var(--line);flex:none}
+  .plegend .lgnm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -170,12 +180,13 @@
 
     <section class="panel" id="dailyPanel">
       <div class="ph">
-        <div><h2>ภาพรวมรายวัน — ออเดอร์ · ยอดขาย &amp; เพิ่ม/ลด</h2><p class="sub">คำสั่งซื้อเข้ามาต่อวันมากน้อยแค่ไหน เทียบวันก่อนหน้า (▲ เพิ่ม · ▼ ลด) · กดแถวเพื่อดูรายละเอียดของวันนั้น</p></div>
+        <div><h2>ภาพรวมรายวัน — ออเดอร์ · ยอดขาย &amp; สัดส่วนสินค้า</h2><p class="sub">แต่ละวันขายกี่ออเดอร์ · เทียบวันก่อนหน้า (▲ เพิ่ม · ▼ ลด) · แท่งสี = สัดส่วนสินค้าที่ขายได้ในวันนั้น (100% ของยอดวันนั้น) · กดแถวเพื่อดูรายละเอียด</p></div>
         <button class="btn small" id="copyDaily" type="button">คัดลอกตาราง</button>
       </div>
+      <div id="dailyLegend" class="plegend"></div>
       <div class="scroll">
         <table id="dailyTbl">
-          <thead><tr><th>วันที่</th><th class="n">ออเดอร์</th><th class="n">ชิ้น</th><th class="n">ยอดขาย</th><th class="n">เทียบวันก่อน (ชิ้น)</th><th style="width:26%">แนวโน้ม</th></tr></thead>
+          <thead><tr><th>วันที่</th><th class="n">ออเดอร์</th><th class="n">ชิ้น</th><th class="n">ยอดขาย</th><th class="n">เทียบวันก่อน (ชิ้น)</th><th style="width:40%">สัดส่วนสินค้าขายดี (100% ของวัน)</th></tr></thead>
           <tbody id="dailyBody"></tbody>
         </table>
       </div>
@@ -385,15 +396,35 @@ function render(){
   renderHeatmap(A, cur);
 
   // daily overview — chronological, day-over-day change (units) + trend bar, clickable rows
-  const maxDayU = Math.max(1, ...keys.map(k => A.days.get(k).units));
+  // global top products across the shown days → a STABLE colour each, so the same product is the
+  // same colour in every day's bar. Everything else is grouped into a grey "อื่นๆ".
+  const PROD_PAL = ['#2563eb','#16a34a','#f59e0b','#e11d48','#8b5cf6','#06b6d4','#ec4899','#84cc16'];
+  const gSales = new Map();
+  for (const k of keys){ for (const [key,p] of A.days.get(k).prod){ gSales.set(key, (gSales.get(key)||0) + p.sales); } }
+  const topProds = [...gSales.entries()].sort((a,b)=>b[1]-a[1]).slice(0, PROD_PAL.length);
+  const prodColor = new Map(); topProds.forEach(([key],i)=> prodColor.set(key, PROD_PAL[i]));
+  // legend meta (name + thumbnail) — find one product record per key
+  const legend = topProds.map(([key],i) => { let rec=null; for (const k of keys){ const p=A.days.get(k).prod.get(key); if (p){ rec=p; break; } } return { color:PROD_PAL[i], name:rec?rec.name:key, img:rec?imgOf(rec):'' }; });
+  $('#dailyLegend').innerHTML = (legend.length
+    ? legend.map(l => '<span class="it"><span class="sw" style="background:'+l.color+'"></span>'+(l.img?'<img loading="lazy" src="'+esc(l.img)+'" alt="">':'')+'<span class="lgnm" title="'+esc(l.name)+'">'+esc(l.name)+'</span></span>').join('')
+      + '<span class="it"><span class="sw" style="background:var(--line-2)"></span>อื่นๆ</span>'
+    : '');
+  // one day's 100%-stacked composition bar (segments sized by each product's share of the day)
+  const compBar = d => {
+    const tot = d.sales || 1; let other = 0; const segs = [];
+    for (const p of d.prod.values()){ const col = prodColor.get(p.sku || p.name); if (col) segs.push({ name:p.name, sales:p.sales, col }); else other += p.sales; }
+    segs.sort((a,b)=>b.sales-a.sales);
+    let inner = segs.filter(s=>s.sales>0).map(s => { const pc = s.sales/tot*100; return '<div class="seg" style="width:'+pc.toFixed(2)+'%;background:'+s.col+'" title="'+esc(s.name)+' · '+pc.toFixed(1)+'% · '+money(s.sales)+'"></div>'; }).join('');
+    if (other>0){ const pc = other/tot*100; inner += '<div class="seg" style="width:'+pc.toFixed(2)+'%;background:var(--line-2)" title="อื่นๆ · '+pc.toFixed(1)+'% · '+money(other)+'"></div>'; }
+    return '<div class="stackbar">' + inner + '</div>';
+  };
   let prevU = null;
   $('#dailyBody').innerHTML = keys.length ? keys.map(k => {
     const d = A.days.get(k), delta = fmtDelta(d.units, prevU); prevU = d.units;
-    const w = Math.max(2, Math.round(d.units / maxDayU * 100));
     return '<tr class="dayrow' + (cur===k?' sel':'') + '" data-k="' + esc(k) + '"><td><b>' + dLabel(k) + '</b></td>' +
       '<td class="n">' + nf.format(d.ord.size) + '</td><td class="n"><b>' + nf.format(d.units) + '</b></td>' +
       '<td class="n">' + money(d.sales) + '</td><td class="n">' + delta + '</td>' +
-      '<td><div class="barwrap"><div class="bar" style="width:' + w + '%"></div></div></td></tr>';
+      '<td>' + compBar(d) + '</td></tr>';
   }).join('') : '<tr><td colspan="6" class="empty">ไม่มีข้อมูลรายวัน</td></tr>';
 
   // build the view (a single day or all days aggregated) · a picked no-order day → empty view
