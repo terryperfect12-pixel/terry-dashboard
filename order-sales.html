@@ -118,6 +118,23 @@
   .hm-c.sel{outline:2px solid var(--accent)}
   .hm-leg{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px;font-size:11px;color:var(--muted)}
   .hm-sw{width:18px;height:11px;border-radius:2px;display:inline-block}
+
+  /* left control sidebar (like the Product Catalog tool) */
+  .layout{display:flex;align-items:flex-start;gap:0}
+  .side{flex:none;width:232px;align-self:stretch;position:sticky;top:0;max-height:100dvh;overflow-y:auto;background:var(--surface);border-right:1px solid var(--line);border-radius:14px 0 0 14px;padding:16px 13px;display:flex;flex-direction:column;gap:16px}
+  .main{flex:1;min-width:0;padding:4px 2px 60px 18px}
+  .side-h .side-title{font-size:15px;font-weight:800}
+  .side-h .side-sub{font-size:11px;color:var(--muted);margin-top:2px}
+  .side-lbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);margin:0 0 6px 3px}
+  .side-item{display:flex;width:100%;align-items:center;gap:8px;border:0;background:transparent;color:var(--muted);border-radius:9px;padding:7px 10px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:left;margin-bottom:2px}
+  .side-item:hover{background:var(--surface-2)}
+  .side-item.on{color:#fff}
+  .side-item.allday{border:1px solid var(--line-2);color:var(--ink);margin-top:7px;justify-content:center}
+  .side-item.allday:hover{background:var(--surface-2)}
+  .side-dot{width:10px;height:10px;flex:none;border-radius:50%}
+  .side-nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .side-c{font-variant-numeric:tabular-nums;font-size:12px;opacity:.72;font-weight:600}
+  @media(max-width:860px){ .layout{flex-direction:column} .side{width:100%;position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line);border-radius:14px 14px 0 0} .main{width:100%;padding:14px 2px 60px} }
 </style>
 </head>
 <body>
@@ -125,12 +142,23 @@
   <div class="msg" id="msg"></div>
 
   <div id="result" hidden>
+   <div class="layout">
+    <aside class="side">
+      <div class="side-h"><div class="side-title">ตัวกรองข้อมูล</div><div class="side-sub">เลือกช่องทาง · แบรนด์ · วันที่</div></div>
+      <div><div class="side-lbl">ช่องทาง</div><div id="platList"></div></div>
+      <div id="brandSec"><div class="side-lbl">แบรนด์</div><div id="brandList"></div></div>
+      <div>
+        <div class="side-lbl">เลือกวันที่</div>
+        <input type="date" id="datePick" class="datein" style="width:100%">
+        <button class="side-item allday" id="allDaysBtn" type="button">📅 ทุกวันรวมกัน</button>
+      </div>
+      <div>
+        <label class="chk"><input type="checkbox" id="exclCancel" checked> ไม่นับออเดอร์ที่ยกเลิก</label>
+        <div class="muted" id="rangeNote" style="font-size:11px;margin-top:5px;padding-left:2px"></div>
+      </div>
+    </aside>
+    <main class="main">
     <div class="tiles" id="tiles"></div>
-
-    <div class="filterbar" id="filterBar">
-      <div class="fgroup"><span class="flbl">ช่องทาง</span><div class="chips" id="platChips"></div></div>
-      <div class="fgroup" id="brandGroup"><span class="flbl">แบรนด์</span><div class="chips" id="brandChips"></div></div>
-    </div>
 
     <section class="panel" id="heatPanel">
       <div class="ph">
@@ -152,15 +180,6 @@
         </table>
       </div>
     </section>
-
-    <div class="toolrow">
-      <b style="font-size:13px">เลือกวันที่</b>
-      <input type="date" id="datePick" class="datein">
-      <button class="btn small" id="allDaysBtn" type="button">ทุกวันรวมกัน</button>
-      <label class="chk"><input type="checkbox" id="exclCancel" checked> ไม่นับออเดอร์ที่ยกเลิก</label>
-      <span class="muted" id="rangeNote" style="font-size:12px"></span>
-    </div>
-    <div class="days" id="days"></div>
 
     <section class="panel" id="prodPanel">
       <div class="ph">
@@ -188,6 +207,8 @@
         </table>
       </div>
     </section>
+    </main>
+   </div>
   </div>
 
   <div id="emptyState" class="empty">กำลังโหลดข้อมูลออเดอร์จาก Google Sheet…</div>
@@ -305,8 +326,16 @@ function aggregate(){
   return { days, anyTime, tOrders:tOrd.size, tUnits, tSales };
 }
 
-/* ---------- platform + brand filter chips ---------- */
+/* ---------- platform + brand filters (left sidebar list) ---------- */
 const PLAT_ORDER = ['TikTok','Shopee','Lazada'], BRAND_ORDER = ['Benutra','Terry','Gala'];
+const PLAT_C = { TikTok:'#0ea5e9', Shopee:'#ee4d2d', Lazada:'#8b5cf6' };
+const BRAND_C = { Benutra:'#16a34a', Terry:'#2563eb', Gala:'#e11d48' };
+function sideItem(kind, val, on, label, count, color){
+  const style = on ? (' style="background:' + color + '"') : '';
+  const dot = color ? '<span class="side-dot" style="background:' + (on ? '#fff' : color) + '"></span>' : '';
+  return '<button class="side-item' + (on?' on':'') + '" data-kind="' + kind + '" data-val="' + esc(val) + '"' + style + '>' + dot +
+    '<span class="side-nm">' + esc(label) + '</span><span class="side-c">' + nf.format(count) + '</span></button>';
+}
 function renderFilters(){
   const plats = {}, brands = {};
   for (const o of state.orders){
@@ -318,10 +347,11 @@ function renderFilters(){
   const order = (obj, pref) => [...pref.filter(k => k in obj), ...Object.keys(obj).filter(k => !pref.includes(k))];
   const PL = order(plats, PLAT_ORDER), BR = order(brands, BRAND_ORDER);
   const totP = Object.values(plats).reduce((a,b) => a+b, 0), totB = Object.values(brands).reduce((a,b) => a+b, 0);
-  const chip = (kind, val, on, label, count) => `<button class="fchip${on?' on':''}" data-kind="${kind}" data-val="${esc(val)}">${esc(label)}<span class="c">${nf.format(count)}</span></button>`;
-  $('#platChips').innerHTML = chip('plat','all', state.platFilter==='all', 'ทั้งหมด', totP) + PL.map(p => chip('plat', p, state.platFilter===p, p, plats[p])).join('');
-  $('#brandChips').innerHTML = chip('brand','all', state.brandFilter==='all', 'ทั้งหมด', totB) + BR.map(b => chip('brand', b, state.brandFilter===b, b, brands[b])).join('');
-  $('#brandGroup').style.display = BR.length > 1 ? '' : 'none';   // hide brand row until there are ≥2 brands
+  $('#platList').innerHTML = sideItem('plat','all', state.platFilter==='all', 'ทั้งหมด', totP, 'var(--accent)') +
+    PL.map(p => sideItem('plat', p, state.platFilter===p, p, plats[p], PLAT_C[p] || 'var(--accent)')).join('');
+  $('#brandList').innerHTML = sideItem('brand','all', state.brandFilter==='all', 'ทั้งหมด', totB, 'var(--accent)') +
+    BR.map(b => sideItem('brand', b, state.brandFilter===b, b, brands[b], BRAND_C[b] || 'var(--accent)')).join('');
+  $('#brandSec').style.display = BR.length > 1 ? '' : 'none';   // hide brand section until there are ≥2 brands
 }
 
 /* ---------- render ---------- */
@@ -345,14 +375,11 @@ function render(){
     tile('ช่วงวันที่', keys.length ? (dLabel(keys[0]) + (keys.length>1 ? ' – ' + dLabel(keys[keys.length-1]) : '')) : '—');
   $('#rangeNote').textContent = state.exclCancel ? '(ตัดออเดอร์ที่ยกเลิกออกแล้ว)' : '(รวมออเดอร์ที่ยกเลิก)';
 
-  // day chips (newest first) + "ทุกวัน" · default = latest day; a picked date is kept even if it has no orders
+  // default day = latest; a picked date is kept even if it has no orders
   let cur = state.day; if (cur == null) cur = keys.length ? keys[keys.length-1] : 'all';
   state.day = cur;
   // sync the date picker (bounds + current value)
   const dp = $('#datePick'); if (keys.length){ dp.min = keys[0]; dp.max = keys[keys.length-1]; } dp.value = (cur !== 'all' && /^\d{4}-\d{2}-\d{2}$/.test(cur)) ? cur : '';
-  const chips = ['<button class="day' + (cur==='all'?' on':'') + '" data-k="all"><span class="d">ทุกวันรวมกัน</span><span class="m">' + nf.format(A.tUnits) + ' ชิ้น · ' + money(A.tSales) + '</span></button>'];
-  for (const k of allKeys.slice().reverse()){ const d = A.days.get(k); chips.push('<button class="day' + (cur===k?' on':'') + '" data-k="' + esc(k) + '"><span class="d">' + (k==='(ไม่มีวันที่)'?'ไม่มีวันที่':dLabel(k)) + '</span><span class="m">' + nf.format(d.ord.size) + ' ออเดอร์ · ' + nf.format(d.units) + ' ชิ้น</span></button>'); }
-  $('#days').innerHTML = chips.join('');
 
   // day × hour heatmap of order volume
   renderHeatmap(A, cur);
@@ -540,8 +567,7 @@ function curLabel(){ return state.day==='all' ? 'ทุกวัน' : (state.da
 
 /* ---------- events ---------- */
 $('#exclCancel').addEventListener('change', e => { state.exclCancel = e.target.checked; render(); });
-$('#filterBar').addEventListener('click', e => { const b = e.target.closest('.fchip'); if (!b) return; if (b.dataset.kind === 'plat') state.platFilter = b.dataset.val; else state.brandFilter = b.dataset.val; state.day = null; render(); });
-$('#days').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (!b) return; state.day = b.dataset.k; render(); });
+document.querySelector('.side').addEventListener('click', e => { const b = e.target.closest('.side-item[data-kind]'); if (!b) return; if (b.dataset.kind === 'plat') state.platFilter = b.dataset.val; else state.brandFilter = b.dataset.val; state.day = null; render(); });
 $('#heat').addEventListener('click', e => { const c = e.target.closest('.hm-c'); if (!c) return; state.day = c.dataset.k; render(); $('#prodPanel').scrollIntoView({behavior:'smooth', block:'nearest'}); });
 $('#datePick').addEventListener('change', e => { if (e.target.value) { state.day = e.target.value; render(); $('#hourPanel').scrollIntoView({behavior:'smooth', block:'nearest'}); } });
 $('#allDaysBtn').addEventListener('click', () => { state.day = 'all'; render(); });
