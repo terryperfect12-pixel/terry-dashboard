@@ -18,7 +18,7 @@
   *{box-sizing:border-box}
   html,body{margin:0}
   body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1120px;margin:0 auto;padding:16px 16px 60px}
+  .wrap{max-width:1340px;margin:0;padding:14px 18px 60px}
   .muted{color:var(--muted)}
   code{font-family:var(--f-mono)}
   .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);border-radius:9px;padding:8px 13px;font:inherit;font-weight:600;cursor:pointer}
@@ -122,13 +122,6 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="up">
-    <div style="flex:1;min-width:200px">
-      <div class="t">ยอดขายรายวัน &amp; รายชั่วโมง</div>
-      <p class="hint">โหลดข้อมูลออเดอร์สดจาก Google Sheet อัตโนมัติ — <b>TikTok + Shopee</b> รวมกัน · ดูว่าแต่ละวันขายกี่ออเดอร์ สินค้าไหน ยอดเท่าไหร่ เพิ่ม/ลดเท่าไหร่ และแต่ละชั่วโมงมีซื้อเข้ามาเท่าไหร่ · กดปุ่มด้านขวาเพื่อโหลดข้อมูลล่าสุด</p>
-    </div>
-    <button class="btn primary" id="refreshSheet" type="button">↻ รีเฟรชข้อมูลจากชีต</button>
-  </div>
   <div class="msg" id="msg"></div>
 
   <div id="result" hidden>
@@ -197,7 +190,7 @@
     </section>
   </div>
 
-  <div id="emptyState" class="empty">อัปโหลดไฟล์คำสั่งซื้อเพื่อเริ่มดูยอดขายรายวัน &amp; รายชั่วโมง</div>
+  <div id="emptyState" class="empty">กำลังโหลดข้อมูลออเดอร์จาก Google Sheet…</div>
 </div>
 
 <div class="drop" id="drop"><div>วางไฟล์ออเดอร์ที่นี่<br><small class="muted">.xlsx .xls หรือ .csv</small></div></div>
@@ -429,8 +422,14 @@ function renderHeatmap(A, cur){
   const keys = [...A.days.keys()].filter(k => k !== '(ไม่มีวันที่)').sort();
   if (!A.anyTime || !keys.length){ panel.style.display = 'none'; return; }
   panel.style.display = '';
-  let maxCell = 1;
-  for (const k of keys){ const hrs = A.days.get(k).hours; for (let h=0;h<24;h++){ const n = hrs[h].ord.size; if (n > maxCell) maxCell = n; } }
+  // RANK-based (quantile) colouring → the ordering reads clearly even when most hours are low
+  // and one day spikes. Each non-zero cell is binned by its rank into a cold→hot 6-step ramp.
+  const vals = []; let maxCell = 0;
+  for (const k of keys){ const hrs = A.days.get(k).hours; for (let h=0;h<24;h++){ const n = hrs[h].ord.size; if (n>0) vals.push(n); if (n>maxCell) maxCell = n; } }
+  vals.sort((a,b)=>a-b); const N = vals.length || 1;
+  const RAMP = ['', '#bfe0ff', '#7cc0f9', '#43c59e', '#f4c542', '#f08a3c', '#e3453b']; // 1..6 = น้อย→มาก
+  const leCount = x => { let lo=0, hi=N; while (lo<hi){ const m=(lo+hi)>>1; if (vals[m]<=x) lo=m+1; else hi=m; } return lo; };
+  const colorOf = n => n<=0 ? '' : RAMP[Math.max(1, Math.min(6, Math.ceil(leCount(n)/N*6)))];
   const grid = 'grid-template-columns:minmax(66px,auto) repeat(24,minmax(0,1fr))';
   // header
   let html = '<div class="hm-row" style="' + grid + '"><div class="hm-hd" style="text-align:right;padding-right:6px">เวลา →</div>';
@@ -442,19 +441,16 @@ function renderHeatmap(A, cur){
     html += '<div class="hm-row" style="' + grid + '">';
     html += '<div class="hm-dl"' + (selRow?' style="color:var(--accent)"':'') + ' title="' + esc(dLabel(k)) + '">' + esc(hmLabel(k)) + '</div>';
     for (let h=0;h<24;h++){
-      const c = hrs[h], n = c.ord.size, on = n > 0;
-      const inten = on ? Math.round(14 + Math.sqrt(n / maxCell) * 72) : 0;
-      const bg = on ? 'color-mix(in oklab, var(--accent) ' + inten + '%, var(--surface))' : '';
+      const c = hrs[h], n = c.ord.size, col = colorOf(n);
       const tip = dLabel(k) + ' · ' + pad(h) + ':00 · ' + nf.format(n) + ' ออเดอร์ · ' + nf.format(c.units) + ' ชิ้น · ' + money(c.sales);
-      html += '<div class="hm-c' + (selRow?' sel':'') + '" data-k="' + esc(k) + '"' + (on?(' style="background:' + bg + '"'):'') + ' title="' + esc(tip) + '"></div>';
+      html += '<div class="hm-c' + (selRow?' sel':'') + '" data-k="' + esc(k) + '"' + (col?(' style="background:' + col + '"'):'') + ' title="' + esc(tip) + '"></div>';
     }
     html += '</div>';
   }
   $('#heat').innerHTML = html;
-  const steps = [14,30,48,68,86];
-  $('#heatLeg').innerHTML = '<span style="font-weight:600">ออเดอร์ต่อชั่วโมง:</span><span>น้อย</span>' +
-    steps.map(p => '<span class="hm-sw" style="background:color-mix(in oklab, var(--accent) ' + p + '%, var(--surface))"></span>').join('') +
-    '<span>มาก</span><span style="opacity:.7">· ช่องเข้มสุด = ' + nf.format(maxCell) + ' ออเดอร์</span>';
+  $('#heatLeg').innerHTML = '<span style="font-weight:600">ออเดอร์ต่อชั่วโมง (ไล่สีตามลำดับ):</span><span>น้อย</span>' +
+    RAMP.slice(1).map(c => '<span class="hm-sw" style="background:' + c + '"></span>').join('') +
+    '<span>มาก</span><span style="opacity:.7">· ช่องว่าง = ไม่มีออเดอร์ · เข้มสุด = ' + nf.format(maxCell) + ' ออเดอร์/ชม.</span>';
 }
 function mergeAll(days){
   const view = { ord:new Set(), units:0, sales:0, hours:emptyHours(), prod:new Map() };
@@ -567,7 +563,7 @@ $('#copyHour').addEventListener('click', () => {
   const body = v.hours.map((h,i) => { const top = h.prod && h.prod.size ? [...h.prod.values()].sort((a,b)=>b.sales-a.sales||b.units-a.units)[0] : null; return [pad(i)+':00-'+pad(i)+':59', top?String(top.name).replace(/[\t\r\n]+/g,' '):'', top?top.sku:'', top?Math.round(top.sales):'', Math.round(h.sales), h.units, h.ord.size].join('\t'); });
   copyText(['รายชั่วโมง · ' + curLabel(), head.join('\t'), ...body].join('\n'), 'ตารางรายชั่วโมง');
 });
-$('#refreshSheet').addEventListener('click', loadFromSheet);
+$('#refreshSheet')?.addEventListener('click', loadFromSheet);
 // auto-load from the embedded order Google Sheets (TikTok + Shopee) on open
 loadFromSheet();
 </script>
