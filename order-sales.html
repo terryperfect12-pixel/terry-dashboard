@@ -136,17 +136,16 @@
   .side-c{font-variant-numeric:tabular-nums;font-size:12px;opacity:.72;font-weight:600}
   @media(max-width:860px){ .layout{flex-direction:column} .side{width:100%;position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line);border-radius:14px 14px 0 0} .main{width:100%;padding:14px 2px 60px} }
 
-  /* daily product-composition = vertical 100% columns, each segment filled with the product image */
-  .colchart-wrap{overflow-x:auto;padding:6px 0 8px}
-  .colchart{display:flex;gap:10px;align-items:flex-end;min-width:min-content}
-  .colday{flex:none;width:56px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer}
-  .col{width:100%;height:280px;border-radius:9px;overflow:hidden;display:flex;flex-direction:column-reverse;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line)}
-  .colday:hover .col{box-shadow:inset 0 0 0 1px var(--line-2),0 5px 16px rgba(0,0,0,.15)}
-  .colday.sel .col{box-shadow:0 0 0 2px var(--accent)}
-  .col .seg{width:100%;background-size:cover;background-position:center;min-height:2px}
-  .col .seg:hover{filter:brightness(1.12)}
-  .collbl{font-size:11px;color:var(--ink-2);white-space:nowrap;text-align:center;line-height:1.2}
-  .colday.sel .collbl{color:var(--accent);font-weight:700}
+  /* 100% stacked product-composition bar (daily) — COLOURS represent products; the legend
+     identifies each colour by the product IMAGE (no names). */
+  .stackbar{display:flex;height:20px;width:100%;border-radius:6px;overflow:hidden;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line)}
+  .stackbar .seg{height:100%;transition:filter .1s}
+  .stackbar .seg:hover{filter:brightness(1.14)}
+  .plegend{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:2px 0 12px}
+  .plegend .it{display:flex;align-items:center;gap:5px}
+  .plegend .sw{width:12px;height:12px;border-radius:3px;flex:none}
+  .plegend img{width:32px;height:32px;border-radius:7px;object-fit:cover;border:1px solid var(--line);flex:none;background:var(--surface-2)}
+  .plegend .oth{font-size:12px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -182,9 +181,16 @@
 
     <section class="panel" id="dailyPanel">
       <div class="ph">
-        <div><h2>สัดส่วนสินค้าขายดีรายวัน</h2><p class="sub">แต่ละแท่ง = 1 วัน (100% ของยอดวันนั้น) · ช่วงในแท่ง = รูปสินค้าตามสัดส่วนที่ขายได้ · ชี้ที่ช่วงเพื่อดู % · กดแท่งเพื่อดูรายละเอียดของวันนั้น</p></div>
+        <div><h2>ภาพรวมรายวัน — ออเดอร์ · ยอดขาย &amp; สัดส่วนสินค้า</h2><p class="sub">แต่ละวันขายกี่ออเดอร์ · เทียบวันก่อนหน้า (▲ เพิ่ม · ▼ ลด) · แท่งสี = สัดส่วนสินค้าที่ขายได้ในวันนั้น (100% ของวัน) · สีแทนสินค้า (ดูรูปสินค้าที่ legend) · กดแถวเพื่อดูรายละเอียด</p></div>
+        <button class="btn small" id="copyDaily" type="button">คัดลอกตาราง</button>
       </div>
-      <div class="colchart-wrap"><div class="colchart" id="colchart"></div></div>
+      <div id="dailyLegend" class="plegend"></div>
+      <div class="scroll">
+        <table id="dailyTbl">
+          <thead><tr><th>วันที่</th><th class="n">ออเดอร์</th><th class="n">ชิ้น</th><th class="n">ยอดขาย</th><th class="n">เทียบวันก่อน (ชิ้น)</th><th style="width:40%">สัดส่วนสินค้าขายดี (100% ของวัน)</th></tr></thead>
+          <tbody id="dailyBody"></tbody>
+        </table>
+      </div>
     </section>
 
     <section class="panel" id="prodPanel">
@@ -397,29 +403,32 @@ function render(){
   renderHeatmap(A, cur);
 
   // daily overview — chronological, day-over-day change (units) + trend bar, clickable rows
-  // VERTICAL columns, one per day: each column = 100% of that day, segments sized by each
-  // product's share and FILLED WITH THE PRODUCT IMAGE (no names). Top products across the shown
-  // days get a stable slot; everything else is grouped into a grey "อื่นๆ". Products with no
-  // image fall back to a colour.
+  // top products across the shown days → a STABLE COLOUR each (colours represent products in the
+  // bars). The legend maps each colour to the product's IMAGE (no names). Rest → grey "อื่นๆ".
   const PROD_PAL = ['#2563eb','#16a34a','#f59e0b','#e11d48','#8b5cf6','#06b6d4','#ec4899','#84cc16'];
   const gSales = new Map();
   for (const k of keys){ for (const [key,p] of A.days.get(k).prod){ gSales.set(key, (gSales.get(key)||0) + p.sales); } }
   const topProds = [...gSales.entries()].sort((a,b)=>b[1]-a[1]).slice(0, PROD_PAL.length);
-  const prodRank = new Map(); topProds.forEach(([key],i)=> prodRank.set(key, i));
-  const prodRec = new Map();   // one product record per top key (for its image)
-  for (const [key] of topProds){ for (const k of keys){ const p=A.days.get(k).prod.get(key); if (p){ prodRec.set(key,p); break; } } }
-  const colDay = k => {
-    const d = A.days.get(k), tot = d.sales || 1; let other = 0; const segs = [];
-    for (const p of d.prod.values()){ const key = p.sku||p.name; if (prodRank.has(key)) segs.push({ key, name:p.name, sales:p.sales }); else other += p.sales; }
+  const prodColor = new Map(); topProds.forEach(([key],i)=> prodColor.set(key, PROD_PAL[i]));
+  const legend = topProds.map(([key],i) => { let rec=null; for (const k of keys){ const p=A.days.get(k).prod.get(key); if (p){ rec=p; break; } } return { color:PROD_PAL[i], name:rec?rec.name:key, img:rec?imgOf(rec):'' }; });
+  $('#dailyLegend').innerHTML = legend.map(l => '<span class="it" title="'+esc(l.name)+'"><span class="sw" style="background:'+l.color+'"></span>'+(l.img?'<img loading="lazy" src="'+esc(l.img)+'" alt="">':'')+'</span>').join('')
+    + '<span class="it"><span class="sw" style="background:var(--line-2)"></span><span class="oth">อื่นๆ</span></span>';
+  const compBar = d => {
+    const tot = d.sales || 1; let other = 0; const segs = [];
+    for (const p of d.prod.values()){ const col = prodColor.get(p.sku || p.name); if (col) segs.push({ name:p.name, sales:p.sales, col }); else other += p.sales; }
     segs.sort((a,b)=>b.sales-a.sales);
-    let inner = '';
-    for (const s of segs){ if (s.sales<=0) continue; const pc = s.sales/tot*100; const rec = prodRec.get(s.key); const img = rec?imgOf(rec):'';
-      const bg = img ? "background-image:url('"+esc(img)+"')" : "background:"+PROD_PAL[prodRank.get(s.key)];
-      inner += '<div class="seg" style="height:'+pc.toFixed(2)+'%;'+bg+'" title="'+esc(s.name)+' · '+pc.toFixed(1)+'% · '+money(s.sales)+'"></div>'; }
-    if (other>0){ const pc=other/tot*100; inner += '<div class="seg" style="height:'+pc.toFixed(2)+'%;background:var(--line-2)" title="อื่นๆ · '+pc.toFixed(1)+'% · '+money(other)+'"></div>'; }
-    return '<div class="colday'+(cur===k?' sel':'')+'" data-k="'+esc(k)+'" title="'+esc(dLabel(k))+' · '+money(d.sales)+'"><div class="col">'+inner+'</div><div class="collbl">'+hmLabel(k)+'</div></div>';
+    let inner = segs.filter(s=>s.sales>0).map(s => { const pc = s.sales/tot*100; return '<div class="seg" style="width:'+pc.toFixed(2)+'%;background:'+s.col+'" title="'+esc(s.name)+' · '+pc.toFixed(1)+'% · '+money(s.sales)+'"></div>'; }).join('');
+    if (other>0){ const pc = other/tot*100; inner += '<div class="seg" style="width:'+pc.toFixed(2)+'%;background:var(--line-2)" title="อื่นๆ · '+pc.toFixed(1)+'% · '+money(other)+'"></div>'; }
+    return '<div class="stackbar">' + inner + '</div>';
   };
-  $('#colchart').innerHTML = keys.length ? keys.map(colDay).join('') : '<div class="empty" style="padding:30px">ไม่มีข้อมูลรายวัน</div>';
+  let prevU = null;
+  $('#dailyBody').innerHTML = keys.length ? keys.map(k => {
+    const d = A.days.get(k), delta = fmtDelta(d.units, prevU); prevU = d.units;
+    return '<tr class="dayrow' + (cur===k?' sel':'') + '" data-k="' + esc(k) + '"><td><b>' + dLabel(k) + '</b></td>' +
+      '<td class="n">' + nf.format(d.ord.size) + '</td><td class="n"><b>' + nf.format(d.units) + '</b></td>' +
+      '<td class="n">' + money(d.sales) + '</td><td class="n">' + delta + '</td>' +
+      '<td>' + compBar(d) + '</td></tr>';
+  }).join('') : '<tr><td colspan="6" class="empty">ไม่มีข้อมูลรายวัน</td></tr>';
 
   // build the view (a single day or all days aggregated) · a picked no-order day → empty view
   const view = cur === 'all' ? mergeAll(A.days) : (A.days.get(cur) || { ord:new Set(), units:0, sales:0, hours:emptyHours(), prod:new Map() });
@@ -596,7 +605,13 @@ document.querySelector('.side').addEventListener('click', e => { const b = e.tar
 $('#heat').addEventListener('click', e => { const c = e.target.closest('.hm-c'); if (!c) return; state.day = c.dataset.k; render(); $('#prodPanel').scrollIntoView({behavior:'smooth', block:'nearest'}); });
 $('#datePick').addEventListener('change', e => { if (e.target.value) { state.day = e.target.value; render(); $('#hourPanel').scrollIntoView({behavior:'smooth', block:'nearest'}); } });
 $('#allDaysBtn').addEventListener('click', () => { state.day = 'all'; render(); });
-$('#colchart').addEventListener('click', e => { const c = e.target.closest('.colday'); if (!c) return; state.day = c.dataset.k; render(); $('#prodPanel').scrollIntoView({behavior:'smooth', block:'nearest'}); });
+$('#dailyBody').addEventListener('click', e => { const tr = e.target.closest('[data-k]'); if (!tr) return; state.day = tr.dataset.k; render(); $('#prodPanel').scrollIntoView({behavior:'smooth', block:'nearest'}); });
+$('#copyDaily').addEventListener('click', () => {
+  const A = aggregate(); const keys = [...A.days.keys()].filter(k => k !== '(ไม่มีวันที่)').sort();
+  let prevU = null; const head = ['วันที่','ออเดอร์','ชิ้น','ยอดขาย(฿)','เทียบวันก่อน(ชิ้น)%'];
+  const body = keys.map(k => { const d = A.days.get(k); const pct = prevU == null ? '' : (prevU === 0 ? (d.units>0?'NEW':'') : (((d.units-prevU)/prevU*100).toFixed(0) + '%')); prevU = d.units; return [dLabel(k), d.ord.size, d.units, Math.round(d.sales), pct].join('\t'); });
+  copyText([head.join('\t'), ...body].join('\n'), 'ตารางภาพรวมรายวัน');
+});
 $('#copyProd').addEventListener('click', () => {
   const v = curView(); const rows = [...v.prod.values()].sort((a,b)=>b.sales-a.sales);
   const head = ['สินค้า','SKU','ออเดอร์','ชิ้น','ยอดขาย(฿)'];
