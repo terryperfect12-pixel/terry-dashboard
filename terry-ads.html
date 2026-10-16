@@ -28,76 +28,79 @@
   .msg{margin:10px 0;font-size:13px;padding:9px 12px;border-radius:9px;background:var(--surface-2);color:var(--ink-2)}
   .msg.err{background:color-mix(in oklab,var(--bad) 13%,var(--surface));color:var(--bad)}
 
-  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px;margin:14px 0}
-  .tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;position:relative;overflow:hidden}
-  .tile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent);opacity:.85}
-  .tile.good::before{background:var(--good)} .tile.bad::before{background:var(--bad)} .tile.warn::before{background:var(--warn)}
-  .tile .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
-  .tile .v{font-size:22px;font-weight:800;margin-top:3px;font-variant-numeric:tabular-nums}
-  .tile .s{font-size:11px;color:var(--muted);margin-top:2px}
-
   .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
   .panel h2{font-size:16px;margin:0 0 2px;font-weight:800}
-  .panel .sub{font-size:12px;color:var(--muted);margin:0 0 14px}
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  th,td{text-align:left;padding:8px 8px;border-top:1px solid var(--line)}
-  th{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);border-top:0}
-  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-  tbody tr:hover{background:var(--surface-2)}
-  .scroll{overflow-x:auto}
-  .ach{position:relative;height:16px;border-radius:5px;background:var(--surface-2);min-width:110px;overflow:hidden}
-  .ach>div{position:absolute;inset:0 auto 0 0;border-radius:5px}
-  .ach .tgt{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink-2);opacity:.6}
-  .pct{font-weight:800} .pct.hit{color:var(--good)} .pct.miss{color:var(--bad)} .pct.near{color:var(--warn)}
+  .panel .sub{font-size:12px;color:var(--muted);margin:0 0 12px}
+  .ph{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
 
-  /* daily columns */
-  .cols-wrap{overflow-x:auto;padding-bottom:6px}
+  /* faithful Inject grid */
+  .gridscroll{overflow-x:auto}
+  table.inj{border-collapse:collapse;font-size:11.5px;white-space:nowrap}
+  table.inj th,table.inj td{border:1px solid var(--line);padding:5px 8px;text-align:right;font-variant-numeric:tabular-nums}
+  table.inj th{font-weight:700;color:var(--ink-2);background:var(--surface-2);text-transform:none;letter-spacing:0}
+  table.inj .grp th{text-align:center;font-size:11px;font-weight:800;color:#fff}
+  table.inj td.lbl,table.inj th.lbl{text-align:left;position:sticky;left:0;background:var(--surface);z-index:1}
+  table.inj tr:hover td{background:color-mix(in oklab,var(--accent) 6%,var(--surface))}
+  .g-wk{background:var(--ink-2)} .g-plan{background:#64748b}
+  .g-sht{background:#f08a3c} .g-sha{background:var(--sh)}
+  .g-tkt{background:#38bdf8} .g-tka{background:var(--tk)}
+  td.c-sht{background:color-mix(in oklab,var(--sh) 7%,var(--surface))}
+  td.c-sha{background:color-mix(in oklab,var(--sh) 13%,var(--surface))}
+  td.c-tkt{background:color-mix(in oklab,var(--tk) 7%,var(--surface))}
+  td.c-tka{background:color-mix(in oklab,var(--tk) 13%,var(--surface))}
+  td.pc{font-weight:800} .pc.hit{color:var(--good)} .pc.near{color:var(--warn)} .pc.miss{color:var(--bad)}
+  table.inj tfoot td{font-weight:800;background:var(--surface-2);border-top:2px solid var(--line-2)}
+  .dim{color:var(--muted);font-weight:400}
+
+  /* deep-dive */
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:4px 0 14px}
+  .tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 13px;position:relative;overflow:hidden}
+  .tile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent);opacity:.85}
+  .tile.good::before{background:var(--good)} .tile.warn::before{background:var(--warn)}
+  .tile .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+  .tile .v{font-size:21px;font-weight:800;margin-top:3px;font-variant-numeric:tabular-nums}
+  .tile .s{font-size:11px;color:var(--muted);margin-top:2px}
+  .split{display:flex;height:26px;border-radius:8px;overflow:hidden;box-shadow:inset 0 0 0 1px var(--line);margin:8px 0 6px}
+  .split>div{height:100%;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:#fff;overflow:hidden;white-space:nowrap}
+  .srcleg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px}
+  .srcleg .it{display:flex;align-items:center;gap:5px} .srcleg .sw{width:12px;height:12px;border-radius:3px}
+  .cols-wrap{overflow-x:auto;padding-bottom:6px;margin-top:10px}
   .cols{display:flex;gap:7px;align-items:flex-end;min-width:min-content}
   .cday{flex:none;width:34px;display:flex;flex-direction:column;align-items:center;gap:4px}
-  .cbar{width:100%;height:200px;display:flex;flex-direction:column-reverse;border-radius:6px 6px 0 0;overflow:hidden;background:var(--surface-2)}
-  .cseg{width:100%}
-  .cv{font-size:9px;color:var(--ink-2);font-variant-numeric:tabular-nums}
-  .cl{font-size:9px;color:var(--muted)}
-  .srcleg{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:12px}
-  .srcleg .it{display:flex;align-items:center;gap:5px}
-  .srcleg .sw{width:12px;height:12px;border-radius:3px}
-  /* source split 100% bar */
-  .split{display:flex;height:26px;border-radius:8px;overflow:hidden;box-shadow:inset 0 0 0 1px var(--line);margin-top:4px}
-  .split>div{height:100%;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:#fff;overflow:hidden;white-space:nowrap}
+  .cbar{width:100%;height:190px;display:flex;flex-direction:column-reverse;border-radius:6px 6px 0 0;overflow:hidden;background:var(--surface-2)}
+  .cseg{width:100%} .cv{font-size:9px;color:var(--ink-2);font-variant-numeric:tabular-nums} .cl{font-size:9px;color:var(--muted)}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="head">
     <h1>Terry Ads — เป้า vs จริง · ยอดขาย</h1>
-    <span class="seg" id="platSeg"><button data-p="Shopee" class="on">Shopee</button><button data-p="TikTok">TikTok</button></span>
-    <select id="monthSel" class="sel"></select>
-    <span class="muted" style="font-size:12px">ชีต “Terry Ads working - 2026”</span>
+    <span class="muted" style="font-size:12px">ชีต “Terry Ads working - 2026” · แท็บ Inject (ตามชีต) + เจาะรายวัน</span>
   </div>
   <div class="msg" id="msg">กำลังโหลดข้อมูลสด…</div>
 
   <div id="result" hidden>
-    <div class="tiles" id="tiles"></div>
-
     <section class="panel">
-      <h2>1) เป้า vs จริง (รายสัปดาห์)</h2>
-      <p class="sub" id="tvaSub"></p>
-      <div class="scroll"><table id="tvaTbl">
-        <thead><tr><th>สัปดาห์</th><th class="n">เป้ายอดขาย</th><th class="n">ยอดขายจริง</th><th style="width:22%">สำเร็จ</th><th class="n">ผู้เข้าชม</th><th class="n">ออเดอร์</th><th class="n">CR</th></tr></thead>
-        <tbody id="tvaBody"></tbody>
-      </table></div>
-    </section>
-
-    <section class="panel" id="srcPanel">
-      <h2>2) ยอดขาย TikTok มาจากไหน (LIVE · วิดีโอ · อื่น ๆ)</h2>
-      <p class="sub">แยกแหล่งที่มาของ GMV เดือนนี้ — เห็นว่าพึ่ง LIVE แค่ไหน</p>
-      <div class="split" id="srcSplit"></div>
-      <div class="srcleg" id="srcLeg"></div>
+      <h2>เป้า vs จริง รายสัปดาห์ (ตามชีต Inject)</h2>
+      <p class="sub">แสดงทั้ง Shopee + TikTok ในแถวเดียวตามชีต · <span class="g-sht" style="padding:1px 6px;border-radius:4px;color:#fff">ส้ม = Shopee</span> <span class="g-tka" style="padding:1px 6px;border-radius:4px;color:#fff">ฟ้า = TikTok</span> · คอลัมน์ %สำเร็จ = ยอดจริง ÷ เป้า (<span style="color:var(--good)">เขียว ≥100%</span> · <span style="color:var(--warn)">เหลือง 80–99%</span> · <span style="color:var(--bad)">แดง &lt;80%</span>)</p>
+      <div class="gridscroll"><table class="inj" id="injTbl"></table></div>
     </section>
 
     <section class="panel">
-      <h2 id="dailyTitle">3) ยอดขายรายวัน</h2>
-      <p class="sub" id="dailySub">แต่ละแท่ง = 1 วัน · ชี้เพื่อดูออเดอร์ · CR · AOV</p>
+      <div class="ph">
+        <h2 style="margin:0">เจาะรายวัน</h2>
+        <div style="display:flex;gap:10px;align-items:center">
+          <span class="seg" id="platSeg"><button data-p="Shopee" class="on">Shopee</button><button data-p="TikTok">TikTok</button></span>
+          <select id="monthSel" class="sel"></select>
+        </div>
+      </div>
+      <div class="tiles" id="tiles"></div>
+      <div id="srcPanel" style="margin-bottom:14px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:2px">ยอดขาย TikTok มาจากไหน (เดือนนี้)</div>
+        <div class="split" id="srcSplit"></div>
+        <div class="srcleg" id="srcLeg"></div>
+      </div>
+      <div style="font-size:13px;font-weight:700" id="dailyTitle">ยอดขายรายวัน</div>
       <div class="cols-wrap"><div class="cols" id="daily"></div></div>
     </section>
   </div>
@@ -112,8 +115,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const num=v=>{const n=Number(String(v==null?'':v).replace(/[,฿%\s]/g,''));return isNaN(n)?0:n;};
 function parseCSV(t){const R=[];let r=[],c="",q=false;for(let i=0;i<t.length;i++){const h=t[i];if(q){if(h==='"'){if(t[i+1]==='"'){c+='"';i++}else q=false}else c+=h}else{if(h==='"')q=true;else if(h===','){r.push(c);c=""}else if(h==='\n'){r.push(c);R.push(r);r=[];c=""}else if(h==='\r'){}else c+=h}}if(c!==""||r.length){r.push(c);R.push(r)}return R}
 const TH_MO=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-const mLabel=mk=>{const[y,m]=mk.split('-').map(Number);return TH_MO[m-1]+' '+(y+543-2500>=0?(y+543):y);};
-// Shopee date M/D/YYYY ; TikTok date D/M/YYYY
+const mLabel=mk=>{const[y,m]=mk.split('-').map(Number);return TH_MO[m-1]+' '+(y+543);};
 function toMK(s,dmy){const m=String(s).match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);if(!m)return null;let y=+m[3];if(y<100)y+=2000;const mo=dmy?+m[2]:+m[1];return y+'-'+String(mo).padStart(2,'0');}
 function toDay(s,dmy){const m=String(s).match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);if(!m)return null;let y=+m[3];if(y<100)y+=2000;const mo=dmy?+m[2]:+m[1],d=dmy?+m[1]:+m[2];return y+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');}
 
@@ -121,87 +123,99 @@ const ID='1N5R5UYFa7FIi4IJhPiUBWN-yK5e9kTw2xIN9k1SI00A';
 const GID={inject:234780105, shopee:1154128372, tiktok:1387843402};
 async function csv(gid){const t=await(await fetch(`https://docs.google.com/spreadsheets/d/${ID}/export?format=csv&gid=${gid}&cb=${Date.now()}`)).text();return t.trim().startsWith('<')?[]:parseCSV(t);}
 
-const DATA={inject:[], shopee:[], tiktok:[]};   // parsed
+const DATA={injRows:[], shopee:[], tiktok:[]};
 async function loadAll(){
   const [inj,sh,tk]=await Promise.all([csv(GID.inject),csv(GID.shopee),csv(GID.tiktok)]);
-  for(let i=4;i<inj.length;i++){const r=inj[i];const month=String(r[1]||'').trim(),week=String(r[2]||'').trim();if(!week)continue;
-    DATA.inject.push({month,week,
-      Shopee:{tSale:num(r[8]),tUV:num(r[9]),tOrd:num(r[10]),aSale:num(r[13]),aUV:num(r[14]),aOrd:num(r[15]),aCR:num(r[16])},
-      TikTok:{tSale:num(r[20]),tOrd:num(r[22]),aSale:num(r[30]),aUV:num(r[31]),aOrd:num(r[32]),aCR:num(r[34])}});}
+  for(let i=4;i<inj.length;i++){const r=inj[i];if(String(r[2]||'').trim())DATA.injRows.push(r);}   // faithful raw week rows
   for(let i=2;i<sh.length;i++){const r=sh[i];const mk=toMK(r[3],false);const sales=num(r[5]);if(!mk||sales<=0)continue;
-    DATA.shopee.push({mk,day:toDay(r[3],false),sales,orders:num(r[7]),aov:num(r[8]),visitors:num(r[10]),cr:num(r[11]),repeat:num(r[20]),buyers:num(r[16]),newB:num(r[17])});}
+    DATA.shopee.push({mk,day:toDay(r[3],false),sales,orders:num(r[7]),aov:num(r[8]),visitors:num(r[10]),cr:num(r[11]),repeat:num(r[20])});}
   for(let i=1;i<tk.length;i++){const r=tk[i];const mk=toMK(r[5],true);const gmv=num(r[7]);if(!mk||gmv<=0)continue;
-    const crLIVE=num(r[23])+num(r[26]), vid=num(r[29])+num(r[32]);
-    DATA.tiktok.push({mk,day:toDay(r[5],true),gmv,orders:num(r[8]),visitors:num(r[15]),cr:num(r[16])*100,aov:num(r[21]),live:crLIVE,video:vid,other:Math.max(0,gmv-crLIVE-vid),crLIVE:num(r[23]),selLIVE:num(r[26])});}
+    const live=num(r[23])+num(r[26]), vid=num(r[29])+num(r[32]);
+    DATA.tiktok.push({mk,day:toDay(r[5],true),gmv,orders:num(r[8]),visitors:num(r[15]),cr:num(r[16])*100,aov:num(r[21]),live,video:vid,other:Math.max(0,gmv-live-vid)});}
 }
 
+/* ---- 1) faithful Inject table ---- */
+function renderInject(){
+  const mN=c=>num(c)>0?money(num(c)):'<span class="dim">—</span>';
+  const nN=c=>num(c)>0?nf.format(num(c)):'<span class="dim">—</span>';
+  const rw=c=>{const s=String(c==null?'':c).trim();return s||'<span class="dim">—</span>';};
+  const pc=(a,t)=>{const av=num(a),tv=num(t);if(!tv)return '<span class="dim">—</span>';const p=av/tv*100;const cl=p>=100?'hit':p>=80?'near':'miss';return `<span class="pc ${cl}">${p.toFixed(0)}%</span>`;};
+  // group header + sub header
+  let html = `<thead>
+    <tr class="grp">
+      <th class="lbl g-wk" colspan="2">สัปดาห์</th>
+      <th class="g-plan" colspan="4">งบ / Inject</th>
+      <th class="g-sht" colspan="4">Shopee · เป้า</th>
+      <th class="g-sha" colspan="7">Shopee · จริง</th>
+      <th class="g-tkt" colspan="9">TikTok · เป้า</th>
+      <th class="g-tka" colspan="10">TikTok · จริง</th>
+    </tr>
+    <tr>
+      <th class="lbl">เดือน</th><th class="lbl">สัปดาห์</th>
+      <th>Ads spend</th><th>Inject</th><th>Top up</th><th>Date Top up</th>
+      <th>เป้ายอดขาย</th><th>UV</th><th>Order</th><th>CR</th>
+      <th>ยอดขายจริง</th><th>%สำเร็จ</th><th>UV</th><th>Order</th><th>CR</th><th>Ads sale</th><th>Ads Budget</th>
+      <th>เป้ายอดขาย</th><th>UV</th><th>Order</th><th>AOV</th><th>CR</th><th>CTOR</th><th>CTR</th><th>Impression</th><th>Click</th>
+      <th>ยอดขายจริง</th><th>%สำเร็จ</th><th>UV</th><th>Order</th><th>AOV</th><th>CR</th><th>CTOR</th><th>CTR</th><th>Impression</th><th>Click</th>
+    </tr></thead><tbody>`;
+  const tot={shT:0,shA:0,tkT:0,tkA:0};
+  for(const r of DATA.injRows){
+    tot.shT+=num(r[8]);tot.shA+=num(r[13]);tot.tkT+=num(r[20]);tot.tkA+=num(r[30]);
+    html += `<tr>
+      <td class="lbl">${rw(r[1])}</td><td class="lbl"><b>${rw(r[2])}</b></td>
+      <td>${mN(r[3])}</td><td>${mN(r[4])}</td><td>${mN(r[5])}</td><td style="text-align:left">${rw(r[6])}</td>
+      <td class="c-sht">${mN(r[8])}</td><td class="c-sht">${nN(r[9])}</td><td class="c-sht">${nN(r[10])}</td><td class="c-sht">${rw(r[11])}</td>
+      <td class="c-sha">${mN(r[13])}</td><td class="c-sha">${pc(r[13],r[8])}</td><td class="c-sha">${nN(r[14])}</td><td class="c-sha">${nN(r[15])}</td><td class="c-sha">${rw(r[16])}</td><td class="c-sha">${mN(r[17])}</td><td class="c-sha">${mN(r[18])}</td>
+      <td class="c-tkt">${mN(r[20])}</td><td class="c-tkt">${nN(r[21])}</td><td class="c-tkt">${nN(r[22])}</td><td class="c-tkt">${mN(r[23])}</td><td class="c-tkt">${rw(r[24])}</td><td class="c-tkt">${rw(r[25])}</td><td class="c-tkt">${rw(r[26])}</td><td class="c-tkt">${nN(r[27])}</td><td class="c-tkt">${nN(r[28])}</td>
+      <td class="c-tka">${mN(r[30])}</td><td class="c-tka">${pc(r[30],r[20])}</td><td class="c-tka">${nN(r[31])}</td><td class="c-tka">${nN(r[32])}</td><td class="c-tka">${mN(r[33])}</td><td class="c-tka">${rw(r[34])}</td><td class="c-tka">${rw(r[35])}</td><td class="c-tka">${rw(r[36])}</td><td class="c-tka">${nN(r[37])}</td><td class="c-tka">${nN(r[38])}</td>
+    </tr>`;
+  }
+  html += `</tbody><tfoot><tr>
+    <td class="lbl" colspan="2">รวม</td><td colspan="4"></td>
+    <td class="c-sht">${money(tot.shT)}</td><td colspan="3" class="c-sht"></td>
+    <td class="c-sha">${money(tot.shA)}</td><td class="c-sha">${pc(tot.shA,tot.shT)}</td><td colspan="5" class="c-sha"></td>
+    <td class="c-tkt">${money(tot.tkT)}</td><td colspan="8" class="c-tkt"></td>
+    <td class="c-tka">${money(tot.tkA)}</td><td class="c-tka">${pc(tot.tkA,tot.tkT)}</td><td colspan="8" class="c-tka"></td>
+  </tr></tfoot>`;
+  $('#injTbl').innerHTML=html;
+}
+
+/* ---- 2) daily deep-dive ---- */
 let PLAT='Shopee', MK=null;
 function monthsOf(p){return [...new Set((p==='Shopee'?DATA.shopee:DATA.tiktok).map(d=>d.mk))].sort();}
 function buildMonths(){const ms=monthsOf(PLAT);const sel=$('#monthSel');sel.innerHTML=ms.map(m=>`<option value="${m}">${mLabel(m)}</option>`).join('');if(!ms.includes(MK))MK=ms[ms.length-1];sel.value=MK;}
-
-function render(){
+function tile(k,v,s,cls){return `<div class="tile ${cls||''}"><div class="k">${k}</div><div class="v">${v}</div>${s?`<div class="s">${s}</div>`:''}</div>`;}
+function renderDaily(){
   const isSH=PLAT==='Shopee';
   const rows=(isSH?DATA.shopee:DATA.tiktok).filter(d=>d.mk===MK).sort((a,b)=>a.day.localeCompare(b.day));
-  const totSales=rows.reduce((s,d)=>s+(isSH?d.sales:d.gmv),0);
-  const totOrd=rows.reduce((s,d)=>s+d.orders,0);
-  const totVis=rows.reduce((s,d)=>s+d.visitors,0);
-  const aov=totOrd?totSales/totOrd:0;
-  const cr=totVis?totOrd/totVis*100:0;
-  // tiles
-  let tiles = tile((isSH?'ยอดขาย':'GMV')+' เดือนนี้', money(totSales), rows.length+' วัน','') +
-    tile('ออเดอร์', nf.format(totOrd), '', '') +
-    tile('ผู้เข้าชม', nf.format(totVis), '', '') +
-    tile('CR (ออเดอร์/เข้าชม)', cr.toFixed(2)+'%', '', '') +
-    tile('AOV (ต่อออเดอร์)', money(aov), '', '');
-  if(isSH){ const rp=rows.length?rows.reduce((s,d)=>s+d.repeat,0)/rows.length:0; tiles+=tile('ซื้อซ้ำเฉลี่ย', rp.toFixed(2)+'%','Repeat Rate','good'); }
-  else { const live=rows.reduce((s,d)=>s+d.live,0); tiles+=tile('ยอดจาก LIVE', (totSales?(live/totSales*100).toFixed(0):'0')+'%', money(live),'warn'); }
+  const totSales=rows.reduce((s,d)=>s+(isSH?d.sales:d.gmv),0),totOrd=rows.reduce((s,d)=>s+d.orders,0),totVis=rows.reduce((s,d)=>s+d.visitors,0);
+  let tiles=tile((isSH?'ยอดขาย':'GMV')+' เดือนนี้',money(totSales),rows.length+' วัน','')+tile('ออเดอร์',nf.format(totOrd),'','')+tile('ผู้เข้าชม',nf.format(totVis),'','')+tile('CR',(totVis?totOrd/totVis*100:0).toFixed(2)+'%','','')+tile('AOV',money(totOrd?totSales/totOrd:0),'','');
+  if(isSH){const rp=rows.length?rows.reduce((s,d)=>s+d.repeat,0)/rows.length:0;tiles+=tile('ซื้อซ้ำเฉลี่ย',rp.toFixed(2)+'%','Repeat Rate','good');}
+  else{const live=rows.reduce((s,d)=>s+d.live,0);tiles+=tile('ยอดจาก LIVE',(totSales?(live/totSales*100).toFixed(0):'0')+'%',money(live),'warn');}
   $('#tiles').innerHTML=tiles;
-
-  // 1) target vs actual (weekly) for selected platform + month
-  const monthTH = MK ? mLabel(MK).split(' ')[0] : '';
-  const enMonth = {['ม.ค.']:'Jan',['ก.พ.']:'Feb',['มี.ค.']:'Mar',['เม.ย.']:'Apr',['พ.ค.']:'May',['มิ.ย.']:'Jun',['ก.ค.']:'Jul',['ส.ค.']:'Aug',['ก.ย.']:'Sep',['ต.ค.']:'Oct',['พ.ย.']:'Nov',['ธ.ค.']:'Dec'}[monthTH]||'';
-  const wk=DATA.inject.filter(w=>w.month===enMonth);
-  $('#tvaSub').textContent = `${PLAT} · ${MK?mLabel(MK):''} · แท่ง = ยอดจริงเทียบเป้า (ขีด = เป้า 100%)`;
-  $('#tvaBody').innerHTML = wk.length ? wk.map(w=>{const d=w[PLAT];const pc=d.tSale?d.aSale/d.tSale*100:0;const cls=pc>=100?'hit':pc>=80?'near':'miss';const bw=Math.min(140,pc);const col=pc>=100?'var(--good)':pc>=80?'var(--warn)':'var(--bad)';
-    return `<tr><td><b>${esc(w.week)}</b></td><td class="n">${money(d.tSale)}</td><td class="n"><b>${money(d.aSale)}</b></td>`+
-      `<td><div class="ach"><div style="width:${Math.max(2,Math.min(100,pc))}%;background:${col}"></div><div class="tgt" style="left:100%"></div></div><span class="pct ${cls}" style="font-size:11px">${pc.toFixed(0)}%</span></td>`+
-      `<td class="n">${d.aUV?nf.format(d.aUV):'—'}</td><td class="n">${d.aOrd?nf.format(d.aOrd):'—'}</td><td class="n">${d.aCR?d.aCR.toFixed(2)+'%':'—'}</td></tr>`;
-  }).join('') : '<tr><td colspan="7" class="muted" style="padding:16px;text-align:center">ยังไม่มีเป้า/ผลรายสัปดาห์ของเดือนนี้</td></tr>';
-
-  // 2) TikTok source split
-  if(isSH){ $('#srcPanel').style.display='none'; }
-  else {
-    $('#srcPanel').style.display='';
-    const live=rows.reduce((s,d)=>s+d.live,0), vid=rows.reduce((s,d)=>s+d.video,0), oth=rows.reduce((s,d)=>s+d.other,0);
-    const tot=live+vid+oth||1; const segs=[['LIVE',live,'#f59e0b'],['วิดีโอ',vid,'#8b5cf6'],['ออร์แกนิก/อื่น ๆ',oth,'#93c5fd']];
-    $('#srcSplit').innerHTML=segs.map(([n,v,c])=>{const p=v/tot*100;return p>0?`<div style="width:${p.toFixed(2)}%;background:${c}" title="${n} ${money(v)} (${p.toFixed(0)}%)">${p>=10?p.toFixed(0)+'%':''}</div>`:'';}).join('');
-    $('#srcLeg').innerHTML=segs.map(([n,v,c])=>`<span class="it"><span class="sw" style="background:${c}"></span>${n} <b>${money(v)}</b> (${(v/tot*100).toFixed(0)}%)</span>`).join('');
-  }
-
-  // 3) daily columns
-  $('#dailyTitle').textContent = '3) '+(isSH?'ยอดขายรายวัน (Shopee)':'GMV รายวัน (TikTok) — แยก LIVE/วิดีโอ/อื่น');
+  // source split (TikTok only)
+  if(isSH){$('#srcPanel').style.display='none';}
+  else{$('#srcPanel').style.display='';const live=rows.reduce((s,d)=>s+d.live,0),vid=rows.reduce((s,d)=>s+d.video,0),oth=rows.reduce((s,d)=>s+d.other,0),tot=live+vid+oth||1;
+    const segs=[['LIVE',live,'#f59e0b'],['วิดีโอ',vid,'#8b5cf6'],['ออร์แกนิก/อื่น ๆ',oth,'#93c5fd']];
+    $('#srcSplit').innerHTML=segs.map(([n,v,c])=>{const p=v/tot*100;return p>0?`<div style="width:${p.toFixed(2)}%;background:${c}">${p>=10?p.toFixed(0)+'%':''}</div>`:'';}).join('');
+    $('#srcLeg').innerHTML=segs.map(([n,v,c])=>`<span class="it"><span class="sw" style="background:${c}"></span>${n} <b>${money(v)}</b> (${(v/tot*100).toFixed(0)}%)</span>`).join('');}
+  // daily columns
+  $('#dailyTitle').textContent=isSH?'ยอดขายรายวัน (Shopee)':'GMV รายวัน (TikTok) — แยก LIVE/วิดีโอ/อื่น';
   const maxV=Math.max(1,...rows.map(d=>isSH?d.sales:d.gmv));
-  $('#daily').innerHTML = rows.length ? rows.map(d=>{
-    const v=isSH?d.sales:d.gmv, h=Math.round(v/maxV*200);
-    const dd=+d.day.slice(8,10);
-    let inner;
-    if(isSH){ inner=`<div class="cseg" style="height:100%;background:#fca5a5"></div>`; }
-    else { const parts=[[d.other,'#93c5fd'],[d.video,'#8b5cf6'],[d.live,'#f59e0b']]; inner=parts.map(([pv,c])=>pv>0?`<div class="cseg" style="height:${(pv/v*100).toFixed(2)}%;background:${c}"></div>`:'').join(''); }
+  $('#daily').innerHTML=rows.length?rows.map(d=>{const v=isSH?d.sales:d.gmv,h=Math.round(v/maxV*190),dd=+d.day.slice(8,10);
+    const inner=isSH?`<div class="cseg" style="height:100%;background:#fca5a5"></div>`:[[d.other,'#93c5fd'],[d.video,'#8b5cf6'],[d.live,'#f59e0b']].map(([pv,c])=>pv>0?`<div class="cseg" style="height:${(pv/v*100).toFixed(2)}%;background:${c}"></div>`:'').join('');
     const tip=`${d.day} · ${money(v)} · ${nf.format(d.orders)} ออเดอร์ · CR ${d.cr.toFixed(2)}% · AOV ${money(d.aov)}`+(isSH?'':` · LIVE ${money(d.live)}`);
-    return `<div class="cday" title="${esc(tip)}"><div class="cv">${kB(v)}</div><div class="cbar" style="height:${Math.max(2,h)}px">${inner}</div><div class="cl">${dd}</div></div>`;
-  }).join('') : '<div class="muted" style="padding:20px">ไม่มีข้อมูลรายวันของเดือนนี้</div>';
-
-  $('#msg').style.display='none'; $('#result').hidden=false;
+    return `<div class="cday" title="${esc(tip)}"><div class="cv">${kB(v)}</div><div class="cbar" style="height:${Math.max(2,h)}px">${inner}</div><div class="cl">${dd}</div></div>`;}).join(''):'<div class="muted" style="padding:16px">ไม่มีข้อมูลรายวันของเดือนนี้</div>';
 }
-function tile(k,v,s,cls){return `<div class="tile ${cls||''}"><div class="k">${k}</div><div class="v">${v}</div>${s?`<div class="s">${s}</div>`:''}</div>`;}
 
-$('#platSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;PLAT=b.dataset.p;[...$('#platSeg').children].forEach(x=>{x.classList.toggle('on',x===b);x.style.background=x===b?(PLAT==='Shopee'?'var(--sh)':'var(--tk)'):'';});buildMonths();render();});
-$('#monthSel').addEventListener('change',e=>{MK=e.target.value;render();});
-(async()=>{ try{ await loadAll();
-  if(!DATA.shopee.length&&!DATA.tiktok.length){$('#msg').className='msg err';$('#msg').textContent='โหลดข้อมูลไม่สำเร็จ — ตรวจการแชร์ชีต';return;}
+$('#platSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;PLAT=b.dataset.p;[...$('#platSeg').children].forEach(x=>{x.classList.toggle('on',x===b);x.style.background=x===b?(PLAT==='Shopee'?'var(--sh)':'var(--tk)'):'';});buildMonths();renderDaily();});
+$('#monthSel').addEventListener('change',e=>{MK=e.target.value;renderDaily();});
+(async()=>{try{await loadAll();
+  if(!DATA.injRows.length&&!DATA.shopee.length){$('#msg').className='msg err';$('#msg').textContent='โหลดข้อมูลไม่สำเร็จ — ตรวจการแชร์ชีต';return;}
   $('#platSeg').children[0].style.background='var(--sh)';
-  buildMonths(); render();
-}catch(e){$('#msg').className='msg err';$('#msg').textContent='ผิดพลาด: '+((e&&e.message)||e);} })();
+  renderInject(); buildMonths(); renderDaily();
+  $('#msg').style.display='none'; $('#result').hidden=false;
+}catch(e){$('#msg').className='msg err';$('#msg').textContent='ผิดพลาด: '+((e&&e.message)||e);}})();
 </script>
 </body>
 </html>
