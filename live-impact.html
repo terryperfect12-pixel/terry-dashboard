@@ -4,12 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>วิเคราะห์ผลกระทบไลฟ์ (ทดสอบ)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#f6f7f9; --surface:#ffffff; --surface-2:#f1f3f6; --line:#e5e8ec; --line-2:#d3d8df;
     --ink:#121619; --ink-2:#3b434c; --muted:#8a929c; --accent:#2563eb; --accent-soft:#e8effe;
     --good:#16a34a; --bad:#e11d48; --warn:#d97706;
-    --f:"Segoe UI",system-ui,-apple-system,"Sarabun",sans-serif; --f-mono:ui-monospace,"Cascadia Mono",Menlo,monospace;
+    --f:"Sarabun","TH Sarabun New","Segoe UI",system-ui,sans-serif; --f-mono:ui-monospace,"Cascadia Mono",Menlo,monospace;
   }
   @media (prefers-color-scheme:dark){:root{
     --bg:#0f1317; --surface:#171c22; --surface-2:#1e242c; --line:#2a313a; --line-2:#394250;
@@ -17,8 +20,8 @@
   }}
   *{box-sizing:border-box}
   html,body{margin:0}
-  body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:none;margin:0;padding:16px 20px 60px}
+  body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:16px 22px 60px}
   .muted{color:var(--muted)}
   code{font-family:var(--f-mono)}
   .head{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:6px}
@@ -54,8 +57,10 @@
   .baseline{position:absolute;left:0;right:0;border-top:2px dashed var(--muted);opacity:.7;pointer-events:none}
   .baseline span{position:absolute;right:0;top:-16px;font-size:10px;color:var(--muted);background:var(--surface);padding:0 4px}
 
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  th,td{text-align:left;padding:8px 8px;border-top:1px solid var(--line)}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:9px 10px;border-top:1px solid var(--line)}
+  thead th{background:var(--surface-2);color:var(--ink-2);font-weight:700;position:sticky;top:0}
+  tbody tr:nth-child(even){background:color-mix(in oklab,var(--accent) 3.5%,var(--surface))}
   th{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);border-top:0}
   td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
   tbody tr:hover{background:var(--surface-2)}
@@ -98,7 +103,21 @@
 
     <section class="panel">
       <h2>2) คุณภาพของแต่ละไลฟ์ — ยอด · ราคาเฉลี่ย · การมองเห็น · การแปลง</h2>
-      <p class="sub">ดูว่าไลฟ์ยอดเยอะมาจาก "ตุนของ (ราคาเฉลี่ยสูง)" หรือ "ลดราคาแรง (ราคาเฉลี่ยต่ำ)" · ยอดต่อการมองเห็น = GMV ต่อการแสดงผล 1,000 ครั้ง</p>
+      <p class="sub">1 แถว = 1 ไลฟ์ · เรียงตามวัน-เวลา · <span class="fire">🔥</span> = ไลฟ์ยอดใหญ่</p>
+      <div class="note" style="display:block;margin:0 0 12px">
+        <b>วิธีอ่านแต่ละคอลัมน์:</b>
+        <div style="margin-top:4px;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:3px 18px">
+          <span>• <b>GMV</b> = ยอดขายจากไลฟ์นั้น</span>
+          <span>• <b>ชิ้น</b> = จำนวนชิ้นที่ขายได้</span>
+          <span>• <b>ราคาเฉลี่ย</b> = GMV ÷ ชิ้น (สูง = ขายเซ็ต/ตุน · ต่ำ = ของชิ้นถูก)</span>
+          <span>• <b>การแสดงผล</b> = คนเห็นสินค้าในไลฟ์</span>
+          <span>• <b>ยอดดู</b> = จำนวนวิวไลฟ์</span>
+          <span>• <b>CTR</b> = เห็นแล้วกดดูสินค้ากี่ %</span>
+          <span>• <b>แปลงเป็นออเดอร์</b> = วิว → ออเดอร์กี่ % (ยิ่งสูงยิ่งปิดการขายเก่ง)</span>
+          <span>• <b>ยอด/การเห็น 1K</b> = GMV ต่อการแสดงผล 1,000 ครั้ง (ยิ่งสูง = ไลฟ์คุ้มค่าการมองเห็น)</span>
+          <span>• <b>ลักษณะยอด</b>: <span class="pill stock">เซ็ต/ตุน</span> ราคาเฉลี่ยสูง · <span class="pill disc">ราคาถูก</span> ราคาเฉลี่ยต่ำ · <span class="pill ok">ปกติ</span></span>
+        </div>
+      </div>
       <div class="scroll">
         <table id="liveTbl">
           <thead><tr>
