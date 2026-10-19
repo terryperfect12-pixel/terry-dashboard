@@ -20,10 +20,7 @@
   }}
   *{box-sizing:border-box} html,body{margin:0}
   body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1700px;margin:0 auto;padding:16px 20px 60px}
-  /* let the big Inject table break out to (almost) the full viewport width */
-  .panel.wide{width:calc(100vw - 28px);position:relative;left:50%;transform:translateX(-50%)}
-  @media(max-width:900px){.panel.wide{width:auto;position:static;transform:none}}
+  .wrap{max-width:1560px;margin:0 auto;padding:16px 24px 60px}
   .head{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:4px}
   .head h1{font-size:20px;font-weight:800;margin:0}
   .muted{color:var(--muted)}
@@ -102,7 +99,7 @@
   <div class="msg" id="msg">กำลังโหลดข้อมูลสด…</div>
 
   <div id="result" hidden>
-    <section class="panel wide">
+    <section class="panel">
       <h2>เป้า vs จริง รายสัปดาห์ (ตามชีต Inject)</h2>
       <p class="sub">แสดงทั้ง Shopee + TikTok ในแถวเดียวตามชีต · <span class="g-sht" style="padding:1px 6px;border-radius:4px;color:#fff">ส้ม = Shopee</span> <span class="g-tka" style="padding:1px 6px;border-radius:4px;color:#fff">ฟ้า = TikTok</span> · คอลัมน์ %สำเร็จ = ยอดจริง ÷ เป้า (<span style="color:var(--good)">เขียว ≥100%</span> · <span style="color:var(--warn)">เหลือง 80–99%</span> · <span style="color:var(--bad)">แดง &lt;80%</span>)</p>
       <div class="gridscroll"><table class="inj" id="injTbl"></table></div>
