@@ -20,7 +20,10 @@
   }}
   *{box-sizing:border-box} html,body{margin:0}
   body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1560px;margin:0 auto;padding:16px 24px 60px}
+  .wrap{max-width:1700px;margin:0 auto;padding:16px 20px 60px}
+  /* let the big Inject table break out to (almost) the full viewport width */
+  .panel.wide{width:calc(100vw - 28px);position:relative;left:50%;transform:translateX(-50%)}
+  @media(max-width:900px){.panel.wide{width:auto;position:static;transform:none}}
   .head{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:4px}
   .head h1{font-size:20px;font-weight:800;margin:0}
   .muted{color:var(--muted)}
@@ -36,23 +39,39 @@
   .panel .sub{font-size:12px;color:var(--muted);margin:0 0 12px}
   .ph{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
 
-  /* faithful Inject grid */
-  .gridscroll{overflow-x:auto}
-  table.inj{border-collapse:collapse;font-size:13px;white-space:nowrap;width:100%}
-  table.inj th,table.inj td{border:1px solid var(--line);padding:5px 9px;text-align:right;font-variant-numeric:tabular-nums}
-  table.inj th{font-weight:700;color:var(--ink-2);background:var(--surface-2);text-transform:none;letter-spacing:0}
-  table.inj .grp th{text-align:center;font-size:12.5px;font-weight:800;color:#fff;letter-spacing:.2px;padding:6px 8px}
-  table.inj td.lbl,table.inj th.lbl{text-align:left;position:sticky;left:0;background:var(--surface);z-index:1}
-  table.inj tr:hover td{background:color-mix(in oklab,var(--accent) 6%,var(--surface))}
-  .g-wk{background:#334155} .g-plan{background:#475569}
-  .g-sht{background:#f97316} .g-sha{background:#c2410c}
-  .g-tkt{background:#0ea5e9} .g-tka{background:#0369a1}
-  td.c-sht{background:color-mix(in oklab,var(--sh) 7%,var(--surface))}
-  td.c-sha{background:color-mix(in oklab,var(--sh) 13%,var(--surface))}
-  td.c-tkt{background:color-mix(in oklab,var(--tk) 7%,var(--surface))}
-  td.c-tka{background:color-mix(in oklab,var(--tk) 13%,var(--surface))}
-  td.pc{font-weight:800} .pc.hit{color:var(--good)} .pc.near{color:var(--warn)} .pc.miss{color:var(--bad)}
-  table.inj tfoot td{font-weight:800;background:var(--surface-2);border-top:2px solid var(--line-2)}
+  /* faithful Inject grid — full-width, sheet-style colour blocks */
+  .gridscroll{overflow-x:auto;border:1px solid var(--line-2);border-radius:12px;background:var(--surface)}
+  table.inj{border-collapse:collapse;font-size:13.5px;white-space:nowrap;width:100%}
+  table.inj th,table.inj td{border:1px solid var(--line);padding:6px 11px;text-align:right;font-variant-numeric:tabular-nums}
+  table.inj th{font-weight:700;color:var(--ink)}
+  /* top coloured band */
+  table.inj .grp th{text-align:center;font-size:13px;font-weight:800;color:#fff;letter-spacing:.3px;padding:8px 8px}
+  /* sub-header row: tinted per block so every column's group is obvious top-to-bottom */
+  table.inj tr.sub th{font-size:12px;font-weight:800;color:var(--ink)}
+  table.inj tr.sub th.h-plan{background:color-mix(in oklab,#64748b 15%,var(--surface))}
+  table.inj tr.sub th.h-sht{background:color-mix(in oklab,#ea7a2e 18%,var(--surface))}
+  table.inj tr.sub th.h-sha{background:color-mix(in oklab,#ea7a2e 30%,var(--surface))}
+  table.inj tr.sub th.h-tkt{background:color-mix(in oklab,#0284c7 17%,var(--surface))}
+  table.inj tr.sub th.h-tka{background:color-mix(in oklab,#0284c7 29%,var(--surface))}
+  /* sticky first two columns */
+  table.inj td.lbl,table.inj th.lbl{text-align:left;position:sticky;left:0;z-index:1;background:var(--surface);box-shadow:1px 0 0 var(--line-2)}
+  table.inj tr:hover td{background:color-mix(in oklab,var(--accent) 7%,var(--surface))}
+  /* band header colours — เป้า = light, จริง = deep, same hue family */
+  .g-wk{background:#1e293b} .g-plan{background:#475569}
+  .g-sht{background:#ea7a2e} .g-sha{background:#c2410c}
+  .g-tkt{background:#0284c7} .g-tka{background:#075985}
+  /* body column tints */
+  td.c-plan{background:color-mix(in oklab,#64748b 6%,var(--surface))}
+  td.c-sht{background:color-mix(in oklab,#ea7a2e 8%,var(--surface))}
+  td.c-sha{background:color-mix(in oklab,#ea7a2e 15%,var(--surface))}
+  td.c-tkt{background:color-mix(in oklab,#0284c7 8%,var(--surface))}
+  td.c-tka{background:color-mix(in oklab,#0284c7 15%,var(--surface))}
+  /* %สำเร็จ pill — clear traffic-light chip */
+  .pc{display:inline-block;min-width:44px;text-align:center;padding:2px 8px;border-radius:999px;font-weight:800;font-size:12px}
+  .pc.hit{background:color-mix(in oklab,var(--good) 20%,var(--surface));color:var(--good)}
+  .pc.near{background:color-mix(in oklab,var(--warn) 24%,var(--surface));color:var(--warn)}
+  .pc.miss{background:color-mix(in oklab,var(--bad) 18%,var(--surface));color:var(--bad)}
+  table.inj tfoot td{font-weight:800;background:var(--surface-2);border-top:2px solid var(--line-2);font-size:14px}
   .dim{color:var(--muted);font-weight:400}
 
   /* deep-dive */
@@ -83,7 +102,7 @@
   <div class="msg" id="msg">กำลังโหลดข้อมูลสด…</div>
 
   <div id="result" hidden>
-    <section class="panel">
+    <section class="panel wide">
       <h2>เป้า vs จริง รายสัปดาห์ (ตามชีต Inject)</h2>
       <p class="sub">แสดงทั้ง Shopee + TikTok ในแถวเดียวตามชีต · <span class="g-sht" style="padding:1px 6px;border-radius:4px;color:#fff">ส้ม = Shopee</span> <span class="g-tka" style="padding:1px 6px;border-radius:4px;color:#fff">ฟ้า = TikTok</span> · คอลัมน์ %สำเร็จ = ยอดจริง ÷ เป้า (<span style="color:var(--good)">เขียว ≥100%</span> · <span style="color:var(--warn)">เหลือง 80–99%</span> · <span style="color:var(--bad)">แดง &lt;80%</span>)</p>
       <div class="gridscroll"><table class="inj" id="injTbl"></table></div>
@@ -153,20 +172,20 @@ function renderInject(){
       <th class="g-tkt" colspan="9">TikTok · เป้า</th>
       <th class="g-tka" colspan="10">TikTok · จริง</th>
     </tr>
-    <tr>
+    <tr class="sub">
       <th class="lbl">เดือน</th><th class="lbl">สัปดาห์</th>
-      <th>Ads spend</th><th>Inject</th><th>Top up</th><th>Date Top up</th>
-      <th>เป้ายอดขาย</th><th>UV</th><th>Order</th><th>CR</th>
-      <th>ยอดขายจริง</th><th>%สำเร็จ</th><th>UV</th><th>Order</th><th>CR</th><th>Ads sale</th><th>Ads Budget</th>
-      <th>เป้ายอดขาย</th><th>UV</th><th>Order</th><th>AOV</th><th>CR</th><th>CTOR</th><th>CTR</th><th>Impression</th><th>Click</th>
-      <th>ยอดขายจริง</th><th>%สำเร็จ</th><th>UV</th><th>Order</th><th>AOV</th><th>CR</th><th>CTOR</th><th>CTR</th><th>Impression</th><th>Click</th>
+      <th class="h-plan">Ads spend</th><th class="h-plan">Inject</th><th class="h-plan">Top up</th><th class="h-plan">Date Top up</th>
+      <th class="h-sht">เป้ายอดขาย</th><th class="h-sht">UV</th><th class="h-sht">Order</th><th class="h-sht">CR</th>
+      <th class="h-sha">ยอดขายจริง</th><th class="h-sha">%สำเร็จ</th><th class="h-sha">UV</th><th class="h-sha">Order</th><th class="h-sha">CR</th><th class="h-sha">Ads sale</th><th class="h-sha">Ads Budget</th>
+      <th class="h-tkt">เป้ายอดขาย</th><th class="h-tkt">UV</th><th class="h-tkt">Order</th><th class="h-tkt">AOV</th><th class="h-tkt">CR</th><th class="h-tkt">CTOR</th><th class="h-tkt">CTR</th><th class="h-tkt">Impression</th><th class="h-tkt">Click</th>
+      <th class="h-tka">ยอดขายจริง</th><th class="h-tka">%สำเร็จ</th><th class="h-tka">UV</th><th class="h-tka">Order</th><th class="h-tka">AOV</th><th class="h-tka">CR</th><th class="h-tka">CTOR</th><th class="h-tka">CTR</th><th class="h-tka">Impression</th><th class="h-tka">Click</th>
     </tr></thead><tbody>`;
   const tot={shT:0,shA:0,tkT:0,tkA:0};
   for(const r of DATA.injRows){
     tot.shT+=num(r[8]);tot.shA+=num(r[13]);tot.tkT+=num(r[20]);tot.tkA+=num(r[30]);
     html += `<tr>
       <td class="lbl">${rw(r[1])}</td><td class="lbl"><b>${rw(r[2])}</b></td>
-      <td>${mN(r[3])}</td><td>${mN(r[4])}</td><td>${mN(r[5])}</td><td style="text-align:left">${rw(r[6])}</td>
+      <td class="c-plan">${mN(r[3])}</td><td class="c-plan">${mN(r[4])}</td><td class="c-plan">${mN(r[5])}</td><td class="c-plan" style="text-align:left">${rw(r[6])}</td>
       <td class="c-sht">${mN(r[8])}</td><td class="c-sht">${nN(r[9])}</td><td class="c-sht">${nN(r[10])}</td><td class="c-sht">${rw(r[11])}</td>
       <td class="c-sha">${mN(r[13])}</td><td class="c-sha">${pc(r[13],r[8])}</td><td class="c-sha">${nN(r[14])}</td><td class="c-sha">${nN(r[15])}</td><td class="c-sha">${rw(r[16])}</td><td class="c-sha">${mN(r[17])}</td><td class="c-sha">${mN(r[18])}</td>
       <td class="c-tkt">${mN(r[20])}</td><td class="c-tkt">${nN(r[21])}</td><td class="c-tkt">${nN(r[22])}</td><td class="c-tkt">${mN(r[23])}</td><td class="c-tkt">${rw(r[24])}</td><td class="c-tkt">${rw(r[25])}</td><td class="c-tkt">${rw(r[26])}</td><td class="c-tkt">${nN(r[27])}</td><td class="c-tkt">${nN(r[28])}</td>
