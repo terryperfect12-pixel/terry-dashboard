@@ -279,8 +279,21 @@ function applyView(){
   if(cards)renderCards(); else renderTable();
 }
 
-/* ---- image picker ---- */
-async function ensureCat(){ if(CAT)return CAT; try{CAT=await (await fetch('catalog-terry.json?cb='+Date.now())).json()}catch{CAT=[]} return CAT; }
+/* ---- image picker (names from catalog, cover images synced LIVE from the cover sheet) ---- */
+const COVER_SHEET='1Omn_T1Y3UUnP9d5IcVXnhL2TsXD9AI3IB3A80IUoKqY';
+const COVER_TABS=[919830494,720887439];  // Terry Shopee, Terry tiktok
+async function ensureCat(){ if(CAT)return CAT;
+  try{ CAT=await (await fetch('catalog-terry.json?cb='+Date.now())).json(); }catch{ CAT=[]; }
+  try{ const cm=new Map();
+    await Promise.all(COVER_TABS.map(async gid=>{
+      const t=await (await fetch(`https://docs.google.com/spreadsheets/d/${COVER_SHEET}/export?format=csv&gid=${gid}&cb=${Date.now()}`)).text();
+      const g=parseCSV(t);
+      for(let i=1;i<g.length;i++){ const code=String(g[i][0]||'').trim(); const img=String(g[i][1]||g[i][2]||'').trim(); if(code&&/^https?:/.test(img)) cm.set(code,img); }
+    }));
+    CAT.forEach(p=>{ if(p.code&&cm.has(p.code)) p.image=cm.get(p.code); });  // live cover overrides
+  }catch{/* keep baked images */}
+  return CAT;
+}
 function renderPickGrid(q){ const cat=CAT||[]; const s=(q||'').trim().toLowerCase();
   const f=s?cat.filter(p=>p.name.toLowerCase().includes(s)):cat;
   $('#pickGrid').innerHTML = f.length ? f.map(p=>`<div class="pitem" data-img="${esc(p.image)}" title="${esc(p.name)}"><div class="ph">${imgTag(p.image)}</div><div class="pn">${esc(p.name)}</div></div>`).join('') : '<div class="empty" style="grid-column:1/-1">ไม่พบสินค้า</div>'; }
