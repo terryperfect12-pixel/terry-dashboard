@@ -85,6 +85,11 @@
   .sh-tabs button.on{background:var(--accent);color:#fff;border-color:transparent}
   .sh-tabs button span{opacity:.7;font-size:11px}
   .sh-tabs .sh-hint{margin-left:auto;font-size:11px;color:var(--muted)}
+  .sh-foot{display:flex;align-items:center;justify-content:center;gap:12px;padding:10px 16px;border-top:1px solid var(--line);font-size:12.5px}
+  .sh-foot button{border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink);border-radius:9px;padding:6px 14px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+  .sh-foot button:hover:not(:disabled){border-color:var(--ink-2)}
+  .sh-foot button:disabled{opacity:.4;cursor:default}
+  .sh-foot .pg{color:var(--muted);font-weight:600;min-width:120px;text-align:center}
   .pgrid{overflow-y:auto;padding:14px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:12px;align-content:start}
   .pitem{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface);display:flex;flex-direction:column;transition:border-color .1s,transform .1s,box-shadow .1s}
   .pitem.off{opacity:.5}
@@ -160,6 +165,7 @@
       <span class="sh-hint">กดรูปเพื่อเลือก · กดปุ่มใต้รูปเพื่อเปิด/ปิด</span>
     </div>
     <div class="pgrid" id="pickGrid"></div>
+    <div class="sh-foot" id="pickFoot"></div>
   </div>
 </div>
 
@@ -197,7 +203,7 @@ let ITEMS=[], SEL=CAMP[0].k, TYPE='all', VIEW='cards';
 const PROMO_IMG = {};
 let IMG={}, CAT=null, pickKey=null;
 // picker library curation: mark catalog images เปิด/ปิด + filter (per-device)
-let pickFilter='on', PST={};
+let pickFilter='on', PST={}, pickPage=1; const PAGE_SIZE=24;
 function loadPST(){ try{PST=JSON.parse(localStorage.getItem('promoPickStatus')||'{}')}catch{PST={}} }
 function savePST(){ try{localStorage.setItem('promoPickStatus',JSON.stringify(PST))}catch{} }
 const pstKey=p=>String(p.code||p.image);
@@ -336,18 +342,26 @@ function renderPickGrid(q){ const cat=CAT||[]; const s=(q||'').trim().toLowerCas
   const nOn=scope.filter(isOn).length;
   $('#cntOn').textContent=nOn; $('#cntOff').textContent=scope.length-nOn; $('#cntAll').textContent=scope.length;
   let f=scope; if(pickFilter==='on') f=scope.filter(isOn); else if(pickFilter==='off') f=scope.filter(p=>!isOn(p));
-  $('#pickGrid').innerHTML = f.length ? f.map(p=>{ const on=isOn(p); const k=esc(pstKey(p));
+  const total=f.length, pages=Math.max(1,Math.ceil(total/PAGE_SIZE));
+  pickPage=Math.min(Math.max(1,pickPage),pages);
+  const pageItems=f.slice((pickPage-1)*PAGE_SIZE, pickPage*PAGE_SIZE);
+  $('#pickGrid').innerHTML = pageItems.length ? pageItems.map(p=>{ const on=isOn(p); const k=esc(pstKey(p));
     return `<div class="pitem ${on?'':'off'}">
       <div class="ph" data-pick="${esc(p.image)}">${imgTag(p.image)}</div>
       <div class="pn" title="${esc(p.name)}">${esc(p.name)}</div>
       <button class="tgl ${on?'on':'offb'}" data-tgl="${k}">${on?'● เปิด':'○ ปิด'}</button>
-    </div>`; }).join('') : '<div class="empty" style="grid-column:1/-1">ไม่พบสินค้าในหมวดนี้</div>'; }
-async function openPicker(key,label){ pickKey=key; $('#pickFor').textContent='สำหรับ: '+(label||''); $('#pickSrch').value=''; $('#picker').classList.remove('hidden'); $('#pickGrid').innerHTML='<div class="empty" style="grid-column:1/-1">กำลังโหลดรายการสินค้า…</div>'; await ensureCat(); renderPickGrid(''); setTimeout(()=>$('#pickSrch').focus(),50); }
+    </div>`; }).join('') : '<div class="empty" style="grid-column:1/-1">ไม่พบสินค้าในหมวดนี้</div>';
+  $('#pickFoot').innerHTML = total>PAGE_SIZE
+    ? `<button id="pgPrev" ${pickPage<=1?'disabled':''}>‹ ก่อนหน้า</button><span class="pg">หน้า ${pickPage} / ${pages} · ${total} รูป</span><button id="pgNext" ${pickPage>=pages?'disabled':''}>ถัดไป ›</button>`
+    : (total?`<span class="pg">${total} รูป</span>`:'');
+  $('#pickGrid').scrollTop=0; }
+async function openPicker(key,label){ pickKey=key; pickPage=1; $('#pickFor').textContent='สำหรับ: '+(label||''); $('#pickSrch').value=''; $('#picker').classList.remove('hidden'); $('#pickGrid').innerHTML='<div class="empty" style="grid-column:1/-1">กำลังโหลดรายการสินค้า…</div>'; await ensureCat(); renderPickGrid(''); setTimeout(()=>$('#pickSrch').focus(),50); }
 function closePicker(){ $('#picker').classList.add('hidden'); pickKey=null; }
 $('#pickX').addEventListener('click',closePicker);
 $('#picker').addEventListener('click',e=>{ if(e.target.id==='picker')closePicker(); });
-$('#pickSrch').addEventListener('input',e=>renderPickGrid(e.target.value));
-$('#pickTabs').addEventListener('click',e=>{ const b=e.target.closest('button[data-f]'); if(!b)return; pickFilter=b.dataset.f; [...$('#pickTabs').querySelectorAll('button[data-f]')].forEach(x=>x.classList.toggle('on',x===b)); renderPickGrid($('#pickSrch').value); });
+$('#pickSrch').addEventListener('input',e=>{pickPage=1;renderPickGrid(e.target.value);});
+$('#pickTabs').addEventListener('click',e=>{ const b=e.target.closest('button[data-f]'); if(!b)return; pickFilter=b.dataset.f; pickPage=1; [...$('#pickTabs').querySelectorAll('button[data-f]')].forEach(x=>x.classList.toggle('on',x===b)); renderPickGrid($('#pickSrch').value); });
+$('#pickFoot').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return; if(b.id==='pgPrev')pickPage--; else if(b.id==='pgNext')pickPage++; renderPickGrid($('#pickSrch').value); });
 $('#pickGrid').addEventListener('click',e=>{
   const tg=e.target.closest('[data-tgl]');
   if(tg){ const k=tg.dataset.tgl; if(PST[k]==='off') delete PST[k]; else PST[k]='off'; savePST(); renderPickGrid($('#pickSrch').value); return; }
