@@ -80,12 +80,21 @@
   .sheet .sh-top .who{font-size:12px;color:var(--muted);flex:1;min-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .srch{border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink);border-radius:9px;padding:7px 11px;font:inherit;font-size:13px;min-width:180px}
   .xbtn{border:1px solid var(--line-2);background:var(--surface);border-radius:8px;width:30px;height:30px;font-size:16px;cursor:pointer;color:var(--muted)}
-  .pgrid{overflow-y:auto;padding:14px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
-  .pitem{border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;background:var(--surface-2);transition:all .1s}
-  .pitem:hover{border-color:var(--accent);transform:translateY(-2px)}
-  .pitem .ph{width:100%;aspect-ratio:1;background:#fff}
-  .pitem .ph img{width:100%;height:100%;object-fit:cover;display:block}
-  .pitem .pn{font-size:10.5px;line-height:1.3;padding:5px 7px;color:var(--ink-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .sh-tabs{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:10px 16px;border-bottom:1px solid var(--line)}
+  .sh-tabs button{border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink-2);border-radius:999px;padding:5px 13px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+  .sh-tabs button.on{background:var(--accent);color:#fff;border-color:transparent}
+  .sh-tabs button span{opacity:.7;font-size:11px}
+  .sh-tabs .sh-hint{margin-left:auto;font-size:11px;color:var(--muted)}
+  .pgrid{overflow-y:auto;padding:14px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:12px;align-content:start}
+  .pitem{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface);display:flex;flex-direction:column;transition:border-color .1s,transform .1s,box-shadow .1s}
+  .pitem.off{opacity:.5}
+  .pitem .ph{width:100%;aspect-ratio:1/1;background:#fff;cursor:pointer;position:relative;flex:none}
+  .pitem .ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+  .pitem .ph:hover{box-shadow:inset 0 0 0 3px var(--accent)}
+  .pitem .pn{font-size:10.5px;line-height:1.3;padding:5px 7px 3px;color:var(--ink-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:30px}
+  .pitem .tgl{margin:0 6px 6px;border:1px solid var(--line-2);border-radius:7px;padding:3px 0;font:inherit;font-size:10.5px;font-weight:800;cursor:pointer;background:var(--surface)}
+  .pitem .tgl.on{background:color-mix(in oklab,var(--good) 15%,var(--surface));color:var(--good);border-color:transparent}
+  .pitem .tgl.offb{background:color-mix(in oklab,#64748b 15%,var(--surface));color:var(--ink-2);border-color:transparent}
   .btnghost{border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink-2);border-radius:9px;padding:7px 12px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
   .btnghost:hover{border-color:var(--ink-2)}
 
@@ -144,6 +153,12 @@
       <input class="srch" id="pickSrch" placeholder="ค้นหาชื่อสินค้า…">
       <button class="xbtn" id="pickX">✕</button>
     </div>
+    <div class="sh-tabs" id="pickTabs">
+      <button data-f="on" class="on">เปิด <span id="cntOn"></span></button>
+      <button data-f="off">ปิด <span id="cntOff"></span></button>
+      <button data-f="all">ทั้งหมด <span id="cntAll"></span></button>
+      <span class="sh-hint">กดรูปเพื่อเลือก · กดปุ่มใต้รูปเพื่อเปิด/ปิด</span>
+    </div>
     <div class="pgrid" id="pickGrid"></div>
   </div>
 </div>
@@ -181,6 +196,12 @@ let ITEMS=[], SEL=CAMP[0].k, TYPE='all', VIEW='cards';
 // localStorage holds this device's picks and overrides. Keyed by product name.
 const PROMO_IMG = {};
 let IMG={}, CAT=null, pickKey=null;
+// picker library curation: mark catalog images เปิด/ปิด + filter (per-device)
+let pickFilter='on', PST={};
+function loadPST(){ try{PST=JSON.parse(localStorage.getItem('promoPickStatus')||'{}')}catch{PST={}} }
+function savePST(){ try{localStorage.setItem('promoPickStatus',JSON.stringify(PST))}catch{} }
+const pstKey=p=>String(p.code||p.image);
+const isOn=p=>PST[pstKey(p)]!=='off';
 const imgKey=it=>it.name;
 const displayImg=it=>IMG[imgKey(it)]||it.autoImg||'';   // manual override wins, else auto image from the sheet mapping
 function loadImg(){ let ls={}; try{ls=JSON.parse(localStorage.getItem('promoImgTerry')||'{}')}catch{} IMG={...PROMO_IMG,...ls}; }
@@ -311,14 +332,28 @@ async function ensureCat(){ if(CAT)return CAT;
   return CAT;
 }
 function renderPickGrid(q){ const cat=CAT||[]; const s=(q||'').trim().toLowerCase();
-  const f=s?cat.filter(p=>p.name.toLowerCase().includes(s)):cat;
-  $('#pickGrid').innerHTML = f.length ? f.map(p=>`<div class="pitem" data-img="${esc(p.image)}" title="${esc(p.name)}"><div class="ph">${imgTag(p.image)}</div><div class="pn">${esc(p.name)}</div></div>`).join('') : '<div class="empty" style="grid-column:1/-1">ไม่พบสินค้า</div>'; }
+  const scope=s?cat.filter(p=>p.name.toLowerCase().includes(s)):cat;
+  const nOn=scope.filter(isOn).length;
+  $('#cntOn').textContent=nOn; $('#cntOff').textContent=scope.length-nOn; $('#cntAll').textContent=scope.length;
+  let f=scope; if(pickFilter==='on') f=scope.filter(isOn); else if(pickFilter==='off') f=scope.filter(p=>!isOn(p));
+  $('#pickGrid').innerHTML = f.length ? f.map(p=>{ const on=isOn(p); const k=esc(pstKey(p));
+    return `<div class="pitem ${on?'':'off'}">
+      <div class="ph" data-pick="${esc(p.image)}">${imgTag(p.image)}</div>
+      <div class="pn" title="${esc(p.name)}">${esc(p.name)}</div>
+      <button class="tgl ${on?'on':'offb'}" data-tgl="${k}">${on?'● เปิด':'○ ปิด'}</button>
+    </div>`; }).join('') : '<div class="empty" style="grid-column:1/-1">ไม่พบสินค้าในหมวดนี้</div>'; }
 async function openPicker(key,label){ pickKey=key; $('#pickFor').textContent='สำหรับ: '+(label||''); $('#pickSrch').value=''; $('#picker').classList.remove('hidden'); $('#pickGrid').innerHTML='<div class="empty" style="grid-column:1/-1">กำลังโหลดรายการสินค้า…</div>'; await ensureCat(); renderPickGrid(''); setTimeout(()=>$('#pickSrch').focus(),50); }
 function closePicker(){ $('#picker').classList.add('hidden'); pickKey=null; }
 $('#pickX').addEventListener('click',closePicker);
 $('#picker').addEventListener('click',e=>{ if(e.target.id==='picker')closePicker(); });
 $('#pickSrch').addEventListener('input',e=>renderPickGrid(e.target.value));
-$('#pickGrid').addEventListener('click',e=>{ const it=e.target.closest('.pitem'); if(!it||!pickKey)return; IMG[pickKey]=it.dataset.img; saveImg(); closePicker(); rerender(); });
+$('#pickTabs').addEventListener('click',e=>{ const b=e.target.closest('button[data-f]'); if(!b)return; pickFilter=b.dataset.f; [...$('#pickTabs').querySelectorAll('button[data-f]')].forEach(x=>x.classList.toggle('on',x===b)); renderPickGrid($('#pickSrch').value); });
+$('#pickGrid').addEventListener('click',e=>{
+  const tg=e.target.closest('[data-tgl]');
+  if(tg){ const k=tg.dataset.tgl; if(PST[k]==='off') delete PST[k]; else PST[k]='off'; savePST(); renderPickGrid($('#pickSrch').value); return; }
+  const ph=e.target.closest('[data-pick]');
+  if(ph&&pickKey){ IMG[pickKey]=ph.dataset.pick; saveImg(); closePicker(); rerender(); }
+});
 $('#cards').addEventListener('click',e=>{ const b=e.target.closest('[data-act]'); if(!b)return; const key=b.dataset.k;
   if(b.dataset.act==='del'){ delete IMG[key]; saveImg(); rerender(); }
   else openPicker(key,b.dataset.label||key); });
@@ -332,7 +367,7 @@ $('#typeTog').addEventListener('click',e=>{const b=e.target.closest('button');if
 $('#viewTog').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
   VIEW=b.dataset.v;[...$('#viewTog').children].forEach(x=>x.classList.toggle('on',x===b));applyView();});
 
-(async()=>{try{await load(); loadImg();
+(async()=>{try{await load(); loadImg(); loadPST();
   if(!ITEMS.length){$('#msg').className='msg err';$('#msg').textContent='ไม่พบรายการโปรโมชันในชีต';return;}
   // default to the campaign with the most prices
   SEL=CAMP.slice().sort((a,b)=>campCount(b.k)-campCount(a.k))[0].k;
