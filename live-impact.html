@@ -87,7 +87,8 @@
   <div class="head">
     <h1>วิเคราะห์ผลกระทบไลฟ์</h1><span class="tag">ตัวทดสอบ</span>
     <select id="creatorSel" class="sel"></select>
-    <span class="muted" style="font-size:12px">TikTok · Terry · ต.ค. 2026 · ไลฟ์ (self) + ออเดอร์จริง</span>
+    <select id="monthSel" class="sel"></select>
+    <span class="muted" id="windowLabel" style="font-size:12px">TikTok · Terry · ไลฟ์ (self) + ออเดอร์จริง</span>
   </div>
   <div class="msg" id="msg">กำลังโหลดข้อมูลสด…</div>
 
@@ -164,18 +165,27 @@ const OC={status:1,product:7,qty:9,sub:15,created:24,handle:56,buyer:38};
 async function tabs(id){try{const h=await(await fetch(`https://docs.google.com/spreadsheets/d/${id}/htmlview`)).text();const re=/\{name:\s*"([^"]+)"[^}]*?gid:\s*"?(\d+)"?/g;const o=[];let m;while((m=re.exec(h)))o.push({name:m[1],gid:m[2]});return o;}catch{return[];}}
 async function csvTab(id,gid){try{const t=await(await fetch(`https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`)).text();return t.trim().startsWith('<')?[]:parseCSV(t);}catch{return[];}}
 
-let LIVE_ROWS=[], ORDER_ROWS=[];   // raw parsed (Terry, Oct)
+let LIVE_ROWS=[], ORDER_ROWS=[];   // raw parsed (Terry, ALL months)
 async function loadAll(){
-  // self-live: Oct Terry
-  const slT=await tabs(F_SELF_LIVE); const slTerry=slT.find(t=>brandOf(t.name)==='Terry'&&/oct/i.test(t.name))||slT.find(t=>brandOf(t.name)==='Terry');
-  const g = slTerry ? await csvTab(F_SELF_LIVE, slTerry.gid) : [];
-  for(let i=1;i<g.length;i++){const r=g[i];const handle=String(r[2]||'').trim().toLowerCase();const name=String(r[1]||'').trim();if(!handle&&!name)continue;
-    LIVE_ROWS.push({handle, name, d:affISO(r[3]), hr:affHour(r[3]), dur:String(r[4]||''), gmv:num(r[SL.gmv]), paidOrd:num(r[SL.paidOrd]), units:num(r[SL.units]), avgP:num(r[SL.avgP]), views:num(r[SL.views]), imp:num(r[SL.imp]), ctr:String(r[SL.ctr]||'')});}
-  // orders: Terry tab
-  const oT=await tabs(ORDER); const oTerry=oT.find(t=>brandOf(t.name)==='Terry')||oT[0];
-  const og = oTerry ? await csvTab(ORDER, oTerry.gid) : [];
-  for(let i=1;i<og.length;i++){const r=og[i];if(!r||!r[0])continue;if(isCancel(r[OC.status]))continue;const handle=String(r[OC.handle]||'').trim().toLowerCase();if(!handle)continue;
-    ORDER_ROWS.push({handle, d:ordDay(r[OC.created]), qty:num(r[OC.qty]), sub:num(r[OC.sub]), buyer:String(r[OC.buyer]||'').trim(), oid:String(r[0]).trim()});}
+  // self-live: EVERY Terry tab (Jul–Oct …) so lives line up with whatever order month is picked
+  const slTerry=(await tabs(F_SELF_LIVE)).filter(t=>brandOf(t.name)==='Terry');
+  const slGrids=await Promise.all(slTerry.map(t=>csvTab(F_SELF_LIVE, t.gid)));
+  for(const g of slGrids){ for(let i=1;i<g.length;i++){const r=g[i];const handle=String(r[2]||'').trim().toLowerCase();const name=String(r[1]||'').trim();if(!handle&&!name)continue;
+    LIVE_ROWS.push({handle, name, d:affISO(r[3]), hr:affHour(r[3]), dur:String(r[4]||''), gmv:num(r[SL.gmv]), paidOrd:num(r[SL.paidOrd]), units:num(r[SL.units]), avgP:num(r[SL.avgP]), views:num(r[SL.views]), imp:num(r[SL.imp]), ctr:String(r[SL.ctr]||'')});} }
+  // orders: EVERY Terry tab (Terry Sep / Terry Oct …)
+  const oTerry=(await tabs(ORDER)).filter(t=>brandOf(t.name)==='Terry');
+  const oGrids=await Promise.all(oTerry.map(t=>csvTab(ORDER, t.gid)));
+  for(const og of oGrids){ for(let i=1;i<og.length;i++){const r=og[i];if(!r||!r[0])continue;if(isCancel(r[OC.status]))continue;const handle=String(r[OC.handle]||'').trim().toLowerCase();if(!handle)continue;
+    ORDER_ROWS.push({handle, d:ordDay(r[OC.created]), qty:num(r[OC.qty]), sub:num(r[OC.sub]), buyer:String(r[OC.buyer]||'').trim(), oid:String(r[0]).trim()});} }
+}
+const TH_MO=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const mkLabel=mk=>{const[y,m]=mk.split('-').map(Number);return TH_MO[m-1]+' '+y;};
+let MK=null;   // selected analysis month (YYYY-MM)
+function buildMonths(){
+  const ms=[...new Set(ORDER_ROWS.filter(o=>o.d).map(o=>o.d.slice(0,7)))].sort();
+  const sel=$('#monthSel'); sel.innerHTML=ms.map(mk=>`<option value="${mk}">${mkLabel(mk)}</option>`).join('');
+  if(!ms.includes(MK)) MK=ms[ms.length-1];   // default: latest month with order data
+  sel.value=MK; return ms;
 }
 
 function buildCreators(){
@@ -188,9 +198,12 @@ function buildCreators(){
   return def?def.handle:null;
 }
 
-function render(handle){
-  const lives=LIVE_ROWS.filter(l=>l.handle===handle&&l.gmv>0).sort((a,b)=>(a.d+pad(a.hr)).localeCompare(b.d+pad(b.hr)));
-  const ords=ORDER_ROWS.filter(o=>o.handle===handle&&o.d);
+function render(handle, mk){
+  if(mk) MK=mk;
+  const inMonth=d=>d && d.slice(0,7)===MK;
+  $('#windowLabel').textContent='TikTok · Terry · '+(MK?mkLabel(MK):'')+' · ไลฟ์ (self) + ออเดอร์จริง';
+  const lives=LIVE_ROWS.filter(l=>l.handle===handle&&l.gmv>0&&inMonth(l.d)).sort((a,b)=>(a.d+pad(a.hr)).localeCompare(b.d+pad(b.hr)));
+  const ords=ORDER_ROWS.filter(o=>o.handle===handle&&inMonth(o.d));
   // daily order agg
   const byDay=new Map();
   for(const o of ords){const D=byDay.get(o.d)||{sales:0,units:0,ord:new Set(),buyers:new Set()};D.sales+=o.sub;D.units+=o.qty;D.ord.add(o.oid);if(o.buyer)D.buyers.add(o.buyer);byDay.set(o.d,D);}
@@ -281,12 +294,13 @@ function render(handle){
 function tile(k,v,s,cls){return `<div class="tile ${cls||''}"><div class="k">${k}</div><div class="v">${v}</div>${s?`<div class="s">${s}</div>`:''}</div>`;}
 function rpCard(k,v,s,pct){return `<div class="rpcard"><div class="k">${k}</div><div class="v">${v}</div>${s?`<div class="s">${s}</div>`:''}${pct!=null?`<div class="gauge"><div style="width:${Math.max(2,Math.min(100,pct))}%"></div></div>`:''}</div>`;}
 
-$('#creatorSel').addEventListener('change', e=>render(e.target.value));
+$('#creatorSel').addEventListener('change', e=>render(e.target.value, MK));
+$('#monthSel').addEventListener('change', e=>render($('#creatorSel').value, e.target.value));
 (async()=>{
   try{ await loadAll();
     if(!LIVE_ROWS.length&&!ORDER_ROWS.length){ $('#msg').className='msg err'; $('#msg').textContent='โหลดข้อมูลไม่สำเร็จ — ตรวจการแชร์ชีต'; return; }
-    const def=buildCreators();
-    if(def) render(def); else { $('#msg').textContent='ไม่พบครีเอเตอร์ที่มีไลฟ์'; }
+    const def=buildCreators(); buildMonths();
+    if(def) render(def, MK); else { $('#msg').textContent='ไม่พบครีเอเตอร์ที่มีไลฟ์'; }
   }catch(e){ $('#msg').className='msg err'; $('#msg').textContent='ผิดพลาด: '+((e&&e.message)||e); }
 })();
 </script>
