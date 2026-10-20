@@ -44,38 +44,35 @@
   .tog button.on{background:var(--accent);color:#fff}
   .ctrls{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-top:6px}
 
-  /* product cards */
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:12px;margin-top:14px}
-  .pc{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 14px;position:relative;display:flex;flex-direction:column;gap:7px;overflow:hidden}
-  .pc .bar{position:absolute;left:0;top:0;bottom:0;width:4px}
-  .pc .nm{font-size:14px;font-weight:700;line-height:1.3;padding-left:4px}
-  .row1{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding-left:4px}
+  /* product cards — symmetric, image on top */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(224px,1fr));gap:13px;margin-top:14px}
+  .pc{background:var(--surface);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;transition:box-shadow .12s,transform .12s}
+  .pc:hover{box-shadow:0 10px 24px -14px rgba(0,0,0,.35);transform:translateY(-2px)}
+  .pimg{position:relative;width:100%;aspect-ratio:1/1;background:var(--surface-2)}
+  .pimg img{width:100%;height:100%;object-fit:cover;display:block}
+  .pimg .ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted)/*;*/;font-size:12px;gap:6px}
+  .pimg .campchip{position:absolute;left:8px;top:8px;border-radius:7px;padding:3px 9px;font-size:10.5px;font-weight:800;color:#fff;box-shadow:0 2px 8px -2px rgba(0,0,0,.4)}
+  .pimg .edit{position:absolute;right:8px;bottom:8px;border:0;border-radius:8px;background:rgba(0,0,0,.6);color:#fff;font:inherit;font-size:11px;font-weight:700;padding:5px 9px;cursor:pointer;display:inline-flex;gap:4px;align-items:center;opacity:0;transition:opacity .12s}
+  .pc:hover .pimg .edit,.pimg:not(:has(img)) .edit{opacity:1}
+  .pimg .edit:hover{background:rgba(0,0,0,.82)}
+  .pbody{padding:11px 13px 13px;display:flex;flex-direction:column;gap:6px;flex:1}
+  .nm{font-size:13.5px;font-weight:700;line-height:1.32;min-height:35px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .row1{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
   .sku{font-size:10.5px;font-weight:700;color:var(--muted);background:var(--surface-2);border-radius:5px;padding:1px 6px;font-variant-numeric:tabular-nums}
   .typ{font-size:10px;font-weight:700;border-radius:5px;padding:1px 6px}
   .typ.set{background:color-mix(in oklab,var(--accent) 14%,var(--surface));color:var(--accent)}
   .typ.single{background:var(--surface-2);color:var(--ink-2)}
-  .prices{display:flex;align-items:baseline;gap:9px;padding-left:4px;margin-top:2px}
-  .pnow{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
-  .pfull{font-size:14px;color:var(--muted);text-decoration:line-through;font-variant-numeric:tabular-nums}
-  .save{display:inline-block;font-size:11.5px;font-weight:800;color:var(--good);background:color-mix(in oklab,var(--good) 14%,var(--surface));border-radius:6px;padding:2px 7px;margin-left:4px}
-  .meta{display:flex;flex-wrap:wrap;gap:6px;padding-left:4px;margin-top:2px}
+  .prices{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px;margin-top:1px}
+  .pnow{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+  .pfull{font-size:13.5px;color:var(--muted);text-decoration:line-through;font-variant-numeric:tabular-nums}
+  .save{display:inline-block;font-size:11px;font-weight:800;color:var(--good);background:color-mix(in oklab,var(--good) 14%,var(--surface));border-radius:6px;padding:2px 7px}
+  .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:2px}
   .tag{font-size:10.5px;font-weight:700;border-radius:6px;padding:2px 7px;display:inline-flex;align-items:center;gap:4px}
   .tag.gwp{background:color-mix(in oklab,var(--warn) 15%,var(--surface));color:var(--warn)}
   .tag.rm{background:var(--surface-2);color:var(--ink-2)}
   .tag.live{background:color-mix(in oklab,var(--bad) 13%,var(--surface));color:var(--bad)}
   .tag.best{background:color-mix(in oklab,var(--good) 16%,var(--surface));color:var(--good)}
   .empty{padding:40px;text-align:center;color:var(--muted);font-size:14px}
-
-  /* image slot (user-picked) + picker modal */
-  .imgslot{margin:2px 4px 0}
-  .imgpick{width:100%;border:1.5px dashed var(--line-2);background:var(--surface-2);color:var(--muted);border-radius:10px;padding:14px 8px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
-  .imgpick:hover{border-color:var(--accent);color:var(--accent)}
-  .imghas{position:relative;border-radius:10px;overflow:hidden;background:var(--surface-2);aspect-ratio:16/10}
-  .imghas img{width:100%;height:100%;object-fit:cover;display:block}
-  .imghas .ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;opacity:0;background:rgba(0,0,0,.45);transition:opacity .12s}
-  .imghas:hover .ov{opacity:1}
-  .imghas .ov button{border:0;border-radius:8px;padding:5px 10px;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;background:#fff;color:#111}
-  .imghas .ov button.del{background:var(--bad);color:#fff}
   .modal{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:16px}
   .sheet{background:var(--surface);border:1px solid var(--line);border-radius:16px;width:100%;max-width:880px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
   .sheet .sh-top{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:10px;align-items:center}
@@ -109,7 +106,7 @@
   <a class="back" href="./">‹ หน้าหลัก</a>
   <div class="head">
     <h1><span class="dot"></span>โปรโมชัน Terry</h1>
-    <span class="muted" style="font-size:12px">ราคาโปรแต่ละแคมเปญ · อ่านสดจากทีม (Master Promotion Plan)</span>
+    <span class="muted" style="font-size:12px">ราคาโปรแต่ละแคมเปญ · อ่านสดจาก Master Promotion Plan + Promotion TT (รูปสินค้าแมพอัตโนมัติ)</span>
   </div>
   <p class="sub" id="sub">เลือกแคมเปญเพื่อดูราคาโปรของแต่ละรายการ · ราคาเต็มจะขีดฆ่าและแสดงส่วนที่ประหยัด</p>
   <div class="msg" id="msg">กำลังโหลดข้อมูลโปรโมชัน…</div>
@@ -162,7 +159,14 @@ const thumbUrl=s=>(/(cf\.shopee|susercontent)/i.test(s)&&/\/file\//.test(s)&&!/_
 const imgTag=(src,cls)=>`<img class="${cls||''}" src="${esc(thumbUrl(src))}" data-full="${esc(src)}" loading="lazy" onerror="if(this.src!==this.dataset.full){this.src=this.dataset.full}">`;
 function parseCSV(t){const R=[];let r=[],c="",q=false;for(let i=0;i<t.length;i++){const h=t[i];if(q){if(h==='"'){if(t[i+1]==='"'){c+='"';i++}else q=false}else c+=h}else{if(h==='"')q=true;else if(h===','){r.push(c);c=""}else if(h==='\n'){r.push(c);R.push(r);r=[];c=""}else if(h==='\r'){}else c+=h}}if(c!==""||r.length){r.push(c);R.push(r)}return R}
 
-const SHEET='1A9zb0Duv4xj8-JGflSgbtD2NhpoO9Xa4sAgMWyrcfyc', GID=280317179;
+const PROMO_SHEET='1A9zb0Duv4xj8-JGflSgbtD2NhpoO9Xa4sAgMWyrcfyc';
+const GID_MASTER=280317179, GID_TT=1322032194;     // Master Promotion Plan + Promotion TT (maps SKU→Product ID)
+const COVER_SHEET='1Omn_T1Y3UUnP9d5IcVXnhL2TsXD9AI3IB3A80IUoKqY';
+const COVER_TABS=[720887439,919830494];            // Terry tiktok, Terry Shopee (code→image)
+async function csvTab(id,gid){ const t=await (await fetch(`https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}&cb=${Date.now()}`)).text(); return t.trim().startsWith('<')?[]:parseCSV(t); }
+const normSku=s=>String(s||'').toUpperCase().replace(/\s+/g,'');
+const normNm=s=>String(s||'').toLowerCase().replace(/\s+/g,'');
+const firstHttp=row=>{ for(let i=1;i<row.length;i++){ const v=String(row[i]||'').trim(); if(/^https?:\/\//.test(v)) return v; } return ''; };
 // campaign columns are offsets from the "Name" column (base)
 const CAMP=[
   {k:'AWO',               c:'#8b5cf6', off:3},
@@ -178,27 +182,39 @@ let ITEMS=[], SEL=CAMP[0].k, TYPE='all', VIEW='cards';
 const PROMO_IMG = {};
 let IMG={}, CAT=null, pickKey=null;
 const imgKey=it=>it.name;
+const displayImg=it=>IMG[imgKey(it)]||it.autoImg||'';   // manual override wins, else auto image from the sheet mapping
 function loadImg(){ let ls={}; try{ls=JSON.parse(localStorage.getItem('promoImgTerry')||'{}')}catch{} IMG={...PROMO_IMG,...ls}; }
 function saveImg(){ const ls={}; for(const k in IMG){ if(IMG[k]!==PROMO_IMG[k]) ls[k]=IMG[k]; } try{localStorage.setItem('promoImgTerry',JSON.stringify(ls))}catch{} updateCount(); }
 function updateCount(){ const n=Object.keys(IMG).filter(k=>IMG[k]).length; $('#imgCount')&&($('#imgCount').textContent=n?'('+n+')':''); }
 function rerender(){ VIEW==='cards'?renderCards():renderTable(); }
 
 async function load(){
-  const url=`https://docs.google.com/spreadsheets/d/${SHEET}/export?format=csv&gid=${GID}&cb=${Date.now()}`;
-  const t=await (await fetch(url)).text();
-  if(t.trim().startsWith('<')) throw new Error('อ่านชีตไม่ได้ (ตรวจการแชร์)');
-  const g=parseCSV(t);
-  const hr=g.findIndex(r=>r.includes('Name')&&r.some(c=>/ราคาเต็ม/.test(c)));
+  // pull Master + Promotion TT + the two Terry cover tabs together (all live)
+  const [gM,gTT,...covG]=await Promise.all([ csvTab(PROMO_SHEET,GID_MASTER), csvTab(PROMO_SHEET,GID_TT), ...COVER_TABS.map(gid=>csvTab(COVER_SHEET,gid)) ]);
+  if(!gM.length) throw new Error('อ่านชีตไม่ได้ (ตรวจการแชร์)');
+  // cover map: product code → image URL (image = first http cell; layout differs per tab)
+  const cover=new Map();
+  for(const g of covG){ for(let i=1;i<g.length;i++){ const code=String(g[i][0]||'').trim(); const img=firstHttp(g[i]); if(code&&img&&!cover.has(code)) cover.set(code,img); } }
+  // Promotion TT: internal SKU / Name → Product ID
+  const ttBySku=new Map(), ttByName=new Map();
+  { const hr=gTT.findIndex(r=>r.includes('Product ID')&&r.includes('Name'));
+    if(hr>=0){ const H=gTT[hr], cN=H.indexOf('Name'), cS=H.indexOf('SKU'), cP=H.indexOf('Product ID');
+      for(let i=hr+1;i<gTT.length;i++){ const r=gTT[i]; const pid=String(r[cP]||'').trim(); if(!/^\d{6,}$/.test(pid))continue;
+        const sk=normSku(r[cS]); if(sk&&!ttBySku.has(sk)) ttBySku.set(sk,pid);
+        const nm=normNm(r[cN]); if(nm&&!ttByName.has(nm)) ttByName.set(nm,pid); } } }
+  // Master Promotion Plan rows (the display data)
+  const hr=gM.findIndex(r=>r.includes('Name')&&r.some(c=>/ราคาเต็ม/.test(c)));
   if(hr<0) throw new Error('ไม่พบหัวตาราง (Name / ราคาเต็ม)');
-  const base=g[hr].indexOf('Name');
-  for(let i=hr+1;i<g.length;i++){const r=g[i];const name=String(r[base]||'').trim();if(!name||name==='Name')continue;
+  const base=gM[hr].indexOf('Name');
+  for(let i=hr+1;i<gM.length;i++){const r=gM[i];const name=String(r[base]||'').trim();if(!name||name==='Name')continue;
     const prices={}; CAMP.forEach(cp=>prices[cp.k]=num(r[base+cp.off]));
-    const full=num(r[base+2]);
-    const typRaw=String(r[10]||'').trim().toLowerCase();  // left-half TYP column
-    const isSet = typRaw==='set' || /\+|x\s*\d|x\d/i.test(name) && typRaw!=='single';
-    ITEMS.push({ name, sku:String(r[base+1]||'').trim(), full, prices,
-      tiktok:num(r[base+8]), gwp:String(r[base+9]||'').trim(), remark:String(r[base+10]||'').trim(),
-      isSet });
+    const full=num(r[base+2]); const sku=String(r[base+1]||'').trim();
+    const typRaw=String(r[10]||'').trim().toLowerCase();
+    const isSet = typRaw==='set' || (/\+|x\s*\d|x\d/i.test(name) && typRaw!=='single');
+    const pid = ttBySku.get(normSku(sku)) || ttByName.get(normNm(name)) || '';   // map via Promotion TT
+    const autoImg = pid ? (cover.get(pid)||'') : '';                              // image via cover sheet
+    ITEMS.push({ name, sku, full, prices, tiktok:num(r[base+8]),
+      gwp:String(r[base+9]||'').trim(), remark:String(r[base+10]||'').trim(), isSet, pid, autoImg });
   }
 }
 
@@ -225,27 +241,29 @@ function renderCards(){
   $('#cards').innerHTML=`<div class="grid">`+list.map(it=>{
     const pct=it.full>0?Math.round(it.save/it.full*100):0;
     const liveRm=/only live|live/i.test(it.remark);
-    const key=imgKey(it), img=IMG[key], kAttr=esc(key), lAttr=esc(it.name);
-    const slot = img
-      ? `<div class="imghas">${imgTag(img)}<div class="ov"><button data-act="pick" data-k="${kAttr}" data-label="${lAttr}">เปลี่ยนรูป</button><button class="del" data-act="del" data-k="${kAttr}">ลบ</button></div></div>`
-      : `<button class="imgpick" data-act="pick" data-k="${kAttr}" data-label="${lAttr}">📷 เลือกรูปสินค้า</button>`;
+    const kAttr=esc(imgKey(it)), lAttr=esc(it.name), img=displayImg(it);
     return `<div class="pc">
-      <span class="bar" style="background:${cp.c}"></span>
-      <div class="nm">${esc(it.name)}</div>
-      <div class="imgslot">${slot}</div>
-      <div class="row1">
-        ${it.sku?`<span class="sku">${esc(it.sku)}</span>`:''}
-        <span class="typ ${it.isSet?'set':'single'}">${it.isSet?'เซ็ต/ตะกร้า':'ชิ้นเดียว'}</span>
-        ${it.best?`<span class="tag best">⭐ ถูกสุด</span>`:''}
+      <div class="pimg">
+        ${img?imgTag(img):`<div class="ph">📷 ไม่มีรูป</div>`}
+        <span class="campchip" style="background:${cp.c}">${esc(SEL)}</span>
+        <button class="edit" data-act="pick" data-k="${kAttr}" data-label="${lAttr}">📷 ${img?'เปลี่ยนรูป':'เลือกรูป'}</button>
       </div>
-      <div class="prices">
-        <span class="pnow" style="color:${cp.c}">฿${fmt(it.now)}</span>
-        ${it.full>0?`<span class="pfull">฿${fmt(it.full)}</span>`:''}
-        ${it.save>0?`<span class="save">ประหยัด ฿${fmt(it.save)} · ${pct}%</span>`:''}
-      </div>
-      <div class="meta">
-        ${it.gwp?`<span class="tag gwp">🎁 ${esc(it.gwp)}</span>`:''}
-        ${it.remark?`<span class="tag ${liveRm?'live':'rm'}">${liveRm?'🔴 ':''}${esc(it.remark)}</span>`:''}
+      <div class="pbody">
+        <div class="nm" title="${lAttr}">${esc(it.name)}</div>
+        <div class="row1">
+          ${it.sku?`<span class="sku">${esc(it.sku)}</span>`:''}
+          <span class="typ ${it.isSet?'set':'single'}">${it.isSet?'เซ็ต/ตะกร้า':'ชิ้นเดียว'}</span>
+          ${it.best?`<span class="tag best">⭐ ถูกสุด</span>`:''}
+        </div>
+        <div class="prices">
+          <span class="pnow" style="color:${cp.c}">฿${fmt(it.now)}</span>
+          ${it.full>0?`<span class="pfull">฿${fmt(it.full)}</span>`:''}
+          ${it.save>0?`<span class="save">-฿${fmt(it.save)} · ${pct}%</span>`:''}
+        </div>
+        <div class="meta">
+          ${it.gwp?`<span class="tag gwp">🎁 ${esc(it.gwp)}</span>`:''}
+          ${it.remark?`<span class="tag ${liveRm?'live':'rm'}">${liveRm?'🔴 ':''}${esc(it.remark)}</span>`:''}
+        </div>
       </div>
     </div>`;}).join('')+`</div>`;
 }
@@ -257,8 +275,8 @@ function renderTable(){
     `<th>GWP</th><th class="l" style="left:auto;position:static">Remark</th></tr>`;
   const body=list.map(it=>{
     const allP=Object.values(it.prices).filter(v=>v>0); const minP=allP.length?Math.min(...allP):0;
-    const timg=IMG[imgKey(it)];
-    return `<tr><td class="l" style="text-align:left">${timg?`<img src="${esc(thumbUrl(timg))}" loading="lazy" style="width:24px;height:24px;object-fit:cover;vertical-align:middle;margin-right:6px;border-radius:4px">`:''}${esc(it.name)}</td>`+
+    const timg=displayImg(it);
+    return `<tr><td class="l" style="text-align:left">${timg?`<img src="${esc(thumbUrl(timg))}" loading="lazy" style="width:26px;height:26px;object-fit:cover;vertical-align:middle;margin-right:7px;border-radius:5px">`:''}${esc(it.name)}</td>`+
       `<td style="text-align:left">${esc(it.sku)||'—'}</td>`+
       `<td class="muted">${it.full>0?'฿'+fmt(it.full):'—'}</td>`+
       CAMP.map(c=>{const v=it.prices[c.k];return `<td class="${v>0&&v===minP&&allP.length>1?'cheap':''}">${v>0?'฿'+fmt(v):'—'}</td>`;}).join('')+
@@ -280,15 +298,13 @@ function applyView(){
 }
 
 /* ---- image picker (names from catalog, cover images synced LIVE from the cover sheet) ---- */
-const COVER_SHEET='1Omn_T1Y3UUnP9d5IcVXnhL2TsXD9AI3IB3A80IUoKqY';
-const COVER_TABS=[919830494,720887439];  // Terry Shopee, Terry tiktok
 async function ensureCat(){ if(CAT)return CAT;
   try{ CAT=await (await fetch('catalog-terry.json?cb='+Date.now())).json(); }catch{ CAT=[]; }
   try{ const cm=new Map();
     await Promise.all(COVER_TABS.map(async gid=>{
       const t=await (await fetch(`https://docs.google.com/spreadsheets/d/${COVER_SHEET}/export?format=csv&gid=${gid}&cb=${Date.now()}`)).text();
       const g=parseCSV(t);
-      for(let i=1;i<g.length;i++){ const code=String(g[i][0]||'').trim(); const img=String(g[i][1]||g[i][2]||'').trim(); if(code&&/^https?:/.test(img)) cm.set(code,img); }
+      for(let i=1;i<g.length;i++){ const code=String(g[i][0]||'').trim(); const img=firstHttp(g[i]); if(code&&img) cm.set(code,img); }
     }));
     CAT.forEach(p=>{ if(p.code&&cm.has(p.code)) p.image=cm.get(p.code); });  // live cover overrides
   }catch{/* keep baked images */}
