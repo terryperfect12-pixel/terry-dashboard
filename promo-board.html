@@ -177,7 +177,7 @@ const fmt=v=>v>0?v.toLocaleString('th-TH'):'—';
 // Shopee serves a light 320px thumbnail when the file id ends with "_tn" — use it for grids
 const thumbUrl=s=>(/(cf\.shopee|susercontent)/i.test(s)&&/\/file\//.test(s)&&!/_tn(\?|$)/.test(s))?s+'_tn':s;
 // <img> that tries the thumbnail, falls back to the full image on error
-const imgTag=(src,cls)=>`<img class="${cls||''}" src="${esc(thumbUrl(src))}" data-full="${esc(src)}" loading="lazy" onerror="if(this.src!==this.dataset.full){this.src=this.dataset.full}">`;
+const imgTag=(src,cls,eager)=>`<img class="${cls||''}" src="${esc(thumbUrl(src))}" data-full="${esc(src)}" ${eager?'':'loading="lazy"'} onerror="if(this.src!==this.dataset.full){this.src=this.dataset.full}">`;
 function parseCSV(t){const R=[];let r=[],c="",q=false;for(let i=0;i<t.length;i++){const h=t[i];if(q){if(h==='"'){if(t[i+1]==='"'){c+='"';i++}else q=false}else c+=h}else{if(h==='"')q=true;else if(h===','){r.push(c);c=""}else if(h==='\n'){r.push(c);R.push(r);r=[];c=""}else if(h==='\r'){}else c+=h}}if(c!==""||r.length){r.push(c);R.push(r)}return R}
 
 const PROMO_SHEET='1A9zb0Duv4xj8-JGflSgbtD2NhpoO9Xa4sAgMWyrcfyc';
@@ -347,7 +347,7 @@ function renderPickGrid(q){ const cat=CAT||[]; const s=(q||'').trim().toLowerCas
   const pageItems=f.slice((pickPage-1)*PAGE_SIZE, pickPage*PAGE_SIZE);
   $('#pickGrid').innerHTML = pageItems.length ? pageItems.map(p=>{ const on=isOn(p); const k=esc(pstKey(p));
     return `<div class="pitem ${on?'':'off'}">
-      <div class="ph" data-pick="${esc(p.image)}">${imgTag(p.image)}</div>
+      <div class="ph" data-pick="${esc(p.image)}">${imgTag(p.image,'',true)}</div>
       <div class="pn" title="${esc(p.name)}">${esc(p.name)}</div>
       <button class="tgl ${on?'on':'offb'}" data-tgl="${k}">${on?'● เปิด':'○ ปิด'}</button>
     </div>`; }).join('') : '<div class="empty" style="grid-column:1/-1">ไม่พบสินค้าในหมวดนี้</div>';
