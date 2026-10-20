@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>โปรโมชัน Terry — ราคาแต่ละแคมเปญ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f7f9; --surface:#ffffff; --surface-2:#f1f3f6; --line:#e5e8ec; --line-2:#d3d8df;
+    --ink:#121619; --ink-2:#3b434c; --muted:#8a929c; --accent:#2563eb;
+    --good:#16a34a; --bad:#e11d48; --warn:#d97706;
+    --f:"Sarabun","TH Sarabun New","Segoe UI",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#0f1317; --surface:#171c22; --surface-2:#1e242c; --line:#2a313a; --line-2:#394250;
+    --ink:#eef1f4; --ink-2:#c3cad2; --muted:#8893a0; --accent:#5b9bff;
+  }}
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1280px;margin:0 auto;padding:16px 20px 64px}
+  a{color:inherit;text-decoration:none}
+  .back{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--muted);border:1.5px solid var(--line-2);border-radius:9px;padding:6px 11px;margin-bottom:14px}
+  .back:hover{background:var(--surface-2);color:var(--ink)}
+  .head{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
+  .head h1{font-size:22px;font-weight:800;margin:0;display:flex;align-items:center;gap:9px}
+  .dot{width:11px;height:11px;border-radius:50%;background:var(--accent)}
+  .muted{color:var(--muted)} .sub{font-size:12.5px;color:var(--muted);margin:3px 0 0}
+  .msg{margin:12px 0;font-size:13px;padding:10px 13px;border-radius:10px;background:var(--surface-2);color:var(--ink-2)}
+  .msg.err{background:color-mix(in oklab,var(--bad) 13%,var(--surface));color:var(--bad)}
+
+  /* campaign chips */
+  .seclbl{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink-2);border-radius:999px;padding:8px 15px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:all .12s}
+  .chip:hover{border-color:var(--ink-2)}
+  .chip .cdot{width:9px;height:9px;border-radius:50%}
+  .chip.on{color:#fff;border-color:transparent}
+  .chip .cnt{font-size:11px;opacity:.75;font-weight:600}
+  .tog{display:inline-flex;border:1.5px solid var(--line-2);border-radius:10px;overflow:hidden}
+  .tog button{border:0;background:var(--surface);color:var(--ink-2);font:inherit;font-weight:700;font-size:12.5px;padding:7px 14px;cursor:pointer}
+  .tog button.on{background:var(--accent);color:#fff}
+  .ctrls{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-top:6px}
+
+  /* product cards */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:12px;margin-top:14px}
+  .pc{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 14px;position:relative;display:flex;flex-direction:column;gap:7px;overflow:hidden}
+  .pc .bar{position:absolute;left:0;top:0;bottom:0;width:4px}
+  .pc .nm{font-size:14px;font-weight:700;line-height:1.3;padding-left:4px}
+  .row1{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding-left:4px}
+  .sku{font-size:10.5px;font-weight:700;color:var(--muted);background:var(--surface-2);border-radius:5px;padding:1px 6px;font-variant-numeric:tabular-nums}
+  .typ{font-size:10px;font-weight:700;border-radius:5px;padding:1px 6px}
+  .typ.set{background:color-mix(in oklab,var(--accent) 14%,var(--surface));color:var(--accent)}
+  .typ.single{background:var(--surface-2);color:var(--ink-2)}
+  .prices{display:flex;align-items:baseline;gap:9px;padding-left:4px;margin-top:2px}
+  .pnow{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+  .pfull{font-size:14px;color:var(--muted);text-decoration:line-through;font-variant-numeric:tabular-nums}
+  .save{display:inline-block;font-size:11.5px;font-weight:800;color:var(--good);background:color-mix(in oklab,var(--good) 14%,var(--surface));border-radius:6px;padding:2px 7px;margin-left:4px}
+  .meta{display:flex;flex-wrap:wrap;gap:6px;padding-left:4px;margin-top:2px}
+  .tag{font-size:10.5px;font-weight:700;border-radius:6px;padding:2px 7px;display:inline-flex;align-items:center;gap:4px}
+  .tag.gwp{background:color-mix(in oklab,var(--warn) 15%,var(--surface));color:var(--warn)}
+  .tag.rm{background:var(--surface-2);color:var(--ink-2)}
+  .tag.live{background:color-mix(in oklab,var(--bad) 13%,var(--surface));color:var(--bad)}
+  .tag.best{background:color-mix(in oklab,var(--good) 16%,var(--surface));color:var(--good)}
+  .empty{padding:40px;text-align:center;color:var(--muted);font-size:14px}
+
+  /* full table */
+  .tblwrap{overflow-x:auto;border:1px solid var(--line-2);border-radius:12px;margin-top:14px;background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}
+  th,td{border:1px solid var(--line);padding:6px 10px;text-align:right;font-variant-numeric:tabular-nums}
+  th{font-weight:800;font-size:11.5px;color:var(--ink);background:var(--surface-2)}
+  td.l,th.l{text-align:left;position:sticky;left:0;background:var(--surface);z-index:1}
+  th.l{background:var(--surface-2);z-index:2}
+  tr:hover td{background:color-mix(in oklab,var(--accent) 5%,var(--surface))}
+  td.cheap{font-weight:800;color:var(--good)}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="./">‹ หน้าหลัก</a>
+  <div class="head">
+    <h1><span class="dot"></span>โปรโมชัน Terry</h1>
+    <span class="muted" style="font-size:12px">ราคาโปรแต่ละแคมเปญ · อ่านสดจากทีม (Master Promotion Plan)</span>
+  </div>
+  <p class="sub" id="sub">เลือกแคมเปญเพื่อดูราคาโปรของแต่ละรายการ · ราคาเต็มจะขีดฆ่าและแสดงส่วนที่ประหยัด</p>
+  <div class="msg" id="msg">กำลังโหลดข้อมูลโปรโมชัน…</div>
+
+  <div id="result" hidden>
+    <div class="seclbl">เลือกแคมเปญ</div>
+    <div class="chips" id="camps"></div>
+
+    <div class="ctrls">
+      <div class="tog" id="typeTog">
+        <button data-t="all" class="on">ทั้งหมด</button>
+        <button data-t="single">ชิ้นเดียว</button>
+        <button data-t="set">เซ็ต/ตะกร้า</button>
+      </div>
+      <div class="tog" id="viewTog">
+        <button data-v="cards" class="on">การ์ด</button>
+        <button data-v="table">ตารางเต็มทุกแคมเปญ</button>
+      </div>
+    </div>
+
+    <div id="cards"></div>
+    <div id="table" class="hidden"></div>
+  </div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num=v=>{const n=Number(String(v==null?'':v).replace(/[,฿\s]/g,''));return isNaN(n)?0:n;};
+const fmt=v=>v>0?v.toLocaleString('th-TH'):'—';
+function parseCSV(t){const R=[];let r=[],c="",q=false;for(let i=0;i<t.length;i++){const h=t[i];if(q){if(h==='"'){if(t[i+1]==='"'){c+='"';i++}else q=false}else c+=h}else{if(h==='"')q=true;else if(h===','){r.push(c);c=""}else if(h==='\n'){r.push(c);R.push(r);r=[];c=""}else if(h==='\r'){}else c+=h}}if(c!==""||r.length){r.push(c);R.push(r)}return R}
+
+const SHEET='1A9zb0Duv4xj8-JGflSgbtD2NhpoO9Xa4sAgMWyrcfyc', GID=280317179;
+// campaign columns are offsets from the "Name" column (base)
+const CAMP=[
+  {k:'AWO',               c:'#8b5cf6', off:3},
+  {k:'Double Day',        c:'#0ea5e9', off:4},
+  {k:'Mid Month (14-16)', c:'#f59e0b', off:5},
+  {k:'Pay Day',           c:'#10b981', off:6},
+  {k:'flash sale CEO live',c:'#ef4444', off:7},
+];
+let ITEMS=[], SEL=CAMP[0].k, TYPE='all', VIEW='cards';
+
+async function load(){
+  const url=`https://docs.google.com/spreadsheets/d/${SHEET}/export?format=csv&gid=${GID}&cb=${Date.now()}`;
+  const t=await (await fetch(url)).text();
+  if(t.trim().startsWith('<')) throw new Error('อ่านชีตไม่ได้ (ตรวจการแชร์)');
+  const g=parseCSV(t);
+  const hr=g.findIndex(r=>r.includes('Name')&&r.some(c=>/ราคาเต็ม/.test(c)));
+  if(hr<0) throw new Error('ไม่พบหัวตาราง (Name / ราคาเต็ม)');
+  const base=g[hr].indexOf('Name');
+  for(let i=hr+1;i<g.length;i++){const r=g[i];const name=String(r[base]||'').trim();if(!name||name==='Name')continue;
+    const prices={}; CAMP.forEach(cp=>prices[cp.k]=num(r[base+cp.off]));
+    const full=num(r[base+2]);
+    const typRaw=String(r[10]||'').trim().toLowerCase();  // left-half TYP column
+    const isSet = typRaw==='set' || /\+|x\s*\d|x\d/i.test(name) && typRaw!=='single';
+    ITEMS.push({ name, sku:String(r[base+1]||'').trim(), full, prices,
+      tiktok:num(r[base+8]), gwp:String(r[base+9]||'').trim(), remark:String(r[base+10]||'').trim(),
+      isSet });
+  }
+}
+
+function filtered(){
+  return ITEMS.filter(it=>TYPE==='all'||(TYPE==='set'?it.isSet:!it.isSet));
+}
+function campCount(k){return ITEMS.filter(it=>it.prices[k]>0).length;}
+
+function renderChips(){
+  $('#camps').innerHTML=CAMP.map(cp=>{const on=cp.k===SEL;
+    return `<button class="chip ${on?'on':''}" data-k="${esc(cp.k)}" style="${on?`background:${cp.c}`:''}">
+      <span class="cdot" style="background:${cp.c}"></span>${esc(cp.k)} <span class="cnt">${campCount(cp.k)}</span></button>`;}).join('');
+  $('#camps').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{SEL=b.dataset.k;renderChips();renderCards();});
+}
+
+function renderCards(){
+  const cp=CAMP.find(c=>c.k===SEL);
+  const list=filtered().filter(it=>it.prices[SEL]>0)
+    .map(it=>{const now=it.prices[SEL], save=it.full>0?it.full-now:0;
+      const allP=Object.values(it.prices).filter(v=>v>0); const minP=allP.length?Math.min(...allP):0;
+      return {...it, now, save, best:now>0&&now===minP&&allP.length>1};})
+    .sort((a,b)=>b.save-a.save || a.now-b.now);
+  if(!list.length){ $('#cards').innerHTML=`<div class="empty">ไม่มีรายการราคาสำหรับแคมเปญนี้</div>`; return; }
+  $('#cards').innerHTML=`<div class="grid">`+list.map(it=>{
+    const pct=it.full>0?Math.round(it.save/it.full*100):0;
+    const liveRm=/only live|live/i.test(it.remark);
+    return `<div class="pc">
+      <span class="bar" style="background:${cp.c}"></span>
+      <div class="nm">${esc(it.name)}</div>
+      <div class="row1">
+        ${it.sku?`<span class="sku">${esc(it.sku)}</span>`:''}
+        <span class="typ ${it.isSet?'set':'single'}">${it.isSet?'เซ็ต/ตะกร้า':'ชิ้นเดียว'}</span>
+        ${it.best?`<span class="tag best">⭐ ถูกสุด</span>`:''}
+      </div>
+      <div class="prices">
+        <span class="pnow" style="color:${cp.c}">฿${fmt(it.now)}</span>
+        ${it.full>0?`<span class="pfull">฿${fmt(it.full)}</span>`:''}
+        ${it.save>0?`<span class="save">ประหยัด ฿${fmt(it.save)} · ${pct}%</span>`:''}
+      </div>
+      <div class="meta">
+        ${it.gwp?`<span class="tag gwp">🎁 ${esc(it.gwp)}</span>`:''}
+        ${it.remark?`<span class="tag ${liveRm?'live':'rm'}">${liveRm?'🔴 ':''}${esc(it.remark)}</span>`:''}
+      </div>
+    </div>`;}).join('')+`</div>`;
+}
+
+function renderTable(){
+  const list=filtered();
+  const head=`<tr><th class="l">สินค้า</th><th>SKU</th><th>ราคาเต็ม</th>`+
+    CAMP.map(c=>`<th style="color:${c.c}">${esc(c.k)}</th>`).join('')+
+    `<th>GWP</th><th class="l" style="left:auto;position:static">Remark</th></tr>`;
+  const body=list.map(it=>{
+    const allP=Object.values(it.prices).filter(v=>v>0); const minP=allP.length?Math.min(...allP):0;
+    return `<tr><td class="l" style="text-align:left">${esc(it.name)}</td>`+
+      `<td style="text-align:left">${esc(it.sku)||'—'}</td>`+
+      `<td class="muted">${it.full>0?'฿'+fmt(it.full):'—'}</td>`+
+      CAMP.map(c=>{const v=it.prices[c.k];return `<td class="${v>0&&v===minP&&allP.length>1?'cheap':''}">${v>0?'฿'+fmt(v):'—'}</td>`;}).join('')+
+      `<td style="text-align:left">${esc(it.gwp)||'—'}</td>`+
+      `<td style="text-align:left">${esc(it.remark)||'—'}</td></tr>`;
+  }).join('');
+  $('#table').innerHTML=`<div class="tblwrap"><table>${head}${body}</table></div>
+    <div class="muted" style="font-size:11px;margin-top:8px">* ช่องสีเขียว = ราคาถูกสุดของรายการนั้น · อ่านสดจากชีต Master Promotion Plan</div>`;
+}
+
+function applyView(){
+  const cards=VIEW==='cards';
+  $('#cards').classList.toggle('hidden',!cards);
+  $('#table').classList.toggle('hidden',cards);
+  // campaign chips only matter in card view
+  document.querySelector('.seclbl').style.display=cards?'':'none';
+  $('#camps').style.display=cards?'':'none';
+  if(cards)renderCards(); else renderTable();
+}
+
+$('#typeTog').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  TYPE=b.dataset.t;[...$('#typeTog').children].forEach(x=>x.classList.toggle('on',x===b));
+  renderChips();VIEW==='cards'?renderCards():renderTable();});
+$('#viewTog').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  VIEW=b.dataset.v;[...$('#viewTog').children].forEach(x=>x.classList.toggle('on',x===b));applyView();});
+
+(async()=>{try{await load();
+  if(!ITEMS.length){$('#msg').className='msg err';$('#msg').textContent='ไม่พบรายการโปรโมชันในชีต';return;}
+  // default to the campaign with the most prices
+  SEL=CAMP.slice().sort((a,b)=>campCount(b.k)-campCount(a.k))[0].k;
+  $('#sub').textContent=`มี ${ITEMS.length} รายการ · ${CAMP.length} แคมเปญ · เลือกแคมเปญด้านล่างเพื่อดูราคาโปร (ราคาเต็มขีดฆ่า + ส่วนที่ประหยัด)`;
+  renderChips();renderCards();
+  $('#msg').style.display='none';$('#result').hidden=false;
+}catch(e){$('#msg').className='msg err';$('#msg').textContent='ผิดพลาด: '+((e&&e.message)||e);}})();
+</script>
+</body>
+</html>
