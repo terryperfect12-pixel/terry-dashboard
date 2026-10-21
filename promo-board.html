@@ -20,7 +20,7 @@
   }}
   *{box-sizing:border-box} html,body{margin:0}
   body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1560px;margin:0 auto;padding:16px 24px 64px}
+  .wrap{max-width:1560px;margin:0;padding:16px 24px 64px}  /* left-aligned: heading & content sit on the left */
   a{color:inherit;text-decoration:none}
   .back{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--muted);border:1.5px solid var(--line-2);border-radius:9px;padding:6px 11px;margin-bottom:14px}
   .back:hover{background:var(--surface-2);color:var(--ink)}
@@ -28,6 +28,8 @@
   .head h1{font-size:22px;font-weight:800;margin:0;display:flex;align-items:center;gap:9px}
   .dot{width:11px;height:11px;border-radius:50%;background:var(--accent)}
   .muted{color:var(--muted)} .sub{font-size:12.5px;color:var(--muted);margin:3px 0 0}
+  .monthsel{margin-left:auto;border:1.5px solid var(--accent);background:var(--surface);color:var(--ink);border-radius:10px;padding:8px 13px;font:inherit;font-size:13.5px;font-weight:800;cursor:pointer}
+  .monthsel:focus{outline:2px solid var(--accent);outline-offset:1px}
   .msg{margin:12px 0;font-size:13px;padding:10px 13px;border-radius:10px;background:var(--surface-2);color:var(--ink-2)}
   .msg.err{background:color-mix(in oklab,var(--bad) 13%,var(--surface));color:var(--bad)}
 
@@ -127,7 +129,8 @@
   .compright{padding:16px 18px;display:flex;flex-direction:column;gap:9px}
   .complbl{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);margin-bottom:9px}
   .crow{display:grid;grid-template-columns:1fr 74px;gap:8px;margin-bottom:8px}
-  .crow select,.crow input,.cf input{border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink);border-radius:9px;padding:8px 10px;font:inherit;font-size:13px;width:100%}
+  .crow select,.crow input,.cf input,.cf select{border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink);border-radius:9px;padding:8px 10px;font:inherit;font-size:13px;width:100%}
+  .cf select{font-weight:700}
   .cf{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink-2);font-weight:600}
   .cprev{border:1px solid var(--line);border-radius:12px;background:var(--surface-2);min-height:70px;margin-bottom:4px}
   .cprevcard{display:flex;gap:11px;align-items:center;padding:11px}
@@ -192,6 +195,7 @@
   <div class="head">
     <h1><span class="dot"></span>โปรโมชัน Terry</h1>
     <span class="muted" style="font-size:12px">ราคาโปรแต่ละแคมเปญ · อ่านสดจาก Master Promotion Plan + Promotion TT (รูปสินค้าแมพอัตโนมัติ)</span>
+    <select id="monthSel" class="monthsel hidden" title="เลือกเดือนของโปรโมชัน"></select>
   </div>
   <p class="sub" id="sub">เลือกแคมเปญเพื่อดูราคาโปรของแต่ละรายการ · ราคาเต็มจะขีดฆ่าและแสดงส่วนที่ประหยัด</p>
   <div class="msg" id="msg">กำลังโหลดข้อมูลโปรโมชัน…</div>
@@ -239,6 +243,7 @@
       <div class="compright">
         <div class="complbl">ตัวอย่างโปรฯ</div>
         <div class="cprev" id="cprev"></div>
+        <label class="cf"><span>เดือนของโปรฯ</span><select id="cMonth"></select></label>
         <label class="cf"><span>ราคาเต็มรวม (บาท)</span><input type="number" id="cFull" min="0"></label>
         <label class="cf"><span>ราคาโปร (บาท)</span><input type="number" id="cPromo" min="0"></label>
         <label class="cf"><span>ของแถม (GWP)</span><input type="text" id="cGwp" placeholder="เช่น 499 free sticker"></label>
@@ -299,6 +304,14 @@ const CAMP=[
 ];
 let ITEMS=[], SEL=CAMP[0].k, TYPE='all', VIEW='cards', SRCH='';
 
+// ---- month dimension: keep each month's promos separate ----
+const MTH_ABBR={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+const MTH_TH=['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const monthKey=(y,m)=>y+'-'+String(m).padStart(2,'0');
+const monthLabel=key=>{ const [y,m]=String(key).split('-').map(Number); return (MTH_TH[m]||key)+' '+y; };
+let MONTH='', SHEET_MONTH='';
+const availMonths=()=>[...new Set(ITEMS.map(it=>it.month).filter(Boolean))].sort();
+
 // user-picked product images. PROMO_IMG = baked defaults (for permanent/public images);
 // localStorage holds this device's picks and overrides. Keyed by product name.
 const PROMO_IMG = {};
@@ -343,6 +356,11 @@ async function load(){
   const hr=gM.findIndex(r=>r.includes('Name')&&r.some(c=>/ราคาเต็ม/.test(c)));
   if(hr<0) throw new Error('ไม่พบหัวตาราง (Name / ราคาเต็ม)');
   const base=gM[hr].indexOf('Name');
+  // month marker: the row above the header carries a month label (e.g. "Oct") over the campaign block
+  let smon=0; const mrow=gM[hr-1]||[];
+  for(const c of mrow){ const t=String(c||'').trim().toLowerCase().slice(0,3); if(MTH_ABBR[t]){ smon=MTH_ABBR[t]; break; } }
+  const yr=new Date().getFullYear();
+  SHEET_MONTH = monthKey(yr, smon||(new Date().getMonth()+1));
   const occ=new Map();   // disambiguate duplicate (name|sku) rows so each gets a unique uid
   for(let i=hr+1;i<gM.length;i++){const r=gM[i];const name=String(r[base]||'').trim();if(!name||name==='Name')continue;
     const prices={}; CAMP.forEach(cp=>prices[cp.k]=num(r[base+cp.off]));
@@ -353,14 +371,15 @@ async function load(){
     const autoImg = pid ? (cover.get(pid)||'') : '';                              // image via cover sheet
     const bk=name+'|'+sku; const n=occ.get(bk)||0; occ.set(bk,n+1); const uid=bk+'|'+n;
     ITEMS.push({ uid, name, sku, full, prices, tiktok:num(r[base+8]),
-      gwp:String(r[base+9]||'').trim(), remark:String(r[base+10]||'').trim(), isSet, pid, autoImg });
+      gwp:String(r[base+9]||'').trim(), remark:String(r[base+10]||'').trim(), isSet, pid, autoImg, month:SHEET_MONTH });
   }
 }
 
+const inMonth=it=>!MONTH||it.month===MONTH;
 function filtered(){
-  return ITEMS.filter(it=>(TYPE==='all'||(TYPE==='set'?it.isSet:!it.isSet)) && (showHidden || !isHidden(it)));
+  return ITEMS.filter(it=>inMonth(it) && (TYPE==='all'||(TYPE==='set'?it.isSet:!it.isSet)) && (showHidden || !isHidden(it)));
 }
-function campCount(k){return ITEMS.filter(it=>it.prices[k]>0).length;}
+function campCount(k){return ITEMS.filter(it=>inMonth(it) && it.prices[k]>0).length;}
 
 function renderChips(){
   $('#camps').innerHTML=CAMP.map(cp=>{const on=cp.k===SEL;
@@ -369,16 +388,25 @@ function renderChips(){
   $('#camps').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{SEL=b.dataset.k;renderChips();renderCards();});
 }
 
+function renderMonthSel(){ const sel=$('#monthSel'); if(!sel)return; const months=availMonths();
+  sel.classList.remove('hidden');   // always show so the active month is visible
+  sel.innerHTML=months.map(k=>`<option value="${k}" ${k===MONTH?'selected':''}>📅 ${esc(monthLabel(k))}</option>`).join('');
+}
+// composer month options: active month + sheet month + next 12 months, de-duped & sorted
+function cMonthOptions(){ const now=new Date(); const set=new Set([MONTH,SHEET_MONTH].filter(Boolean));
+  for(let i=0;i<12;i++){ const d=new Date(now.getFullYear(),now.getMonth()+i,1); set.add(monthKey(d.getFullYear(),d.getMonth()+1)); }
+  return [...set].sort(); }
 const baseOf=it=>it.full>0?it.full:(it.prices.AWO||0);          // reference price: full, else AWO
 const saveOf=it=>{const b=baseOf(it),n=it.prices[SEL];return b>0&&n>0?b-n:0;};
 const tile=(k,v,s)=>`<div class="ktile"><div class="kk">${esc(k)}</div><div class="kv">${v}</div><div class="ks" title="${esc(s)}">${esc(s)}</div></div>`;
 function renderKPI(){
-  const avail=ITEMS.filter(it=>it.prices[SEL]>0);
+  const monthItems=ITEMS.filter(inMonth);
+  const avail=monthItems.filter(it=>it.prices[SEL]>0);
   const onlyLive=avail.filter(it=>/only live/i.test(it.remark)).length;
   let maxS=0,maxN='',minP=Infinity,minN='';
   avail.forEach(it=>{const s=saveOf(it),n=it.prices[SEL]; if(s>maxS){maxS=s;maxN=it.name;} if(n>0&&n<minP){minP=n;minN=it.name;}});
   $('#kpi').innerHTML =
-    tile('รายการที่มีโปรช่วงนี้', fmt(avail.length), 'จากทั้งหมด '+ITEMS.length+' รายการ')+
+    tile('รายการที่มีโปรช่วงนี้', fmt(avail.length), 'จากทั้งหมด '+monthItems.length+' รายการ')+
     tile('เฉพาะในไลฟ์', fmt(onlyLive), 'รายการ Only Live')+
     tile('ประหยัดสูงสุด', maxS>0?'฿'+fmt(maxS):'—', maxN||'—')+
     tile('ราคาเริ่มต้น', minP<Infinity?'฿'+fmt(minP):'—', minN||'—');
@@ -509,7 +537,7 @@ $('#cards').addEventListener('click',e=>{ const b=e.target.closest('[data-act]')
   else openPicker(key,b.dataset.label||key); });
 $('#mainSrch').addEventListener('input',e=>{ SRCH=e.target.value; renderCards(); });
 $('#hiddenBtn').addEventListener('click',()=>{ showHidden=!showHidden; $('#hiddenBtn').classList.toggle('on',showHidden); rerender(); });
-function updateHiddenBtn(){ const n=ITEMS.filter(isHidden).length; const el=$('#hiddenCount'); if(el) el.textContent=n?'('+n+')':''; }
+function updateHiddenBtn(){ const n=ITEMS.filter(it=>inMonth(it)&&isHidden(it)).length; const el=$('#hiddenCount'); if(el) el.textContent=n?'('+n+')':''; }
 $('#exportBtn').addEventListener('click',()=>{ const ls={}; for(const k in IMG){ if(IMG[k]&&IMG[k]!==PROMO_IMG[k]) ls[k]=IMG[k]; }
   const json=JSON.stringify(ls); if(navigator.clipboard)navigator.clipboard.writeText(json).catch(()=>{});
   alert('คัดลอกรูปที่เลือก '+Object.keys(ls).length+' รายการแล้ว\n\nส่งข้อความด้านล่างนี้ให้ผม แล้วผมจะฝังให้ถาวร (คนอื่นจะเห็นรูปด้วย):\n\n'+json); });
@@ -523,6 +551,7 @@ function baseList(){ return BASE_NAMES.map(bn=>{ const nb=normNm(bn);
 function openComposer(){ COMPBASE=baseList(); const opts='<option value="">— เลือกสินค้า —</option>'+COMPBASE.map((p,i)=>`<option value="${i}">${esc(p.name)}</option>`).join('');
   $('#compRows').innerHTML=Array.from({length:5},(_,i)=>`<div class="crow"><select class="cprod" data-i="${i}">${opts}</select><input type="number" class="cqty" data-i="${i}" value="1" min="1"></div>`).join('');
   $('#compRows').querySelectorAll('select,input').forEach(el=>el.addEventListener('input',updatePreview));
+  $('#cMonth').innerHTML=cMonthOptions().map(k=>`<option value="${k}" ${k===MONTH?'selected':''}>${esc(monthLabel(k))}</option>`).join('');
   $('#cFull').value='';$('#cPromo').value='';$('#cGwp').value='';$('#cRemark').value='';
   updatePreview(); $('#composer').classList.remove('hidden'); }
 function closeComposer(){ $('#composer').classList.add('hidden'); }
@@ -540,9 +569,12 @@ function addComposer(){ const parts=compParts(); if(!parts.length){ alert('เ�
   const {full:sF,awo:sA}=compSums(parts); const full=num($('#cFull').value)||sF, promo=num($('#cPromo').value)||sA;
   const prices={}; CAMP.forEach(c=>prices[c.k]=promo);
   const cid='c'+Date.now();
+  const mon=$('#cMonth').value||MONTH||SHEET_MONTH;
   const item={ uid:cid, name:compName(parts), sku:'', full, prices, gwp:$('#cGwp').value.trim(), remark:$('#cRemark').value.trim(),
-    isSet:parts.length>1||parts[0].qty>1, pid:'', autoImg:parts[0].img||'', custom:true, cid };
-  CUSTOM.push(item); saveCustom(); ITEMS.push(item); closeComposer(); renderChips(); renderCards(); }
+    isSet:parts.length>1||parts[0].qty>1, pid:'', autoImg:parts[0].img||'', custom:true, cid, month:mon };
+  CUSTOM.push(item); saveCustom(); ITEMS.push(item);
+  MONTH=mon;   // jump to the month we just added to, so the new promo is visible
+  closeComposer(); renderMonthSel(); renderChips(); renderCards(); }
 $('#newBtn').addEventListener('click',openComposer);
 $('#compX').addEventListener('click',closeComposer);
 $('#composer').addEventListener('click',e=>{ if(e.target.id==='composer')closeComposer(); });
@@ -554,15 +586,17 @@ $('#typeTog').addEventListener('click',e=>{const b=e.target.closest('button');if
   renderChips();VIEW==='cards'?renderCards():renderTable();});
 $('#viewTog').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
   VIEW=b.dataset.v;[...$('#viewTog').children].forEach(x=>x.classList.toggle('on',x===b));applyView();});
+$('#monthSel').addEventListener('change',e=>{ MONTH=e.target.value; updateHiddenBtn(); renderChips(); VIEW==='cards'?renderCards():renderTable(); });
 
 (async()=>{try{await load(); loadImg(); loadPST(); loadPHID(); loadCustom();
-  CUSTOM.forEach(c=>{ if(!c.uid) c.uid=c.cid||('c'+Math.random().toString(36).slice(2)); });   // backfill uid for older saved promos
+  CUSTOM.forEach(c=>{ if(!c.uid) c.uid=c.cid||('c'+Math.random().toString(36).slice(2)); if(!c.month) c.month=SHEET_MONTH; });   // backfill uid+month for older saved promos
   if(CUSTOM.length)ITEMS.push(...CUSTOM);
   if(!ITEMS.length){$('#msg').className='msg err';$('#msg').textContent='ไม่พบรายการโปรโมชันในชีต';return;}
+  MONTH=SHEET_MONTH;   // start on the sheet's month
   // default to the campaign with the most prices
   SEL=CAMP.slice().sort((a,b)=>campCount(b.k)-campCount(a.k))[0].k;
   $('#sub').textContent=`สรุปราคาโปรสำหรับไลฟ์ · เลือกช่วงแคมเปญด้านล่างเพื่อดูราคาของช่วงนั้น · กด "คัดลอกคำพูด" ไว้ใช้พูดตอนไลฟ์`;
-  renderChips();renderCards();updateCount();updateHiddenBtn();
+  renderMonthSel();renderChips();renderCards();updateCount();updateHiddenBtn();
   $('#msg').style.display='none';$('#result').hidden=false;
 }catch(e){$('#msg').className='msg err';$('#msg').textContent='ผิดพลาด: '+((e&&e.message)||e);}})();
 </script>
