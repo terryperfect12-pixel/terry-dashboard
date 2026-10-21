@@ -20,7 +20,7 @@
   }}
   *{box-sizing:border-box} html,body{margin:0}
   body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1280px;margin:0 auto;padding:16px 20px 64px}
+  .wrap{max-width:1560px;margin:0 auto;padding:16px 24px 64px}
   a{color:inherit;text-decoration:none}
   .back{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--muted);border:1.5px solid var(--line-2);border-radius:9px;padding:6px 11px;margin-bottom:14px}
   .back:hover{background:var(--surface-2);color:var(--ink)}
@@ -96,7 +96,7 @@
   .grp-h{display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:800;margin-bottom:8px}
   .grp-h span{font-size:11.5px;font-weight:600;color:var(--muted)}
   .rowtbl{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
-  .rhead,.rrow{display:grid;grid-template-columns:minmax(0,1fr) 96px 104px 128px 172px;align-items:center;gap:10px;padding:10px 14px}
+  .rhead,.rrow{display:grid;grid-template-columns:minmax(0,1fr) 128px 140px 150px 48px;align-items:center;gap:12px;padding:11px 16px}
   .rhead{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);background:var(--surface-2)}
   .rhead span:nth-child(n+2),.rrow>div:nth-child(n+2){text-align:right}
   .rrow{border-top:1px solid var(--line)}
@@ -110,9 +110,9 @@
   .rinfo{min-width:0}
   .rname{font-size:13px;font-weight:700;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .rtags{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px}
-  .rfull{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
-  .rfull.strike{text-decoration:line-through}
-  .rnow{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}
+  .rfull{font-size:16px;font-weight:600;color:var(--ink-2);font-variant-numeric:tabular-nums}
+  .rfull.strike{text-decoration:line-through;color:var(--muted);font-weight:500}
+  .rnow{font-size:21px;font-weight:800;font-variant-numeric:tabular-nums}
   .rsave{font-variant-numeric:tabular-nums}
   .ract{display:flex;gap:6px;justify-content:flex-end;align-items:center}
   .rcopy{border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink);border-radius:8px;padding:6px 10px;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap}
@@ -394,7 +394,6 @@ function rowHtml(it,cp){
     <div class="rnow" style="color:${cp.c}">฿${fmt(now)}</div>
     <div>${save>0?`<span class="save">-฿${fmt(save)} · ${pct}%</span>`:'<span class="muted">–</span>'}</div>
     <div class="ract">
-      <button class="rcopy" data-act="copy" data-k="${k}">📋 คัดลอกคำพูด</button>
       <button class="rhide" data-act="${it.custom?'delpromo':'hide'}" data-k="${k}" title="${it.custom?'ลบโปรฯ นี้':(closed?'เปิดตะกร้า':'ปิดตะกร้า')}">${it.custom?'🗑':(closed?'↺':'✕')}</button>
     </div>
   </div>`;
