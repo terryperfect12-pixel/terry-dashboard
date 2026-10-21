@@ -185,8 +185,8 @@
 
     <div class="grid2">
       <div class="card" style="margin-top:16px">
-        <h2>📦 สินค้าที่ถูกยกเลิกบ่อย</h2>
-        <p class="cnote">ตามจำนวนรายการสินค้า (SKU) ในออเดอร์ที่ยกเลิก · คลิกเพื่อกรอง</p>
+        <h2 id="prodTitle">📦 สินค้าที่ถูกยกเลิก</h2>
+        <p class="cnote" id="prodNote">ตามจำนวนรายการสินค้า (SKU) ในออเดอร์ที่ยกเลิก · คลิกเพื่อกรอง</p>
         <div class="tblwrap"><table id="prodTbl"></table></div>
       </div>
       <div class="card" style="margin-top:16px">
@@ -329,10 +329,19 @@ function render(){
   // products
   const prodMap=new Map();
   for(const it of list){ const e=prodMap.get(it.sku)||{sku:it.sku,prod:it.prod,lines:0,qty:0,sub:0,oids:new Set()}; e.lines++; e.qty+=it.qty; e.sub+=it.sub; e.oids.add(it.oid); prodMap.set(it.sku,e); }
-  const prodRows=[...prodMap.values()].sort((a,b)=>b.lines-a.lines).slice(0,20);
-  $('#prodTbl').innerHTML = `<thead><tr><th>สินค้า (SKU)</th><th>ออเดอร์</th><th>ชิ้น</th><th>มูลค่า SKU</th></tr></thead><tbody>`+
-    prodRows.map(e=>`<tr class="${F.prod===e.sku?'act':''}" data-k="${esc(e.sku)}"><td><b>${esc(e.sku)}</b><div class="muted" style="font-size:11px;max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.prod)}</div></td><td>${fmt(e.oids.size)}</td><td>${fmt(e.qty)}</td><td>${bahtT(e.sub)}</td></tr>`).join('')+`</tbody>`;
+  const allProd=[...prodMap.values()].sort((a,b)=>b.lines-a.lines);
+  const prodRows=allProd.slice(0,20);
+  const totQty=allProd.reduce((s,e)=>s+e.qty,0), totSub=allProd.reduce((s,e)=>s+e.sub,0);
+  $('#prodTbl').innerHTML = `<thead><tr><th>สินค้า (SKU)</th><th>ออเดอร์</th><th>ชิ้น</th><th>ยอดขาย (SKU)</th></tr></thead><tbody>`+
+    prodRows.map(e=>`<tr class="${F.prod===e.sku?'act':''}" data-k="${esc(e.sku)}"><td><b>${esc(e.sku)}</b><div class="muted" style="font-size:11px;max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.prod)}</div></td><td>${fmt(e.oids.size)}</td><td>${fmt(e.qty)}</td><td>${bahtT(e.sub)}</td></tr>`).join('')+`</tbody>`+
+    `<tfoot><tr style="font-weight:800;border-top:2px solid var(--line-2)"><td>รวม${allProd.length>20?' (แสดง 20 อันดับแรก จาก '+fmt(allProd.length)+' SKU)':''}</td><td>${fmt(totOrders)}</td><td>${fmt(totQty)}</td><td>${bahtT(totSub)}</td></tr></tfoot>`;
   $('#prodTbl').querySelectorAll('tr[data-k]').forEach(tr=>tr.onclick=()=>toggle('prod',tr.dataset.k));
+  // day/filter context for the product window
+  const ctx=filterCtx();
+  $('#prodTitle').innerHTML = ctx ? `📦 สินค้าที่ยกเลิก — <span style="color:var(--bad)">${esc(ctx)}</span>` : '📦 สินค้าที่ยกเลิก';
+  $('#prodNote').innerHTML = ctx
+    ? `เฉพาะ <b>${esc(ctx)}</b> · ${fmt(totOrders)} ออเดอร์ · ${fmt(totLines)} รายการสินค้า · <b>มูลค่าออเดอร์ที่ยกเลิกรวม ${bahtT(totAmt)}</b> · คลิกสินค้าเพื่อกรองต่อ`
+    : 'ตามจำนวนรายการสินค้า (SKU) ในออเดอร์ที่ยกเลิก · คลิกเพื่อกรอง หรือคลิกวันในกราฟด้านบนเพื่อดูเฉพาะวันนั้น';
 
   // provinces
   const provRows=[...groupOrders(list,o=>o.prov).entries()].sort((a,b)=>b[1].orders-a[1].orders).slice(0,15);
@@ -369,6 +378,17 @@ function renderBars(sel,entries,tot,labelFn,activeKey,onClick,split,color){
 }
 
 const pad2=n=>String(n).padStart(2,'0');
+// readable label of the active filters (for the product window context)
+function filterCtx(){
+  const p=[];
+  if(F.day) p.push('วันที่ '+dLabel(F.day));
+  if(F.paid==='paid') p.push('ชำระแล้ว'); else if(F.paid==='unpaid') p.push('ยังไม่ชำระ');
+  if(F.by!=='all') p.push('ยกเลิกโดย'+(BYLBL[F.by]||F.by));
+  if(F.reason) p.push(F.reason);
+  if(F.pay) p.push(F.pay);
+  if(F.prov) p.push(F.prov);
+  return p.join(' · ');
+}
 function renderHours(list){
   const ords=orders(list);
   const cre=Array(24).fill(0),can=Array(24).fill(0);
