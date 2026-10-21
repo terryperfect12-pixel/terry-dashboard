@@ -183,17 +183,10 @@
       <div class="hours" id="hours"></div>
     </div>
 
-    <div class="grid2">
-      <div class="card" style="margin-top:16px">
-        <h2 id="prodTitle">📦 สินค้าที่ถูกยกเลิก</h2>
-        <p class="cnote" id="prodNote">ตามจำนวนรายการสินค้า (SKU) ในออเดอร์ที่ยกเลิก · คลิกเพื่อกรอง</p>
-        <div class="tblwrap"><table id="prodTbl"></table></div>
-      </div>
-      <div class="card" style="margin-top:16px">
-        <h2>📍 จังหวัดที่ยกเลิกมากสุด</h2>
-        <p class="cnote">ตามจำนวนออเดอร์ (ระดับจังหวัดเท่านั้น) · คลิกเพื่อกรอง</p>
-        <div class="tblwrap"><table id="provTbl"></table></div>
-      </div>
+    <div class="card">
+      <h2 id="prodTitle">📦 สินค้าที่ถูกยกเลิก</h2>
+      <p class="cnote" id="prodNote">ตามจำนวนรายการสินค้า (SKU) ในออเดอร์ที่ยกเลิก · คลิกหัวคอลัมน์เพื่อเรียงลำดับ · คลิกแถวเพื่อกรอง</p>
+      <div class="tblwrap" style="max-height:640px"><table id="prodTbl"></table></div>
     </div>
 
     <div class="card">
@@ -218,6 +211,7 @@ const dLabel=iso=>{const m=/^(\d+)-(\d+)-(\d+)/.exec(iso||'');return m?(+m[3])+'
 
 let ITEMS=[], BYLBL=['ลูกค้า','ระบบ','แอดมิน','อื่นๆ'];
 let F={paid:'all', by:'all', reason:null, pay:null, prod:null, prov:null, day:null, search:''};
+let prodSort={k:'ord', dir:-1};   // product table sort: ord/qty/sub/name, dir -1=desc 1=asc
 
 // ---- load baked snapshot (dictionary-encoded, PII-free) ----
 function decode(json){
@@ -329,25 +323,25 @@ function render(){
   // products
   const prodMap=new Map();
   for(const it of list){ const e=prodMap.get(it.sku)||{sku:it.sku,prod:it.prod,lines:0,qty:0,sub:0,oids:new Set()}; e.lines++; e.qty+=it.qty; e.sub+=it.sub; e.oids.add(it.oid); prodMap.set(it.sku,e); }
-  const allProd=[...prodMap.values()].sort((a,b)=>b.lines-a.lines);
-  const prodRows=allProd.slice(0,20);
+  const allProd=[...prodMap.values()];
+  const SK={name:e=>e.sku, ord:e=>e.oids.size, qty:e=>e.qty, sub:e=>e.sub};
+  allProd.sort((a,b)=>{ const va=SK[prodSort.k](a), vb=SK[prodSort.k](b);
+    const c = (prodSort.k==='name') ? String(va).localeCompare(String(vb),'th') : (va-vb); return c*prodSort.dir; });
   const totQty=allProd.reduce((s,e)=>s+e.qty,0), totSub=allProd.reduce((s,e)=>s+e.sub,0);
-  $('#prodTbl').innerHTML = `<thead><tr><th>สินค้า (SKU)</th><th>ออเดอร์</th><th>ชิ้น</th><th>ยอดขาย (SKU)</th></tr></thead><tbody>`+
-    prodRows.map(e=>`<tr class="${F.prod===e.sku?'act':''}" data-k="${esc(e.sku)}"><td><b>${esc(e.sku)}</b><div class="muted" style="font-size:11px;max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.prod)}</div></td><td>${fmt(e.oids.size)}</td><td>${fmt(e.qty)}</td><td>${bahtT(e.sub)}</td></tr>`).join('')+`</tbody>`+
-    `<tfoot><tr style="font-weight:800;border-top:2px solid var(--line-2)"><td>รวม${allProd.length>20?' (แสดง 20 อันดับแรก จาก '+fmt(allProd.length)+' SKU)':''}</td><td>${fmt(totOrders)}</td><td>${fmt(totQty)}</td><td>${bahtT(totSub)}</td></tr></tfoot>`;
+  const sortArrow=k=>prodSort.k===k?(prodSort.dir===-1?' ▼':' ▲'):' ⇅';
+  const th=(k,label,left)=>`<th data-sort="${k}" style="cursor:pointer;user-select:none;${left?'text-align:left':''}">${label}<span style="color:${prodSort.k===k?'var(--accent)':'var(--muted)'};font-size:10px">${sortArrow(k)}</span></th>`;
+  $('#prodTbl').innerHTML = `<thead><tr>${th('name','สินค้า (SKU)',1)}${th('ord','ออเดอร์')}${th('qty','ชิ้น')}${th('sub','ยอดขาย (SKU)')}</tr></thead><tbody>`+
+    allProd.map(e=>`<tr class="${F.prod===e.sku?'act':''}" data-k="${esc(e.sku)}"><td><b>${esc(e.sku)}</b><div class="muted" style="font-size:11px;max-width:900px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.prod)}</div></td><td>${fmt(e.oids.size)}</td><td>${fmt(e.qty)}</td><td>${bahtT(e.sub)}</td></tr>`).join('')+`</tbody>`+
+    `<tfoot><tr style="font-weight:800;border-top:2px solid var(--line-2)"><td>รวม (${fmt(allProd.length)} SKU)</td><td>${fmt(totOrders)}</td><td>${fmt(totQty)}</td><td>${bahtT(totSub)}</td></tr></tfoot>`;
   $('#prodTbl').querySelectorAll('tr[data-k]').forEach(tr=>tr.onclick=()=>toggle('prod',tr.dataset.k));
+  $('#prodTbl').querySelectorAll('th[data-sort]').forEach(h=>h.onclick=()=>{ const k=h.dataset.sort;
+    if(prodSort.k===k) prodSort.dir*=-1; else { prodSort.k=k; prodSort.dir=(k==='name')?1:-1; } render(); });
   // day/filter context for the product window
   const ctx=filterCtx();
-  $('#prodTitle').innerHTML = ctx ? `📦 สินค้าที่ยกเลิก — <span style="color:var(--bad)">${esc(ctx)}</span>` : '📦 สินค้าที่ยกเลิก';
+  $('#prodTitle').innerHTML = ctx ? `📦 สินค้าที่ถูกยกเลิก — <span style="color:var(--bad)">${esc(ctx)}</span>` : '📦 สินค้าที่ถูกยกเลิก';
   $('#prodNote').innerHTML = ctx
-    ? `เฉพาะ <b>${esc(ctx)}</b> · ${fmt(totOrders)} ออเดอร์ · ${fmt(totLines)} รายการสินค้า · <b>มูลค่าออเดอร์ที่ยกเลิกรวม ${bahtT(totAmt)}</b> · คลิกสินค้าเพื่อกรองต่อ`
-    : 'ตามจำนวนรายการสินค้า (SKU) ในออเดอร์ที่ยกเลิก · คลิกเพื่อกรอง หรือคลิกวันในกราฟด้านบนเพื่อดูเฉพาะวันนั้น';
-
-  // provinces
-  const provRows=[...groupOrders(list,o=>o.prov).entries()].sort((a,b)=>b[1].orders-a[1].orders).slice(0,15);
-  $('#provTbl').innerHTML = `<thead><tr><th>จังหวัด</th><th>ออเดอร์</th><th>มูลค่า</th><th>%</th></tr></thead><tbody>`+
-    provRows.map(([k,e])=>`<tr class="${F.prov===k?'act':''}" data-k="${esc(k)}"><td>${esc(k)}</td><td>${fmt(e.orders)}</td><td>${bahtT(e.amt)}</td><td class="muted">${pct(e.orders,totOrders)}%</td></tr>`).join('')+`</tbody>`;
-  $('#provTbl').querySelectorAll('tr[data-k]').forEach(tr=>tr.onclick=()=>toggle('prov',tr.dataset.k));
+    ? `เฉพาะ <b>${esc(ctx)}</b> · ${fmt(totOrders)} ออเดอร์ · ${fmt(totLines)} รายการสินค้า · <b>มูลค่าออเดอร์ที่ยกเลิกรวม ${bahtT(totAmt)}</b> · คลิกหัวคอลัมน์เพื่อเรียง · คลิกแถวเพื่อกรองต่อ`
+    : 'ตามจำนวนรายการสินค้า (SKU) ในออเดอร์ที่ยกเลิก · คลิกหัวคอลัมน์เพื่อเรียงลำดับ · คลิกแถวเพื่อกรอง หรือคลิกวันในกราฟด้านบนเพื่อดูเฉพาะวันนั้น';
 
   // detailed reason table
   const rr=[...rg.entries()].sort((a,b)=>b[1].amt-a[1].amt);
