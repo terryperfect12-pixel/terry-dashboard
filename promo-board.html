@@ -137,6 +137,10 @@
   .cpp{font-size:18px;font-weight:800;margin-top:3px} .cpp s{font-size:13px;font-weight:400}
   .cadd{border:0;border-radius:10px;background:var(--accent);color:#fff;font:inherit;font-size:13.5px;font-weight:800;padding:10px;cursor:pointer;margin-top:4px}
   .cadd:hover{opacity:.92}
+  /* composer docks to the LEFT as a floating panel so the board on the right stays visible & usable */
+  #composer{justify-content:flex-start;align-items:center;background:rgba(0,0,0,.04);backdrop-filter:none;padding:16px 0 16px 20px;pointer-events:none}
+  #composer .sheet{pointer-events:auto;box-shadow:0 18px 60px rgba(0,0,0,.28)}
+  @media(max-width:860px){ #composer{justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(3px);padding:12px;pointer-events:auto} }
   @media(max-width:640px){ .compbody{grid-template-columns:1fr} .compleft{border-right:0;border-bottom:1px solid var(--line)} }
   .modal{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:12px}
   .sheet{background:var(--surface);border:1px solid var(--line);border-radius:16px;width:100%;max-width:1480px;height:94vh;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
@@ -225,7 +229,7 @@
 
 <!-- create-promo composer modal -->
 <div class="modal hidden" id="composer">
-  <div class="sheet" style="max-width:820px;height:auto;max-height:92vh">
+  <div class="sheet" style="max-width:700px;height:auto;max-height:92vh">
     <div class="sh-top"><b>สร้างโปรโมชันใหม่</b><span class="who">เลือกสินค้าซ้ายมือ → ดูผลด้านขวา</span><button class="xbtn" id="compX">✕</button></div>
     <div class="compbody">
       <div class="compleft">
