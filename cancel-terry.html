@@ -193,6 +193,12 @@
     </div>
 
     <div class="card">
+      <h2>🛒 ตารางช่องทางขาย (แยกตามการชำระเงิน)</h2>
+      <p class="cnote">ออเดอร์ที่ยกเลิกแยกตามช่องทางขาย · ชำระแล้ว = ยอดเสียจริง · พร้อมสาเหตุหลักของแต่ละช่องทาง · คลิกแถวเพื่อกรอง</p>
+      <div class="tblwrap"><table id="chanTbl"></table></div>
+    </div>
+
+    <div class="card">
       <h2>🔎 ตารางสาเหตุแบบละเอียด</h2>
       <p class="cnote">แยกชำระแล้ว/ยังไม่ชำระ เพื่อดูว่าสาเหตุไหนคือ “เสียยอดขายจริง”</p>
       <div class="tblwrap"><table id="reasonTbl"></table></div>
@@ -358,6 +364,17 @@ function render(){
     rr.map(([k,e])=>{const pr=pct(e.paid,e.orders);const cls=pr>=50?'bad':pr>=20?'warn':'good';
       return `<tr class="${F.reason===k?'act':''}" data-k="${esc(k)}"><td>${esc(k)}</td><td>${fmt(e.orders)}</td><td>${bahtT(e.amt)}</td><td>${fmt(e.paid)}</td><td><b>${bahtT(e.paidAmt)}</b></td><td><span class="pill ${cls}">${pr}%</span></td></tr>`;}).join('')+`</tbody>`;
   $('#reasonTbl').querySelectorAll('tr[data-k]').forEach(tr=>tr.onclick=()=>toggle('reason',tr.dataset.k));
+
+  // channel detail table (orders/amount/paid split + top reason per channel)
+  const chMap=new Map();
+  for(const o of ords){ const c=o.chan||'(ไม่ระบุ)'; const e=chMap.get(c)||{orders:0,amt:0,paid:0,paidAmt:0,unpaidAmt:0,reasons:new Map()};
+    e.orders++; e.amt+=o.oamt; if(o.paid){e.paid++;e.paidAmt+=o.oamt;}else e.unpaidAmt+=o.oamt;
+    e.reasons.set(o.reason,(e.reasons.get(o.reason)||0)+1); chMap.set(c,e); }
+  const chRows=[...chMap.entries()].sort((a,b)=>b[1].orders-a[1].orders);
+  $('#chanTbl').innerHTML = `<thead><tr><th>ช่องทางขาย</th><th>ออเดอร์</th><th>%</th><th>มูลค่ารวม</th><th>ยังไม่ชำระ</th><th>ยอดเสียจริง (ชำระแล้ว)</th><th>%ชำระแล้ว</th><th>สาเหตุหลัก</th></tr></thead><tbody>`+
+    chRows.map(([k,e])=>{const pr=pct(e.paid,e.orders); const top=[...e.reasons.entries()].sort((a,b)=>b[1]-a[1])[0]; const topTxt=top?`${top[0]} (${fmt(top[1])})`:'—';
+      return `<tr class="${F.chan===k?'act':''}" data-k="${esc(k)}"><td><b>${esc(CHLBL[k]||k)}</b></td><td>${fmt(e.orders)}</td><td class="muted">${pct(e.orders,totOrders)}%</td><td>${bahtT(e.amt)}</td><td>${bahtT(e.unpaidAmt)}</td><td><b>${bahtT(e.paidAmt)}</b></td><td><span class="pill ${pr>=50?'bad':pr>=20?'warn':'good'}">${pr}%</span></td><td style="text-align:left;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(topTxt)}</td></tr>`;}).join('')+`</tbody>`;
+  $('#chanTbl').querySelectorAll('tr[data-k]').forEach(tr=>tr.onclick=()=>toggle('chan',tr.dataset.k));
 
   renderChips(); syncSegs();
   $('#foot').innerHTML = `ที่มา: รายงานออเดอร์ TikTok Shop (เฉพาะที่ยกเลิก) · แบรนด์ Terry · งวด ${esc(PERIOD)} · ข้อมูลนี้ตัดชื่อ/เบอร์/ที่อยู่ลูกค้าออกทั้งหมด แสดงเฉพาะสาเหตุ·วันที่·ยอดเงิน·สินค้า·จังหวัด · มูลค่าระดับออเดอร์นับแบบไม่ซ้ำ (${fmt(ITEMS.length)} รายการสินค้า จาก ${fmt(orders(ITEMS).length)} ออเดอร์)`;
