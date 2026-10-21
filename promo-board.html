@@ -79,6 +79,47 @@
   .tag.live{background:color-mix(in oklab,var(--bad) 13%,var(--surface));color:var(--bad)}
   .tag.best{background:color-mix(in oklab,var(--good) 16%,var(--surface));color:var(--good)}
   .empty{padding:40px;text-align:center;color:var(--muted);font-size:14px}
+
+  /* top row: campaign pills + search */
+  .toprow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:16px 0 12px}
+  .toprow .chips{flex:1;min-width:240px}
+  .main-srch{min-width:230px;flex:none}
+  .chip .chint{font-size:10px;opacity:.6;font-weight:600;margin-left:1px}
+  /* KPI tiles */
+  .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:10px;margin-bottom:12px}
+  .ktile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 14px}
+  .ktile .kk{font-size:11px;color:var(--muted);font-weight:600}
+  .ktile .kv{font-size:23px;font-weight:800;margin-top:3px;font-variant-numeric:tabular-nums;line-height:1.1}
+  .ktile .ks{font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* grouped row list */
+  .grp{margin-top:16px}
+  .grp-h{display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:800;margin-bottom:8px}
+  .grp-h span{font-size:11.5px;font-weight:600;color:var(--muted)}
+  .rowtbl{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+  .rhead,.rrow{display:grid;grid-template-columns:minmax(0,1fr) 96px 104px 128px 172px;align-items:center;gap:10px;padding:10px 14px}
+  .rhead{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);background:var(--surface-2)}
+  .rhead span:nth-child(n+2),.rrow>div:nth-child(n+2){text-align:right}
+  .rrow{border-top:1px solid var(--line)}
+  .rrow:hover{background:color-mix(in oklab,var(--accent) 4%,var(--surface))}
+  .rrow.closed{opacity:.5}
+  .rprod{display:flex;align-items:center;gap:11px;min-width:0}
+  .rthumb{position:relative;width:54px;height:54px;flex:none;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--surface-2);cursor:pointer;padding:0}
+  .rthumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .rthumb .rph{display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:var(--muted);font-size:16px}
+  .rthumb .rdel{position:absolute;right:0;top:0;background:rgba(190,30,60,.92);color:#fff;font-size:10px;line-height:1;padding:2px 3px;border-bottom-left-radius:6px}
+  .rinfo{min-width:0}
+  .rname{font-size:13px;font-weight:700;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .rtags{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px}
+  .rfull{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .rfull.strike{text-decoration:line-through}
+  .rnow{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}
+  .rsave{font-variant-numeric:tabular-nums}
+  .ract{display:flex;gap:6px;justify-content:flex-end;align-items:center}
+  .rcopy{border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink);border-radius:8px;padding:6px 10px;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .rcopy:hover{border-color:var(--ink-2)} .rcopy.done{background:color-mix(in oklab,var(--good) 16%,var(--surface));color:var(--good);border-color:transparent}
+  .rhide{border:1.5px solid var(--line-2);background:var(--surface);color:var(--muted);border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;flex:none}
+  .rhide:hover{border-color:var(--ink-2);color:var(--ink)}
+  @media(max-width:760px){ .grp{overflow-x:auto} .rowtbl{min-width:680px} }
   .modal{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:12px}
   .sheet{background:var(--surface);border:1px solid var(--line);border-radius:16px;width:100%;max-width:1480px;height:94vh;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
   .sheet .sh-top{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:10px;align-items:center}
@@ -134,8 +175,11 @@
   <div class="msg" id="msg">กำลังโหลดข้อมูลโปรโมชัน…</div>
 
   <div id="result" hidden>
-    <div class="seclbl">เลือกแคมเปญ</div>
-    <div class="chips" id="camps"></div>
+    <div class="toprow">
+      <div class="chips" id="camps"></div>
+      <input class="srch main-srch" id="mainSrch" placeholder="ค้นหาสินค้า เช่น 50ml, สลีปปิ้ง">
+    </div>
+    <div class="kpi" id="kpi"></div>
 
     <div class="ctrls">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -149,7 +193,7 @@
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btnghost" id="exportBtn" title="คัดลอกรูปที่เลือกไปฝังถาวร">💾 รูปที่เลือก <span id="imgCount"></span></button>
         <div class="tog" id="viewTog">
-          <button data-v="cards" class="on">การ์ด</button>
+          <button data-v="cards" class="on">รายการ</button>
           <button data-v="table">ตารางเต็มทุกแคมเปญ</button>
         </div>
       </div>
@@ -201,13 +245,13 @@ const normNm=s=>String(s||'').toLowerCase().replace(/\s+/g,'');
 const firstHttp=row=>{ for(let i=1;i<row.length;i++){ const v=String(row[i]||'').trim(); if(/^https?:\/\//.test(v)) return v; } return ''; };
 // campaign columns are offsets from the "Name" column (base)
 const CAMP=[
-  {k:'AWO',               c:'#8b5cf6', off:3},
-  {k:'Double Day',        c:'#0ea5e9', off:4},
-  {k:'Mid Month (14-16)', c:'#f59e0b', off:5},
-  {k:'Pay Day',           c:'#10b981', off:6},
-  {k:'flash sale CEO live',c:'#ef4444', off:7},
+  {k:'AWO',               c:'#8b5cf6', off:3, hint:'ราคาปกติ'},
+  {k:'Double Day',        c:'#0ea5e9', off:4, hint:'5–10'},
+  {k:'Mid Month (14-16)', c:'#f59e0b', off:5, hint:'14–16'},
+  {k:'Pay Day',           c:'#10b981', off:6, hint:'25–31'},
+  {k:'flash sale CEO live',c:'#ef4444', off:7, hint:'ไลฟ์'},
 ];
-let ITEMS=[], SEL=CAMP[0].k, TYPE='all', VIEW='cards';
+let ITEMS=[], SEL=CAMP[0].k, TYPE='all', VIEW='cards', SRCH='';
 
 // user-picked product images. PROMO_IMG = baked defaults (for permanent/public images);
 // localStorage holds this device's picks and overrides. Keyed by product name.
@@ -269,49 +313,68 @@ function campCount(k){return ITEMS.filter(it=>it.prices[k]>0).length;}
 function renderChips(){
   $('#camps').innerHTML=CAMP.map(cp=>{const on=cp.k===SEL;
     return `<button class="chip ${on?'on':''}" data-k="${esc(cp.k)}" style="${on?`background:${cp.c}`:''}">
-      <span class="cdot" style="background:${cp.c}"></span>${esc(cp.k)} <span class="cnt">${campCount(cp.k)}</span></button>`;}).join('');
+      <span class="cdot" style="background:${cp.c}"></span>${esc(cp.k)}<span class="chint">${esc(cp.hint||'')}</span> <span class="cnt">${campCount(cp.k)}</span></button>`;}).join('');
   $('#camps').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{SEL=b.dataset.k;renderChips();renderCards();});
 }
 
+const baseOf=it=>it.full>0?it.full:(it.prices.AWO||0);          // reference price: full, else AWO
+const saveOf=it=>{const b=baseOf(it),n=it.prices[SEL];return b>0&&n>0?b-n:0;};
+const tile=(k,v,s)=>`<div class="ktile"><div class="kk">${esc(k)}</div><div class="kv">${v}</div><div class="ks" title="${esc(s)}">${esc(s)}</div></div>`;
+function renderKPI(){
+  const avail=ITEMS.filter(it=>it.prices[SEL]>0);
+  const onlyLive=avail.filter(it=>/only live/i.test(it.remark)).length;
+  let maxS=0,maxN='',minP=Infinity,minN='';
+  avail.forEach(it=>{const s=saveOf(it),n=it.prices[SEL]; if(s>maxS){maxS=s;maxN=it.name;} if(n>0&&n<minP){minP=n;minN=it.name;}});
+  $('#kpi').innerHTML =
+    tile('รายการที่มีโปรช่วงนี้', fmt(avail.length), 'จากทั้งหมด '+ITEMS.length+' รายการ')+
+    tile('เฉพาะในไลฟ์', fmt(onlyLive), 'รายการ Only Live')+
+    tile('ประหยัดสูงสุด', maxS>0?'฿'+fmt(maxS):'—', maxN||'—')+
+    tile('ราคาเริ่มต้น', minP<Infinity?'฿'+fmt(minP):'—', minN||'—');
+}
+function rowHtml(it,cp){
+  const now=it.prices[SEL], base=baseOf(it), save=saveOf(it), pct=base>0?Math.round(save/base*100):0;
+  const liveRm=/only live|live/i.test(it.remark);
+  const allP=Object.values(it.prices).filter(v=>v>0); const minP=allP.length?Math.min(...allP):0; const best=now>0&&now===minP&&allP.length>1;
+  const k=esc(imgKey(it)), lbl=esc(it.name), img=displayImg(it), manual=!!IMG[imgKey(it)], closed=isHidden(it);
+  return `<div class="rrow ${closed?'closed':''}">
+    <div class="rprod">
+      <button class="rthumb" data-act="pick" data-k="${k}" data-label="${lbl}" title="เลือก/เปลี่ยนรูป">${img?imgTag(img,'',true):'<span class="rph">📷</span>'}${manual?`<span class="rdel" data-act="delimg" data-k="${k}" title="ลบรูป">🗑</span>`:''}</button>
+      <div class="rinfo">
+        <div class="rname" title="${lbl}">${esc(it.name)}</div>
+        <div class="rtags">${it.sku?`<span class="sku">${esc(it.sku)}</span>`:''}${best?`<span class="tag best">⭐ ถูกสุด</span>`:''}${it.gwp?`<span class="tag gwp">🎁 ${esc(it.gwp)}</span>`:''}${it.remark?`<span class="tag ${liveRm?'live':'rm'}">${liveRm?'🔴 ':''}${esc(it.remark)}</span>`:''}</div>
+      </div>
+    </div>
+    <div>${it.full>0?`<span class="rfull strike">฿${fmt(it.full)}</span>`:(it.prices.AWO>0?`<span class="rfull">AWO ${fmt(it.prices.AWO)}</span>`:'<span class="muted">—</span>')}</div>
+    <div class="rnow" style="color:${cp.c}">฿${fmt(now)}</div>
+    <div>${save>0?`<span class="save">-฿${fmt(save)} · ${pct}%</span>`:'<span class="muted">–</span>'}</div>
+    <div class="ract">
+      <button class="rcopy" data-act="copy" data-k="${k}">📋 คัดลอกคำพูด</button>
+      <button class="rhide" data-act="hide" data-k="${k}" title="${closed?'เปิดตะกร้า':'ปิดตะกร้า'}">${closed?'↺':'✕'}</button>
+    </div>
+  </div>`;
+}
 function renderCards(){
   const cp=CAMP.find(c=>c.k===SEL);
-  const list=filtered().filter(it=>it.prices[SEL]>0)
-    .map(it=>{const now=it.prices[SEL], save=it.full>0?it.full-now:0;
-      const allP=Object.values(it.prices).filter(v=>v>0); const minP=allP.length?Math.min(...allP):0;
-      return {...it, now, save, best:now>0&&now===minP&&allP.length>1};})
-    .sort((a,b)=>b.save-a.save || a.now-b.now);
-  if(!list.length){ $('#cards').innerHTML=`<div class="empty">ไม่มีรายการราคาสำหรับแคมเปญนี้</div>`; return; }
-  $('#cards').innerHTML=`<div class="grid">`+list.map(it=>{
-    const pct=it.full>0?Math.round(it.save/it.full*100):0;
-    const liveRm=/only live|live/i.test(it.remark);
-    const kAttr=esc(imgKey(it)), lAttr=esc(it.name), img=displayImg(it);
-    const manual=!!IMG[imgKey(it)], closed=isHidden(it);
-    return `<div class="pc ${closed?'closed':''}">
-      <div class="pimg">
-        ${img?imgTag(img):`<div class="ph">📷 ไม่มีรูป</div>`}
-        <span class="campchip" style="background:${cp.c}">${esc(SEL)}</span>
-        <button class="hidebtn" data-act="hide" data-k="${kAttr}">${closed?'↺ เปิดตะกร้า':'✕ ปิดตะกร้า'}</button>
-        <button class="edit" data-act="pick" data-k="${kAttr}" data-label="${lAttr}">📷 ${img?'เปลี่ยนรูป':'เลือกรูป'}</button>
-        ${manual?`<button class="edit del" data-act="delimg" data-k="${kAttr}">🗑 ลบรูป</button>`:''}
-      </div>
-      <div class="pbody">
-        <div class="nm" title="${lAttr}">${esc(it.name)}</div>
-        <div class="row1">
-          ${it.sku?`<span class="sku">${esc(it.sku)}</span>`:''}
-          <span class="typ ${it.isSet?'set':'single'}">${it.isSet?'เซ็ต/ตะกร้า':'ชิ้นเดียว'}</span>
-          ${it.best?`<span class="tag best">⭐ ถูกสุด</span>`:''}
-        </div>
-        <div class="prices">
-          <span class="pnow" style="color:${cp.c}">฿${fmt(it.now)}</span>
-          ${it.full>0?`<span class="pfull">฿${fmt(it.full)}</span>`:''}
-          ${it.save>0?`<span class="save">-฿${fmt(it.save)} · ${pct}%</span>`:''}
-        </div>
-        <div class="meta">
-          ${it.gwp?`<span class="tag gwp">🎁 ${esc(it.gwp)}</span>`:''}
-          ${it.remark?`<span class="tag ${liveRm?'live':'rm'}">${liveRm?'🔴 ':''}${esc(it.remark)}</span>`:''}
-        </div>
-      </div>
-    </div>`;}).join('')+`</div>`;
+  renderKPI();
+  const s=SRCH.trim().toLowerCase();
+  const list=filtered().filter(it=>it.prices[SEL]>0 && (!s||it.name.toLowerCase().includes(s)||it.sku.toLowerCase().includes(s)));
+  if(!list.length){ $('#cards').innerHTML=`<div class="empty">ไม่มีรายการราคาสำหรับแคมเปญนี้${s?' (ลองล้างคำค้นหา)':''}</div>`; return; }
+  const singles=list.filter(it=>!it.isSet), sets=list.filter(it=>it.isSet);
+  const groups=[]; if(singles.length)groups.push(['สินค้าเดี่ยว',singles]); if(sets.length)groups.push(['เซ็ต / ตะกร้า',sets]);
+  const head=`<div class="rhead"><span>สินค้า</span><span>ราคาเต็ม</span><span style="color:${cp.c}">ราคา ${esc(SEL)}</span><span>ประหยัด</span><span></span></div>`;
+  $('#cards').innerHTML = groups.map(([title,items])=>{
+    items=items.slice().sort((a,b)=>saveOf(b)-saveOf(a) || a.prices[SEL]-b.prices[SEL]);
+    return `<div class="grp"><div class="grp-h">${esc(title)} <span>${items.length} รายการ</span></div>
+      <div class="rowtbl">${head}${items.map(it=>rowHtml(it,cp)).join('')}</div></div>`;
+  }).join('');
+}
+function copyScript(it){
+  const now=it.prices[SEL], base=baseOf(it), save=saveOf(it), pct=base>0?Math.round(save/base*100):0;
+  let s=`🛍️ ${it.name}\n💰 ${SEL}: ${fmt(now)} บาท`;
+  if(save>0) s+=` (ปกติ ${fmt(base)} ลด ${fmt(save)} บาท ${pct}%)`;
+  if(it.gwp) s+=`\n🎁 แถม: ${it.gwp}`;
+  if(it.sku) s+=`\n#${it.sku}`;
+  try{ navigator.clipboard.writeText(s); }catch{}
 }
 
 function renderTable(){
@@ -337,9 +400,9 @@ function applyView(){
   const cards=VIEW==='cards';
   $('#cards').classList.toggle('hidden',!cards);
   $('#table').classList.toggle('hidden',cards);
-  // campaign chips only matter in card view
-  document.querySelector('.seclbl').style.display=cards?'':'none';
-  $('#camps').style.display=cards?'':'none';
+  // campaign pills + KPI are campaign-specific → only in the list view
+  document.querySelector('.toprow').style.display=cards?'':'none';
+  $('#kpi').style.display=cards?'':'none';
   if(cards)renderCards(); else renderTable();
 }
 
@@ -390,7 +453,9 @@ $('#pickGrid').addEventListener('click',e=>{
 $('#cards').addEventListener('click',e=>{ const b=e.target.closest('[data-act]'); if(!b)return; const key=b.dataset.k; const act=b.dataset.act;
   if(act==='delimg'){ delete IMG[key]; saveImg(); rerender(); }
   else if(act==='hide'){ if(PHID[key]) delete PHID[key]; else PHID[key]=1; savePHID(); updateHiddenBtn(); rerender(); }
+  else if(act==='copy'){ const it=ITEMS.find(x=>imgKey(x)===key); if(it){ copyScript(it); const t=b.textContent; b.textContent='✓ คัดลอกแล้ว'; b.classList.add('done'); setTimeout(()=>{b.textContent=t;b.classList.remove('done');},1400); } }
   else openPicker(key,b.dataset.label||key); });
+$('#mainSrch').addEventListener('input',e=>{ SRCH=e.target.value; renderCards(); });
 $('#hiddenBtn').addEventListener('click',()=>{ showHidden=!showHidden; $('#hiddenBtn').classList.toggle('on',showHidden); rerender(); });
 function updateHiddenBtn(){ const n=ITEMS.filter(isHidden).length; const el=$('#hiddenCount'); if(el) el.textContent=n?'('+n+')':''; }
 $('#exportBtn').addEventListener('click',()=>{ const ls={}; for(const k in IMG){ if(IMG[k]&&IMG[k]!==PROMO_IMG[k]) ls[k]=IMG[k]; }
@@ -407,7 +472,7 @@ $('#viewTog').addEventListener('click',e=>{const b=e.target.closest('button');if
   if(!ITEMS.length){$('#msg').className='msg err';$('#msg').textContent='ไม่พบรายการโปรโมชันในชีต';return;}
   // default to the campaign with the most prices
   SEL=CAMP.slice().sort((a,b)=>campCount(b.k)-campCount(a.k))[0].k;
-  $('#sub').textContent=`มี ${ITEMS.length} รายการ · ${CAMP.length} แคมเปญ · เลือกแคมเปญด้านล่างเพื่อดูราคาโปร (ราคาเต็มขีดฆ่า + ส่วนที่ประหยัด)`;
+  $('#sub').textContent=`สรุปราคาโปรสำหรับไลฟ์ · เลือกช่วงแคมเปญด้านล่างเพื่อดูราคาของช่วงนั้น · กด "คัดลอกคำพูด" ไว้ใช้พูดตอนไลฟ์`;
   renderChips();renderCards();updateCount();updateHiddenBtn();
   $('#msg').style.display='none';$('#result').hidden=false;
 }catch(e){$('#msg').className='msg err';$('#msg').textContent='ผิดพลาด: '+((e&&e.message)||e);}})();
