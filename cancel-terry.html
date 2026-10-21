@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>วิเคราะห์การยกเลิกคำสั่งซื้อ — Terry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f7f9; --surface:#ffffff; --surface-2:#f1f3f6; --line:#e5e8ec; --line-2:#d3d8df;
+    --ink:#121619; --ink-2:#3b434c; --muted:#8a929c; --accent:#2563eb;
+    --good:#16a34a; --bad:#e11d48; --warn:#d97706; --purple:#8b5cf6;
+    --f:"Sarabun","TH Sarabun New","Segoe UI",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#0f1317; --surface:#171c22; --surface-2:#1e242c; --line:#2a313a; --line-2:#394250;
+    --ink:#eef1f4; --ink-2:#c3cad2; --muted:#8893a0; --accent:#5b9bff;
+  }}
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1620px;margin:0;padding:16px 22px 72px}
+  .muted{color:var(--muted)}
+  /* header */
+  .head{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
+  .head h1{font-size:21px;font-weight:800;margin:0;display:flex;align-items:center;gap:9px}
+  .dot{width:11px;height:11px;border-radius:50%;background:var(--bad)}
+  .badge{font-size:11px;font-weight:800;color:#fff;background:var(--accent);border-radius:7px;padding:3px 9px}
+  .sub{font-size:12.5px;color:var(--muted);margin:3px 0 0}
+  .btn{border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink-2);border-radius:10px;padding:8px 13px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+  .btn:hover{border-color:var(--ink-2);color:var(--ink)}
+  .btn.accent{border-color:var(--accent);color:var(--accent)}
+  .msg{margin:12px 0;font-size:13px;padding:10px 13px;border-radius:10px;background:var(--surface-2);color:var(--ink-2)}
+  .msg.err{background:color-mix(in oklab,var(--bad) 13%,var(--surface));color:var(--bad)}
+  /* filter chips */
+  .filtbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0 4px;min-height:4px}
+  .fchip{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:700;background:color-mix(in oklab,var(--accent) 14%,var(--surface));color:var(--accent);border:1.5px solid color-mix(in oklab,var(--accent) 40%,transparent)}
+  .fchip b{font-weight:800}
+  .fchip button{border:0;background:transparent;color:inherit;cursor:pointer;font:inherit;font-size:14px;line-height:1;padding:0;opacity:.8}
+  .fchip button:hover{opacity:1}
+  .fclear{font-size:12px;color:var(--muted);cursor:pointer;text-decoration:underline;font-weight:600}
+  .seg{display:inline-flex;border:1.5px solid var(--line-2);border-radius:10px;overflow:hidden}
+  .seg button{border:0;background:var(--surface);color:var(--ink-2);font:inherit;font-weight:700;font-size:12.5px;padding:7px 13px;cursor:pointer}
+  .seg button.on{background:var(--accent);color:#fff}
+  .seg button.on.paid{background:var(--good)} .seg button.on.unpaid{background:var(--warn)}
+  .srch{flex:1;min-width:160px;max-width:280px;border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink);border-radius:10px;padding:8px 12px;font:inherit;font-size:13px}
+  /* KPI */
+  .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(176px,1fr));gap:12px;margin:14px 0}
+  .ktile{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 15px;position:relative;overflow:hidden}
+  .ktile.hl{border-color:color-mix(in oklab,var(--warn) 55%,var(--line))}
+  .ktile.hl2{border-color:color-mix(in oklab,var(--good) 55%,var(--line))}
+  .kk{font-size:11.5px;font-weight:700;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .kv{font-size:24px;font-weight:800;margin-top:4px;letter-spacing:-.01em;line-height:1.1}
+  .kv.sm{font-size:20px}
+  .ks{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .kv .cur{font-size:15px;font-weight:700;color:var(--muted);margin-right:1px}
+  /* section */
+  .grid2{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;align-items:start}
+  @media(max-width:1000px){.grid2{grid-template-columns:1fr}}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-top:16px}
+  .card h2{font-size:14.5px;font-weight:800;margin:0 0 3px;display:flex;align-items:center;gap:8px}
+  .card .cnote{font-size:11.5px;color:var(--muted);margin:0 0 12px}
+  /* bar rows */
+  .bars{display:flex;flex-direction:column;gap:3px}
+  .brow{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;padding:7px 9px;border-radius:9px;cursor:pointer;transition:background .1s}
+  .brow:hover{background:var(--surface-2)}
+  .brow.act{background:color-mix(in oklab,var(--accent) 12%,var(--surface))}
+  .blabel{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;min-width:0}
+  .blabel .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bval{font-size:13px;font-weight:800;text-align:right;white-space:nowrap}
+  .bval small{font-weight:600;color:var(--muted);font-size:11px}
+  .btrack{grid-column:1/-1;height:7px;border-radius:5px;background:var(--surface-2);overflow:hidden}
+  .bfill{height:100%;border-radius:5px;background:var(--accent)}
+  .splitbar{grid-column:1/-1;height:7px;border-radius:5px;overflow:hidden;display:flex;background:var(--surface-2)}
+  .splitbar .p{background:var(--good)} .splitbar .u{background:var(--warn)}
+  /* daily trend */
+  .trend{display:flex;align-items:flex-end;gap:3px;height:150px;margin-top:6px;overflow-x:auto;padding-bottom:2px}
+  .tcol{flex:1;min-width:14px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer}
+  .tbarwrap{width:100%;height:120px;display:flex;align-items:flex-end;justify-content:center}
+  .tbar{width:72%;max-width:22px;border-radius:4px 4px 0 0;background:var(--accent);min-height:2px;transition:background .1s}
+  .tcol:hover .tbar{background:var(--accent)} .tcol.act .tbar{background:var(--bad)}
+  .tcol.weekend .tbar{opacity:.78}
+  .tlbl{font-size:9.5px;color:var(--muted);transform:rotate(-0deg);white-space:nowrap}
+  /* tables */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  th{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;position:sticky;top:0;background:var(--surface)}
+  tbody tr{cursor:pointer}
+  tbody tr:hover{background:var(--surface-2)}
+  tbody tr.act{background:color-mix(in oklab,var(--accent) 12%,var(--surface))}
+  .tblwrap{max-height:430px;overflow:auto;border-radius:10px}
+  .pill{display:inline-block;font-size:10.5px;font-weight:800;border-radius:6px;padding:2px 7px;color:#fff}
+  .pill.good{background:var(--good)} .pill.warn{background:var(--warn)} .pill.bad{background:var(--bad)}
+  .hidden{display:none}
+  .foot{margin-top:18px;font-size:11px;color:var(--muted);line-height:1.6}
+  /* upload drop */
+  .drop{border:2px dashed var(--line-2);border-radius:12px;padding:10px 14px;font-size:12.5px;color:var(--muted);text-align:center;cursor:pointer}
+  .drop.over{border-color:var(--accent);color:var(--accent);background:color-mix(in oklab,var(--accent) 7%,var(--surface))}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <h1><span class="dot"></span>วิเคราะห์การยกเลิกคำสั่งซื้อ <span class="badge" id="brandBadge">Terry</span></h1>
+    <span class="muted" style="font-size:12px" id="periodNote">—</span>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      <label class="btn accent" for="fileIn">⬆ โหลดไฟล์เดือนอื่น</label>
+      <input id="fileIn" type="file" accept=".xlsx,.xls,.csv" class="hidden">
+    </div>
+  </div>
+  <p class="sub">สาเหตุ · วันที่ · ยอดเงินที่ถูกยกเลิก — เจาะลึกได้โดยคลิกที่แถบ/แถวเพื่อกรองทุกส่วนพร้อมกัน · ไม่มีข้อมูลส่วนตัวลูกค้า</p>
+  <div class="msg" id="msg">กำลังโหลดข้อมูล…</div>
+
+  <div id="app" class="hidden">
+    <!-- controls -->
+    <div class="filtbar">
+      <div class="seg" id="paidSeg">
+        <button data-p="all" class="on">ทั้งหมด</button>
+        <button data-p="paid">ชำระแล้ว</button>
+        <button data-p="unpaid">ยังไม่ชำระ</button>
+      </div>
+      <div class="seg" id="bySeg">
+        <button data-b="all" class="on">ยกเลิกโดยทุกฝ่าย</button>
+        <button data-b="0">ลูกค้า</button>
+        <button data-b="1">ระบบ</button>
+        <button data-b="2">แอดมิน</button>
+      </div>
+      <input class="srch" id="srch" placeholder="ค้นหาสินค้า / SKU">
+    </div>
+    <div class="filtbar" id="chips"></div>
+
+    <div class="kpi" id="kpi"></div>
+
+    <div class="card" id="insightCard">
+      <h2>💡 ภาพรวม: ยกเลิกเพราะ “ยังไม่ชำระเงิน” เป็นหลัก</h2>
+      <p class="cnote" id="insightNote">—</p>
+      <div id="insight"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card" style="margin-top:16px">
+        <h2>📋 สาเหตุการยกเลิก</h2>
+        <p class="cnote">ตามจำนวนออเดอร์ · แถบเขียว = ชำระแล้ว (เสียยอดจริง) / ส้ม = ยังไม่ชำระ · คลิกเพื่อกรอง</p>
+        <div class="bars" id="reasonBars"></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h2>🙋 ยกเลิกโดยใคร</h2>
+        <p class="cnote">ลูกค้า / ระบบ (หมดเวลาชำระ) / แอดมิน · คลิกเพื่อกรอง</p>
+        <div class="bars" id="byBars"></div>
+        <h2 style="margin-top:18px">💳 วิธีชำระเงิน</h2>
+        <p class="cnote">ของออเดอร์ที่ยกเลิก · คลิกเพื่อกรอง</p>
+        <div class="bars" id="payBars"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📅 การยกเลิกรายวัน</h2>
+      <p class="cnote">ตามวันที่ยกเลิก · ความสูง = จำนวนออเดอร์ · คลิกวันเพื่อกรอง</p>
+      <div class="trend" id="trend"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card" style="margin-top:16px">
+        <h2>📦 สินค้าที่ถูกยกเลิกบ่อย</h2>
+        <p class="cnote">ตามจำนวนรายการสินค้า (SKU) ในออเดอร์ที่ยกเลิก · คลิกเพื่อกรอง</p>
+        <div class="tblwrap"><table id="prodTbl"></table></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h2>📍 จังหวัดที่ยกเลิกมากสุด</h2>
+        <p class="cnote">ตามจำนวนออเดอร์ (ระดับจังหวัดเท่านั้น) · คลิกเพื่อกรอง</p>
+        <div class="tblwrap"><table id="provTbl"></table></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🔎 ตารางสาเหตุแบบละเอียด</h2>
+      <p class="cnote">แยกชำระแล้ว/ยังไม่ชำระ เพื่อดูว่าสาเหตุไหนคือ “เสียยอดขายจริง”</p>
+      <div class="tblwrap"><table id="reasonTbl"></table></div>
+    </div>
+
+    <p class="foot" id="foot"></p>
+  </div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const fmt=n=>{n=Math.round(+n||0);return n.toLocaleString('en-US');};
+const baht=n=>'<span class="cur">฿</span>'+fmt(n);
+const bahtT=n=>'฿'+fmt(n);
+const pct=(a,b)=>b>0?Math.round(a/b*100):0;
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const TH_M=['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const dLabel=iso=>{const m=/^(\d+)-(\d+)-(\d+)/.exec(iso||'');return m?(+m[3])+' '+TH_M[+m[2]]:iso;};
+
+let ITEMS=[], BYLBL=['ลูกค้า','ระบบ','แอดมิน','อื่นๆ'];
+let F={paid:'all', by:'all', reason:null, pay:null, prod:null, prov:null, day:null, search:''};
+
+// ---- load baked snapshot (dictionary-encoded, PII-free) ----
+function decode(json){
+  const d=json.dict, out=[];
+  for(const r of json.rec){
+    out.push({ oid:d.oid[r[0]], by:r[1], reason:d.reason[r[2]], cancDate:d.date[r[3]], createDate:d.date[r[4]],
+      paid:r[5], pay:d.pay[r[6]], prov:d.prov[r[7]], sku:d.sku[r[8]], prod:d.prod[r[9]], cat:d.cat[r[10]],
+      qty:r[11], sub:r[12], oamt:r[13], refund:r[14], chan:d.chan[r[15]], pre:r[16] });
+  }
+  return out;
+}
+
+// ---- build ITEMS from a raw TikTok Shop export (upload) ----
+function buildFromRaw(rows){
+  const H=rows[0].map(x=>String(x||'').trim()); const ci=n=>H.indexOf(n);
+  const I={oid:ci('Order ID'),by:ci('Cancel By'),reason:ci('Cancel Reason'),canc:ci('Cancelled Time'),create:ci('Created Time'),
+    paid:ci('Paid Time'),pay:ci('Payment Method'),prov:ci('Province'),sku:ci('Seller SKU'),prod:ci('Product Name'),
+    cat:ci('Product Category'),qty:ci('Quantity'),sub:ci('SKU Subtotal After Discount'),oamt:ci('Order Amount'),
+    refund:ci('Order Refund Amount'),chan:ci('Order Channel'),pre:ci('Normal or Pre-order'),status:ci('Order Status')};
+  if(I.oid<0||I.reason<0||I.canc<0) throw new Error('ไฟล์นี้ไม่ใช่รายงานออเดอร์ TikTok (ไม่พบคอลัมน์ Order ID / Cancel Reason)');
+  const num=s=>{const v=parseFloat(String(s==null?'':s).replace(/[^0-9.\-]/g,''));return isNaN(v)?0:v;};
+  const toISO=s=>{const m=String(s==null?'':s).match(/(\d+)\/(\d+)\/(\d+)/);if(!m)return'';return `${m[3]}-${String(+m[2]).padStart(2,'0')}-${String(+m[1]).padStart(2,'0')}`;};
+  const byCode=s=>({'User':0,'System':1,'Operator':2}[String(s||'').trim()] ?? 3);
+  const out=[];
+  for(let i=1;i<rows.length;i++){ const r=rows[i]; if(!r||!String(r[I.oid]||'').trim())continue;
+    // only cancelled rows (if a Status column exists and this isn't cancelled, skip)
+    const canc=toISO(r[I.canc]); if(I.status>=0 && !canc) continue;
+    out.push({ oid:String(r[I.oid]).trim(), by:byCode(r[I.by]), reason:String(r[I.reason]||'(ไม่ระบุ)').trim()||'(ไม่ระบุ)',
+      cancDate:canc, createDate:toISO(r[I.create]), paid:(r[I.paid]&&String(r[I.paid]).trim())?1:0,
+      pay:String(r[I.pay]||'(ไม่ระบุ)').trim()||'(ไม่ระบุ)', prov:String(r[I.prov]||'(ไม่ระบุ)').trim()||'(ไม่ระบุ)',
+      sku:String(r[I.sku]||r[I.prod]||'(ไม่ระบุ)').trim(), prod:String(r[I.prod]||'(ไม่ระบุ)').trim(),
+      cat:String(r[I.cat]||'(ไม่ระบุ)').trim(), qty:num(r[I.qty]), sub:num(r[I.sub]), oamt:num(r[I.oamt]),
+      refund:num(r[I.refund]), chan:String(r[I.chan]||'').trim(), pre:String(r[I.pre]||'').toLowerCase().includes('pre')?1:0 });
+  }
+  if(!out.length) throw new Error('ไม่พบออเดอร์ที่ยกเลิกในไฟล์นี้');
+  return out;
+}
+
+// ---- filtering ----
+function matches(it){
+  if(F.paid==='paid'&&it.paid!==1)return false;
+  if(F.paid==='unpaid'&&it.paid!==0)return false;
+  if(F.by!=='all'&&String(it.by)!==String(F.by))return false;
+  if(F.reason!=null&&it.reason!==F.reason)return false;
+  if(F.pay!=null&&it.pay!==F.pay)return false;
+  if(F.prod!=null&&it.sku!==F.prod)return false;
+  if(F.prov!=null&&it.prov!==F.prov)return false;
+  if(F.day!=null&&it.cancDate!==F.day)return false;
+  if(F.search){const s=F.search.toLowerCase();if(!(it.prod.toLowerCase().includes(s)||it.sku.toLowerCase().includes(s)))return false;}
+  return true;
+}
+const filtered=()=>ITEMS.filter(matches);
+// unique orders from a list of sku-lines (order-level attrs are identical across a given order's lines)
+function orders(list){ const m=new Map(); for(const it of list){ if(!m.has(it.oid)) m.set(it.oid,it); } return [...m.values()]; }
+
+// ---- aggregation helpers ----
+function groupOrders(list,keyFn){ const m=new Map(); for(const o of orders(list)){ const k=keyFn(o); const e=m.get(k)||{orders:0,amt:0,paid:0,unpaid:0,paidAmt:0}; e.orders++; e.amt+=o.oamt; if(o.paid){e.paid++;e.paidAmt+=o.oamt;}else e.unpaid++; m.set(k,e); } return m; }
+
+// ---- rendering ----
+function render(){
+  const list=filtered(); const ords=orders(list);
+  const totOrders=ords.length, totLines=list.length;
+  let totAmt=0,totRefund=0,paidN=0,paidAmt=0,unpaidN=0,unpaidAmt=0;
+  for(const o of ords){ totAmt+=o.oamt; totRefund+=o.refund; if(o.paid){paidN++;paidAmt+=o.oamt;}else{unpaidN++;unpaidAmt+=o.oamt;} }
+  // KPI
+  $('#kpi').innerHTML =
+    tile('ออเดอร์ที่ยกเลิก', fmt(totOrders), totLines+' รายการสินค้า (SKU)','')+
+    tile('มูลค่ารวมที่ยกเลิก', baht(totAmt), 'Order Amount รวม','')+
+    tile('ยอดคืนเงินจริง', baht(totRefund), 'Order Refund Amount','')+
+    tile('ยังไม่ชำระเงิน', fmt(unpaidN)+' <span class="ks" style="display:inline">('+pct(unpaidN,totOrders)+'%)</span>', bahtT(unpaidAmt)+' · มักหมดเวลาชำระ/COD','hl')+
+    tile('ชำระแล้วแต่ยกเลิก', fmt(paidN)+' <span class="ks" style="display:inline">('+pct(paidN,totOrders)+'%)</span>', bahtT(paidAmt)+' · เสียยอดขายจริง','hl2')+
+    tile('เฉลี่ย/ออเดอร์', baht(totOrders?totAmt/totOrders:0), 'มูลค่าเฉลี่ยต่อออเดอร์','');
+  // insight panel: paid vs unpaid split
+  $('#insightNote').innerHTML = `จาก <b>${fmt(totOrders)}</b> ออเดอร์ที่ยกเลิก — <b style="color:var(--warn)">${fmt(unpaidN)} (${pct(unpaidN,totOrders)}%)</b> ยังไม่ได้ชำระเงิน (มูลค่า ${bahtT(unpaidAmt)}) ซึ่งส่วนใหญ่ไม่ใช่ยอดขายที่เสียจริง ส่วนที่ <b style="color:var(--good)">ชำระแล้ว ${fmt(paidN)} (${pct(paidN,totOrders)}%)</b> = ${bahtT(paidAmt)} คือยอดที่เสียไปจริง`;
+  $('#insight').innerHTML = `<div class="splitbar" style="height:22px;border-radius:7px">
+      <div class="u" style="width:${pct(unpaidAmt,totAmt)}%" title="ยังไม่ชำระ"></div>
+      <div class="p" style="width:${100-pct(unpaidAmt,totAmt)}%" title="ชำระแล้ว"></div></div>
+    <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-top:6px;color:var(--muted)">
+      <span>🟧 ยังไม่ชำระ ${bahtT(unpaidAmt)}</span><span>🟩 ชำระแล้ว ${bahtT(paidAmt)}</span></div>`;
+
+  // reason bars (with paid/unpaid split)
+  const rg=groupOrders(list,o=>o.reason);
+  renderBars('#reasonBars', [...rg.entries()].sort((a,b)=>b[1].orders-a[1].orders), totOrders,
+    (k)=>k, F.reason, k=>toggle('reason',k), true);
+  // by whom
+  const bg=groupOrders(list,o=>o.by);
+  renderBars('#byBars', [...bg.entries()].sort((a,b)=>b[1].orders-a[1].orders), totOrders,
+    k=>BYLBL[k]||k, (F.by==='all'?null:F.by), k=>toggle('by',String(k)===String(F.by)?'all':String(k),true), false, '#8b5cf6');
+  // payment
+  const pg=groupOrders(list,o=>o.pay);
+  renderBars('#payBars', [...pg.entries()].sort((a,b)=>b[1].orders-a[1].orders).slice(0,8), totOrders,
+    k=>k, F.pay, k=>toggle('pay',k), false, '#0ea5e9');
+
+  // daily trend
+  const dg=groupOrders(list,o=>o.cancDate);
+  const days=[...dg.keys()].filter(Boolean).sort();
+  const maxD=Math.max(1,...days.map(d=>dg.get(d).orders));
+  $('#trend').innerHTML = days.map(d=>{const e=dg.get(d);const h=Math.round(e.orders/maxD*118);
+    const wd=new Date(d).getDay(); const we=(wd===0||wd===6)?'weekend':'';
+    return `<div class="tcol ${we} ${F.day===d?'act':''}" data-d="${d}" title="${dLabel(d)} · ${e.orders} ออเดอร์ · ${bahtT(e.amt)}">
+      <div class="tbarwrap"><div class="tbar" style="height:${h}px"></div></div><div class="tlbl">${/^\d+-\d+-(\d+)/.exec(d)[1]}</div></div>`;}).join('');
+  $('#trend').querySelectorAll('.tcol').forEach(c=>c.onclick=()=>toggle('day',c.dataset.d));
+
+  // products
+  const prodMap=new Map();
+  for(const it of list){ const e=prodMap.get(it.sku)||{sku:it.sku,prod:it.prod,lines:0,qty:0,sub:0,oids:new Set()}; e.lines++; e.qty+=it.qty; e.sub+=it.sub; e.oids.add(it.oid); prodMap.set(it.sku,e); }
+  const prodRows=[...prodMap.values()].sort((a,b)=>b.lines-a.lines).slice(0,20);
+  $('#prodTbl').innerHTML = `<thead><tr><th>สินค้า (SKU)</th><th>ออเดอร์</th><th>ชิ้น</th><th>มูลค่า SKU</th></tr></thead><tbody>`+
+    prodRows.map(e=>`<tr class="${F.prod===e.sku?'act':''}" data-k="${esc(e.sku)}"><td><b>${esc(e.sku)}</b><div class="muted" style="font-size:11px;max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.prod)}</div></td><td>${fmt(e.oids.size)}</td><td>${fmt(e.qty)}</td><td>${bahtT(e.sub)}</td></tr>`).join('')+`</tbody>`;
+  $('#prodTbl').querySelectorAll('tr[data-k]').forEach(tr=>tr.onclick=()=>toggle('prod',tr.dataset.k));
+
+  // provinces
+  const provRows=[...groupOrders(list,o=>o.prov).entries()].sort((a,b)=>b[1].orders-a[1].orders).slice(0,15);
+  $('#provTbl').innerHTML = `<thead><tr><th>จังหวัด</th><th>ออเดอร์</th><th>มูลค่า</th><th>%</th></tr></thead><tbody>`+
+    provRows.map(([k,e])=>`<tr class="${F.prov===k?'act':''}" data-k="${esc(k)}"><td>${esc(k)}</td><td>${fmt(e.orders)}</td><td>${bahtT(e.amt)}</td><td class="muted">${pct(e.orders,totOrders)}%</td></tr>`).join('')+`</tbody>`;
+  $('#provTbl').querySelectorAll('tr[data-k]').forEach(tr=>tr.onclick=()=>toggle('prov',tr.dataset.k));
+
+  // detailed reason table
+  const rr=[...rg.entries()].sort((a,b)=>b[1].amt-a[1].amt);
+  $('#reasonTbl').innerHTML = `<thead><tr><th>สาเหตุ</th><th>ออเดอร์</th><th>มูลค่ารวม</th><th>ชำระแล้ว</th><th>ยอดเสียจริง</th><th>%ชำระแล้ว</th></tr></thead><tbody>`+
+    rr.map(([k,e])=>{const pr=pct(e.paid,e.orders);const cls=pr>=50?'bad':pr>=20?'warn':'good';
+      return `<tr class="${F.reason===k?'act':''}" data-k="${esc(k)}"><td>${esc(k)}</td><td>${fmt(e.orders)}</td><td>${bahtT(e.amt)}</td><td>${fmt(e.paid)}</td><td><b>${bahtT(e.paidAmt)}</b></td><td><span class="pill ${cls}">${pr}%</span></td></tr>`;}).join('')+`</tbody>`;
+  $('#reasonTbl').querySelectorAll('tr[data-k]').forEach(tr=>tr.onclick=()=>toggle('reason',tr.dataset.k));
+
+  renderChips(); syncSegs();
+  $('#foot').innerHTML = `ที่มา: รายงานออเดอร์ TikTok Shop (เฉพาะที่ยกเลิก) · แบรนด์ Terry · งวด ${esc(PERIOD)} · ข้อมูลนี้ตัดชื่อ/เบอร์/ที่อยู่ลูกค้าออกทั้งหมด แสดงเฉพาะสาเหตุ·วันที่·ยอดเงิน·สินค้า·จังหวัด · มูลค่าระดับออเดอร์นับแบบไม่ซ้ำ (${fmt(ITEMS.length)} รายการสินค้า จาก ${fmt(orders(ITEMS).length)} ออเดอร์)`;
+}
+
+function tile(k,v,s,cls){ return `<div class="ktile ${cls||''}"><div class="kk">${k}</div><div class="kv">${v}</div><div class="ks">${esc(s)}</div></div>`; }
+
+function renderBars(sel,entries,tot,labelFn,activeKey,onClick,split,color){
+  const max=Math.max(1,...entries.map(([,e])=>e.orders));
+  $(sel).innerHTML = entries.map(([k,e])=>{
+    const w=Math.round(e.orders/max*100);
+    const bar = split
+      ? `<div class="splitbar"><div class="p" style="width:${pct(e.paid,e.orders)}%"></div><div class="u" style="width:${100-pct(e.paid,e.orders)}%"></div></div>`
+      : `<div class="btrack"><div class="bfill" style="width:${w}%;background:${color||'var(--accent)'}"></div></div>`;
+    return `<div class="brow ${String(activeKey)===String(k)?'act':''}" data-k="${esc(k)}">
+      <div class="blabel"><span class="nm">${esc(labelFn(k))}</span></div>
+      <div class="bval">${fmt(e.orders)} <small>(${pct(e.orders,tot)}%)</small><br><small>${bahtT(e.amt)}</small></div>
+      ${bar}</div>`;
+  }).join('');
+  $(sel).querySelectorAll('.brow').forEach(b=>b.onclick=()=>onClick(b.dataset.k));
+}
+
+function toggle(key,val,noToggleOff){
+  if(key==='by'){ F.by=val; render(); return; }
+  F[key]=(!noToggleOff&&F[key]===val)?null:val;
+  render();
+}
+function renderChips(){
+  const ch=[];
+  if(F.paid!=='all') ch.push(['สถานะ', F.paid==='paid'?'ชำระแล้ว':'ยังไม่ชำระ', ()=>{F.paid='all';render();}]);
+  if(F.by!=='all') ch.push(['ยกเลิกโดย', BYLBL[F.by]||F.by, ()=>{F.by='all';render();}]);
+  if(F.reason!=null) ch.push(['สาเหตุ', F.reason, ()=>{F.reason=null;render();}]);
+  if(F.pay!=null) ch.push(['วิธีชำระ', F.pay, ()=>{F.pay=null;render();}]);
+  if(F.prod!=null) ch.push(['สินค้า', F.prod, ()=>{F.prod=null;render();}]);
+  if(F.prov!=null) ch.push(['จังหวัด', F.prov, ()=>{F.prov=null;render();}]);
+  if(F.day!=null) ch.push(['วันที่', dLabel(F.day), ()=>{F.day=null;render();}]);
+  if(F.search) ch.push(['ค้นหา', F.search, ()=>{F.search='';$('#srch').value='';render();}]);
+  const el=$('#chips');
+  if(!ch.length){ el.innerHTML=''; return; }
+  el.innerHTML = ch.map((c,i)=>`<span class="fchip" data-i="${i}">${esc(c[0])}: <b>${esc(c[1])}</b> <button data-i="${i}">✕</button></span>`).join('')
+    + `<span class="fclear" id="clearAll">ล้างตัวกรองทั้งหมด</span>`;
+  el.querySelectorAll('.fchip button').forEach(b=>b.onclick=()=>ch[+b.dataset.i][2]());
+  $('#clearAll').onclick=()=>{ F={paid:'all',by:'all',reason:null,pay:null,prod:null,prov:null,day:null,search:''}; $('#srch').value=''; render(); };
+}
+function syncSegs(){
+  $('#paidSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.p===F.paid));
+  $('#paidSeg').querySelector('[data-p="paid"]').classList.toggle('paid',F.paid==='paid');
+  $('#paidSeg').querySelector('[data-p="unpaid"]').classList.toggle('unpaid',F.paid==='unpaid');
+  $('#bySeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.b===String(F.by)));
+}
+
+// seg + search events
+$('#paidSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;F.paid=b.dataset.p;render();});
+$('#bySeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;F.by=b.dataset.b;render();});
+let st; $('#srch').addEventListener('input',e=>{clearTimeout(st);st=setTimeout(()=>{F.search=e.target.value.trim();render();},180);});
+
+// ---- upload ----
+let xlsxP=null;
+function loadXLSX(){ if(window.XLSX)return Promise.resolve(window.XLSX);
+  if(!xlsxP)xlsxP=new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=()=>res(window.XLSX);s.onerror=()=>{xlsxP=null;rej(new Error('โหลดตัวอ่านไฟล์ไม่สำเร็จ'));};document.head.appendChild(s);});
+  return xlsxP; }
+async function handleFile(f){
+  try{ showMsg('กำลังอ่านไฟล์ '+f.name+' …');
+    const XLSX=await loadXLSX();
+    const wb=/\.csv$/i.test(f.name)?XLSX.read(await f.text(),{type:'string',raw:true}):XLSX.read(await f.arrayBuffer(),{type:'array'});
+    let rows=null; for(const nm of wb.SheetNames){ const ws=wb.Sheets[nm]; rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:''}); if(rows&&rows.length>1&&rows[0].includes('Order ID'))break; }
+    ITEMS=buildFromRaw(rows);
+    PERIOD = guessPeriod(ITEMS);
+    $('#periodNote').textContent='งวด '+PERIOD+' · จากไฟล์ที่อัปโหลด ('+fmt(ITEMS.length)+' รายการ) · ประมวลผลในเครื่องคุณ ไม่ส่งข้อมูลออก';
+    resetF(); hideMsg(); render();
+  }catch(err){ showMsg('ผิดพลาด: '+(err&&err.message||err), true); }
+}
+function guessPeriod(items){ const m=new Map(); for(const it of items){ const k=(it.createDate||it.cancDate||'').slice(0,7); if(k)m.set(k,(m.get(k)||0)+1);} const top=[...m.entries()].sort((a,b)=>b[1]-a[1])[0]; return top?top[0]:'—'; }
+function resetF(){ F={paid:'all',by:'all',reason:null,pay:null,prod:null,prov:null,day:null,search:''}; const s=$('#srch'); if(s)s.value=''; }
+$('#fileIn').addEventListener('change',e=>{ const f=e.target.files[0]; if(f)handleFile(f); e.target.value=''; });
+// drag-drop onto whole page
+['dragover','drop'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault();}));
+document.addEventListener('drop',e=>{ const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f)handleFile(f); });
+
+function showMsg(t,err){ const m=$('#msg'); m.className='msg'+(err?' err':''); m.textContent=t; m.style.display=''; }
+function hideMsg(){ $('#msg').style.display='none'; $('#app').classList.remove('hidden'); }
+
+let PERIOD='2026-09';
+(async()=>{ try{
+    const j=await (await fetch('cancel-terry-2026-09.json?cb='+Date.now())).json();
+    ITEMS=decode(j); if(Array.isArray(j.byLabels))BYLBL=['ลูกค้า','ระบบ','แอดมิน','อื่นๆ'];
+    PERIOD=j.period||'2026-09';
+    $('#brandBadge').textContent=j.brand||'Terry';
+    $('#periodNote').textContent='งวด '+PERIOD+' (เดือน 9) · ที่มา: รายงานออเดอร์ TikTok Shop เฉพาะที่ยกเลิก · อัปโหลดไฟล์เดือนอื่นได้';
+    hideMsg(); render();
+  }catch(err){ showMsg('โหลดข้อมูลเริ่มต้นไม่สำเร็จ — อัปโหลดไฟล์รายงานออเดอร์ (.xlsx/.csv) เพื่อเริ่มใช้งาน', true); $('#app').classList.remove('hidden'); $('#kpi').innerHTML=''; }
+})();
+</script>
+</body>
+</html>
