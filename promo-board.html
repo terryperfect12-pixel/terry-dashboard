@@ -305,7 +305,7 @@ function loadPST(){ try{PST=JSON.parse(localStorage.getItem('promoPickStatus')||
 function savePST(){ try{localStorage.setItem('promoPickStatus',JSON.stringify(PST))}catch{} }
 const pstKey=p=>String(p.code||p.image);
 const isOn=p=>PST[pstKey(p)]!=='off';
-const imgKey=it=>it.name;
+const imgKey=it=>it.uid||it.name;   // unique per row (duplicate names must not share state)
 const displayImg=it=>IMG[imgKey(it)]||it.autoImg||'';   // manual override wins, else auto image from the sheet mapping
 // hidden promo baskets (ปิดตะกร้าโปร) — per device
 let PHID={}, showHidden=false;
@@ -339,6 +339,7 @@ async function load(){
   const hr=gM.findIndex(r=>r.includes('Name')&&r.some(c=>/ราคาเต็ม/.test(c)));
   if(hr<0) throw new Error('ไม่พบหัวตาราง (Name / ราคาเต็ม)');
   const base=gM[hr].indexOf('Name');
+  const occ=new Map();   // disambiguate duplicate (name|sku) rows so each gets a unique uid
   for(let i=hr+1;i<gM.length;i++){const r=gM[i];const name=String(r[base]||'').trim();if(!name||name==='Name')continue;
     const prices={}; CAMP.forEach(cp=>prices[cp.k]=num(r[base+cp.off]));
     const full=num(r[base+2]); const sku=String(r[base+1]||'').trim();
@@ -346,7 +347,8 @@ async function load(){
     const isSet = typRaw==='set' || (/\+|x\s*\d|x\d/i.test(name) && typRaw!=='single');
     const pid = ttBySku.get(normSku(sku)) || ttByName.get(normNm(name)) || '';   // map via Promotion TT
     const autoImg = pid ? (cover.get(pid)||'') : '';                              // image via cover sheet
-    ITEMS.push({ name, sku, full, prices, tiktok:num(r[base+8]),
+    const bk=name+'|'+sku; const n=occ.get(bk)||0; occ.set(bk,n+1); const uid=bk+'|'+n;
+    ITEMS.push({ uid, name, sku, full, prices, tiktok:num(r[base+8]),
       gwp:String(r[base+9]||'').trim(), remark:String(r[base+10]||'').trim(), isSet, pid, autoImg });
   }
 }
@@ -533,8 +535,9 @@ function updatePreview(){ const parts=compParts(); const name=compName(parts); c
 function addComposer(){ const parts=compParts(); if(!parts.length){ alert('เลือกสินค้าอย่างน้อย 1 รายการ'); return; }
   const {full:sF,awo:sA}=compSums(parts); const full=num($('#cFull').value)||sF, promo=num($('#cPromo').value)||sA;
   const prices={}; CAMP.forEach(c=>prices[c.k]=promo);
-  const item={ name:compName(parts), sku:'', full, prices, gwp:$('#cGwp').value.trim(), remark:$('#cRemark').value.trim(),
-    isSet:parts.length>1||parts[0].qty>1, pid:'', autoImg:parts[0].img||'', custom:true, cid:'c'+Date.now() };
+  const cid='c'+Date.now();
+  const item={ uid:cid, name:compName(parts), sku:'', full, prices, gwp:$('#cGwp').value.trim(), remark:$('#cRemark').value.trim(),
+    isSet:parts.length>1||parts[0].qty>1, pid:'', autoImg:parts[0].img||'', custom:true, cid };
   CUSTOM.push(item); saveCustom(); ITEMS.push(item); closeComposer(); renderChips(); renderCards(); }
 $('#newBtn').addEventListener('click',openComposer);
 $('#compX').addEventListener('click',closeComposer);
@@ -548,7 +551,9 @@ $('#typeTog').addEventListener('click',e=>{const b=e.target.closest('button');if
 $('#viewTog').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
   VIEW=b.dataset.v;[...$('#viewTog').children].forEach(x=>x.classList.toggle('on',x===b));applyView();});
 
-(async()=>{try{await load(); loadImg(); loadPST(); loadPHID(); loadCustom(); if(CUSTOM.length)ITEMS.push(...CUSTOM);
+(async()=>{try{await load(); loadImg(); loadPST(); loadPHID(); loadCustom();
+  CUSTOM.forEach(c=>{ if(!c.uid) c.uid=c.cid||('c'+Math.random().toString(36).slice(2)); });   // backfill uid for older saved promos
+  if(CUSTOM.length)ITEMS.push(...CUSTOM);
   if(!ITEMS.length){$('#msg').className='msg err';$('#msg').textContent='ไม่พบรายการโปรโมชันในชีต';return;}
   // default to the campaign with the most prices
   SEL=CAMP.slice().sort((a,b)=>campCount(b.k)-campCount(a.k))[0].k;
