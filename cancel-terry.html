@@ -20,7 +20,7 @@
   }}
   *{box-sizing:border-box} html,body{margin:0}
   body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1620px;margin:0;padding:16px 22px 72px}
+  .wrap{max-width:1620px;margin:0 auto;padding:16px 22px 72px}  /* centered */
   .muted{color:var(--muted)}
   /* header */
   .head{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
@@ -82,6 +82,18 @@
   .tcol:hover .tbar{background:var(--accent)} .tcol.act .tbar{background:var(--bad)}
   .tcol.weekend .tbar{opacity:.78}
   .tlbl{font-size:9.5px;color:var(--muted);transform:rotate(-0deg);white-space:nowrap}
+  /* hour-of-day grouped chart */
+  .hleg{display:flex;flex-wrap:wrap;gap:16px;font-size:12.5px;font-weight:700;margin:2px 0 8px}
+  .hleg span{display:inline-flex;align-items:center;gap:6px}
+  .hleg i{width:12px;height:12px;border-radius:3px;display:inline-block}
+  .hours{display:flex;align-items:flex-end;gap:4px;height:188px;overflow-x:auto;padding-bottom:2px}
+  .hcol{flex:1;min-width:26px;display:flex;flex-direction:column;align-items:center;gap:5px}
+  .hbars{width:100%;height:150px;display:flex;align-items:flex-end;justify-content:center;gap:2px}
+  .hbar{width:44%;max-width:13px;border-radius:3px 3px 0 0;min-height:2px}
+  .hbar.c{background:var(--accent)} .hbar.x{background:var(--warn)}
+  .hcol:hover .hbar{opacity:.78}
+  .hlbl{font-size:9.5px;color:var(--muted);white-space:nowrap}
+  .hcol.peakc .hbar.c,.hcol.peakx .hbar.x{outline:2px solid color-mix(in oklab,var(--ink) 25%,transparent);outline-offset:1px}
   /* tables */
   table{width:100%;border-collapse:collapse;font-size:13px}
   th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line)}
@@ -161,6 +173,16 @@
       <div class="trend" id="trend"></div>
     </div>
 
+    <div class="card">
+      <h2>🕒 ช่วงเวลา (รายชั่วโมง) — สั่งซื้อเข้ามา vs กดยกเลิก</h2>
+      <p class="cnote" id="hoursNote">ตามออเดอร์ · เทียบเวลาที่ลูกค้าสั่งซื้อ (Created) กับเวลาที่ยกเลิก (Cancelled) ในรอบวัน 0–23 น.</p>
+      <div class="hleg">
+        <span><i style="background:var(--accent)"></i> สั่งซื้อเข้ามา (เวลาที่สร้างออเดอร์)</span>
+        <span><i style="background:var(--warn)"></i> กดยกเลิก (เวลาที่ยกเลิก)</span>
+      </div>
+      <div class="hours" id="hours"></div>
+    </div>
+
     <div class="grid2">
       <div class="card" style="margin-top:16px">
         <h2>📦 สินค้าที่ถูกยกเลิกบ่อย</h2>
@@ -203,7 +225,8 @@ function decode(json){
   for(const r of json.rec){
     out.push({ oid:d.oid[r[0]], by:r[1], reason:d.reason[r[2]], cancDate:d.date[r[3]], createDate:d.date[r[4]],
       paid:r[5], pay:d.pay[r[6]], prov:d.prov[r[7]], sku:d.sku[r[8]], prod:d.prod[r[9]], cat:d.cat[r[10]],
-      qty:r[11], sub:r[12], oamt:r[13], refund:r[14], chan:d.chan[r[15]], pre:r[16] });
+      qty:r[11], sub:r[12], oamt:r[13], refund:r[14], chan:d.chan[r[15]], pre:r[16],
+      cancHour:(r.length>17?r[17]:-1), createHour:(r.length>18?r[18]:-1) });
   }
   return out;
 }
@@ -218,12 +241,14 @@ function buildFromRaw(rows){
   if(I.oid<0||I.reason<0||I.canc<0) throw new Error('ไฟล์นี้ไม่ใช่รายงานออเดอร์ TikTok (ไม่พบคอลัมน์ Order ID / Cancel Reason)');
   const num=s=>{const v=parseFloat(String(s==null?'':s).replace(/[^0-9.\-]/g,''));return isNaN(v)?0:v;};
   const toISO=s=>{const m=String(s==null?'':s).match(/(\d+)\/(\d+)\/(\d+)/);if(!m)return'';return `${m[3]}-${String(+m[2]).padStart(2,'0')}-${String(+m[1]).padStart(2,'0')}`;};
+  const toHour=s=>{const m=String(s==null?'':s).match(/\d+\/\d+\/\d+[\sT]+(\d+):/);return m?(+m[1]):-1;};
   const byCode=s=>({'User':0,'System':1,'Operator':2}[String(s||'').trim()] ?? 3);
   const out=[];
   for(let i=1;i<rows.length;i++){ const r=rows[i]; if(!r||!String(r[I.oid]||'').trim())continue;
     // only cancelled rows (if a Status column exists and this isn't cancelled, skip)
     const canc=toISO(r[I.canc]); if(I.status>=0 && !canc) continue;
     out.push({ oid:String(r[I.oid]).trim(), by:byCode(r[I.by]), reason:String(r[I.reason]||'(ไม่ระบุ)').trim()||'(ไม่ระบุ)',
+      cancHour:toHour(r[I.canc]), createHour:toHour(r[I.create]),
       cancDate:canc, createDate:toISO(r[I.create]), paid:(r[I.paid]&&String(r[I.paid]).trim())?1:0,
       pay:String(r[I.pay]||'(ไม่ระบุ)').trim()||'(ไม่ระบุ)', prov:String(r[I.prov]||'(ไม่ระบุ)').trim()||'(ไม่ระบุ)',
       sku:String(r[I.sku]||r[I.prod]||'(ไม่ระบุ)').trim(), prod:String(r[I.prod]||'(ไม่ระบุ)').trim(),
@@ -299,6 +324,8 @@ function render(){
       <div class="tbarwrap"><div class="tbar" style="height:${h}px"></div></div><div class="tlbl">${/^\d+-\d+-(\d+)/.exec(d)[1]}</div></div>`;}).join('');
   $('#trend').querySelectorAll('.tcol').forEach(c=>c.onclick=()=>toggle('day',c.dataset.d));
 
+  renderHours(list);
+
   // products
   const prodMap=new Map();
   for(const it of list){ const e=prodMap.get(it.sku)||{sku:it.sku,prod:it.prod,lines:0,qty:0,sub:0,oids:new Set()}; e.lines++; e.qty+=it.qty; e.sub+=it.sub; e.oids.add(it.oid); prodMap.set(it.sku,e); }
@@ -341,6 +368,23 @@ function renderBars(sel,entries,tot,labelFn,activeKey,onClick,split,color){
   $(sel).querySelectorAll('.brow').forEach(b=>b.onclick=()=>onClick(b.dataset.k));
 }
 
+const pad2=n=>String(n).padStart(2,'0');
+function renderHours(list){
+  const ords=orders(list);
+  const cre=Array(24).fill(0),can=Array(24).fill(0);
+  for(const o of ords){ if(o.createHour>=0&&o.createHour<24)cre[o.createHour]++; if(o.cancHour>=0&&o.cancHour<24)can[o.cancHour]++; }
+  const max=Math.max(1,...cre,...can);
+  const pkC=cre.indexOf(Math.max(...cre)), pkX=can.indexOf(Math.max(...can));
+  let html='';
+  for(let h=0;h<24;h++){
+    const hc=Math.round(cre[h]/max*140), hx=Math.round(can[h]/max*140);
+    html+=`<div class="hcol ${h===pkC?'peakc':''} ${h===pkX?'peakx':''}" title="${h}:00 น. · สั่งซื้อ ${cre[h]} · ยกเลิก ${can[h]}">
+      <div class="hbars"><div class="hbar c" style="height:${hc}px"></div><div class="hbar x" style="height:${hx}px"></div></div>
+      <div class="hlbl">${h}</div></div>`;
+  }
+  $('#hours').innerHTML=html;
+  $('#hoursNote').innerHTML=`ตามออเดอร์ · <b>สั่งซื้อเข้ามามากสุด ${pad2(pkC)}:00 น.</b> (${fmt(cre[pkC])} ออเดอร์) · <b>ยกเลิกมากสุด ${pad2(pkX)}:00 น.</b> (${fmt(can[pkX])} ออเดอร์) — ช่วงไลฟ์เย็นเป็นทั้งจุดที่สั่งซื้อและยกเลิกสูงสุด`;
+}
 function toggle(key,val,noToggleOff){
   if(key==='by'){ F.by=val; render(); return; }
   F[key]=(!noToggleOff&&F[key]===val)?null:val;
