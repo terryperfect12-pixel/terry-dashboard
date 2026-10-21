@@ -164,6 +164,9 @@
         <h2 style="margin-top:18px">💳 วิธีชำระเงิน</h2>
         <p class="cnote">ของออเดอร์ที่ยกเลิก · คลิกเพื่อกรอง</p>
         <div class="bars" id="payBars"></div>
+        <h2 style="margin-top:18px">🛒 ช่องทางขาย (Order Channel)</h2>
+        <p class="cnote">LIVE / วิดีโอ / การ์ดสินค้า — ออเดอร์ที่ยกเลิกมาจากช่องทางไหน · คลิกเพื่อกรอง</p>
+        <div class="bars" id="chanBars"></div>
       </div>
     </div>
 
@@ -210,7 +213,8 @@ const TH_M=['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','ม
 const dLabel=iso=>{const m=/^(\d+)-(\d+)-(\d+)/.exec(iso||'');return m?(+m[3])+' '+TH_M[+m[2]]:iso;};
 
 let ITEMS=[], BYLBL=['ลูกค้า','ระบบ','แอดมิน','อื่นๆ'];
-let F={paid:'all', by:'all', reason:null, pay:null, prod:null, prov:null, day:null, search:''};
+const CHLBL={'LIVE':'LIVE (ไลฟ์)','Videos':'วิดีโอ','Product cards':'การ์ดสินค้า'};
+let F={paid:'all', by:'all', reason:null, pay:null, chan:null, prod:null, prov:null, day:null, search:''};
 let prodSort={k:'ord', dir:-1};   // product table sort: ord/qty/sub/name, dir -1=desc 1=asc
 
 // ---- load baked snapshot (dictionary-encoded, PII-free) ----
@@ -260,6 +264,7 @@ function matches(it){
   if(F.by!=='all'&&String(it.by)!==String(F.by))return false;
   if(F.reason!=null&&it.reason!==F.reason)return false;
   if(F.pay!=null&&it.pay!==F.pay)return false;
+  if(F.chan!=null&&it.chan!==F.chan)return false;
   if(F.prod!=null&&it.sku!==F.prod)return false;
   if(F.prov!=null&&it.prov!==F.prov)return false;
   if(F.day!=null&&it.cancDate!==F.day)return false;
@@ -307,6 +312,10 @@ function render(){
   const pg=groupOrders(list,o=>o.pay);
   renderBars('#payBars', [...pg.entries()].sort((a,b)=>b[1].orders-a[1].orders).slice(0,8), totOrders,
     k=>k, F.pay, k=>toggle('pay',k), false, '#0ea5e9');
+  // sales channel (Order Channel): LIVE / Videos / Product cards
+  const chg=groupOrders(list,o=>o.chan);
+  renderBars('#chanBars', [...chg.entries()].sort((a,b)=>b[1].orders-a[1].orders), totOrders,
+    k=>CHLBL[k]||k||'(ไม่ระบุ)', F.chan, k=>toggle('chan',k), false, '#14b8a6');
 
   // daily trend
   const dg=groupOrders(list,o=>o.cancDate);
@@ -380,6 +389,7 @@ function filterCtx(){
   if(F.by!=='all') p.push('ยกเลิกโดย'+(BYLBL[F.by]||F.by));
   if(F.reason) p.push(F.reason);
   if(F.pay) p.push(F.pay);
+  if(F.chan) p.push('ช่องทาง '+(CHLBL[F.chan]||F.chan));
   if(F.prov) p.push(F.prov);
   return p.join(' · ');
 }
@@ -410,6 +420,7 @@ function renderChips(){
   if(F.by!=='all') ch.push(['ยกเลิกโดย', BYLBL[F.by]||F.by, ()=>{F.by='all';render();}]);
   if(F.reason!=null) ch.push(['สาเหตุ', F.reason, ()=>{F.reason=null;render();}]);
   if(F.pay!=null) ch.push(['วิธีชำระ', F.pay, ()=>{F.pay=null;render();}]);
+  if(F.chan!=null) ch.push(['ช่องทางขาย', CHLBL[F.chan]||F.chan, ()=>{F.chan=null;render();}]);
   if(F.prod!=null) ch.push(['สินค้า', F.prod, ()=>{F.prod=null;render();}]);
   if(F.prov!=null) ch.push(['จังหวัด', F.prov, ()=>{F.prov=null;render();}]);
   if(F.day!=null) ch.push(['วันที่', dLabel(F.day), ()=>{F.day=null;render();}]);
@@ -419,7 +430,7 @@ function renderChips(){
   el.innerHTML = ch.map((c,i)=>`<span class="fchip" data-i="${i}">${esc(c[0])}: <b>${esc(c[1])}</b> <button data-i="${i}">✕</button></span>`).join('')
     + `<span class="fclear" id="clearAll">ล้างตัวกรองทั้งหมด</span>`;
   el.querySelectorAll('.fchip button').forEach(b=>b.onclick=()=>ch[+b.dataset.i][2]());
-  $('#clearAll').onclick=()=>{ F={paid:'all',by:'all',reason:null,pay:null,prod:null,prov:null,day:null,search:''}; $('#srch').value=''; render(); };
+  $('#clearAll').onclick=()=>{ F={paid:'all',by:'all',reason:null,pay:null,chan:null,prod:null,prov:null,day:null,search:''}; $('#srch').value=''; render(); };
 }
 function syncSegs(){
   $('#paidSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.p===F.paid));
@@ -450,7 +461,7 @@ async function handleFile(f){
   }catch(err){ showMsg('ผิดพลาด: '+(err&&err.message||err), true); }
 }
 function guessPeriod(items){ const m=new Map(); for(const it of items){ const k=(it.createDate||it.cancDate||'').slice(0,7); if(k)m.set(k,(m.get(k)||0)+1);} const top=[...m.entries()].sort((a,b)=>b[1]-a[1])[0]; return top?top[0]:'—'; }
-function resetF(){ F={paid:'all',by:'all',reason:null,pay:null,prod:null,prov:null,day:null,search:''}; const s=$('#srch'); if(s)s.value=''; }
+function resetF(){ F={paid:'all',by:'all',reason:null,pay:null,chan:null,prod:null,prov:null,day:null,search:''}; const s=$('#srch'); if(s)s.value=''; }
 $('#fileIn').addEventListener('change',e=>{ const f=e.target.files[0]; if(f)handleFile(f); e.target.value=''; });
 // drag-drop onto whole page
 ['dragover','drop'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault();}));
