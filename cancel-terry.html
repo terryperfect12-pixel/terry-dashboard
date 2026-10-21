@@ -256,19 +256,18 @@
 </div>
 </div>
 
-<!-- ask brand + platform BEFORE picking the file -->
+<!-- after a file is read, ask which brand + platform to save it under -->
 <div class="modal hidden" id="saveModal">
   <div class="box">
-    <h3>โหลดชุดข้อมูลใหม่</h3>
-    <p class="mnote">เลือกแบรนด์และแพลตฟอร์มก่อน แล้วจึงเลือกไฟล์รายงานออเดอร์ (.xlsx/.csv)</p>
+    <h3>ไฟล์นี้เป็นของแบรนด์/แพลตฟอร์มไหน?</h3>
+    <p class="mnote" id="saveInfo">—</p>
     <div class="mlabel">แบรนด์ <span class="muted" style="font-weight:400">(แยกข้อมูลแต่ละแบรนด์)</span></div>
     <div class="opts" id="brandOpts"></div>
     <div class="mlabel">แพลตฟอร์ม</div>
     <div class="opts" id="platOpts"></div>
-    <p class="mnote" id="saveInfo" style="margin-top:14px"></p>
     <div class="mrow">
       <button id="saveCancel">ยกเลิก</button>
-      <button class="pri" id="savePick" disabled>เลือกไฟล์…</button>
+      <button class="pri" id="saveConfirm" disabled>บันทึก &amp; ดูข้อมูล</button>
     </div>
   </div>
 </div>
@@ -531,20 +530,17 @@ let xlsxP=null;
 function loadXLSX(){ if(window.XLSX)return Promise.resolve(window.XLSX);
   if(!xlsxP)xlsxP=new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=()=>res(window.XLSX);s.onerror=()=>{xlsxP=null;rej(new Error('โหลดตัวอ่านไฟล์ไม่สำเร็จ'));};document.head.appendChild(s);});
   return xlsxP; }
-// read + parse a file, then save it under the already-chosen brand/platform
-async function processFile(f){
-  if(!(selBrand&&selPlat)) return;
-  try{ $('#saveInfo').innerHTML='กำลังอ่านไฟล์ <b>'+esc(f.name)+'</b> …';
+// read + parse a file, then ask which brand/platform to save it under
+let pending=null;
+async function handleFile(f){
+  try{ showMsg('กำลังอ่านไฟล์ '+f.name+' …');
     const XLSX=await loadXLSX();
     const wb=/\.csv$/i.test(f.name)?XLSX.read(await f.text(),{type:'string',raw:true}):XLSX.read(await f.arrayBuffer(),{type:'array'});
     let rows=null; for(const nm of wb.SheetNames){ const ws=wb.Sheets[nm]; rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:''}); if(rows&&rows.length>1&&rows[0].includes('Order ID'))break; }
     const items=buildFromRaw(rows);
-    const period=guessPeriod(items);
-    const id='ds_'+selBrand+'_'+selPlat+'_'+period;
-    const rec={ id, brand:selBrand, platform:selPlat, period, count:items.length, savedAt:Date.now(), enc:encode(items) };
-    try{ await dbPut(rec); }catch(e){ throw new Error('บันทึกไม่สำเร็จ (พื้นที่เครื่องเต็มหรือเบราว์เซอร์ไม่รองรับ)'); }
-    closeSaveModal(); await renderSidebar(); await loadDataset(id);
-  }catch(err){ $('#saveInfo').innerHTML='<span style="color:var(--bad)">ผิดพลาด: '+esc(err&&err.message||err)+'</span>'; }
+    pending={ items, period:guessPeriod(items), fname:f.name };
+    hideMsg(); openSaveModal();
+  }catch(err){ showMsg('ผิดพลาด: '+(err&&err.message||err), true); }
 }
 function guessPeriod(items){ const m=new Map(); for(const it of items){ const k=(it.createDate||it.cancDate||'').slice(0,7); if(k)m.set(k,(m.get(k)||0)+1);} const top=[...m.entries()].sort((a,b)=>b[1]-a[1])[0]; return top?top[0]:'—'; }
 function resetF(){ F={paid:'all',by:'all',reason:null,pay:null,chan:null,prod:null,prov:null,day:null,search:''}; const s=$('#srch'); if(s)s.value=''; }
@@ -621,34 +617,38 @@ async function loadDataset(id){
   if(innerWidth<=900) $('#side').classList.add('collapsed');
 }
 
-// ---- upload modal: ask brand + platform FIRST, then pick the file ----
-let selBrand=null, selPlat=null, pendingFile=null;
+// ---- after parsing, ask brand + platform, then save ----
+let selBrand=null, selPlat=null;
 function guessPlat(name){ return /tiktok|tt/i.test(name)?'TikTok' : /shopee|sp/i.test(name)?'Shopee' : /lazada|lzd/i.test(name)?'Lazada' : /facebook|fb/i.test(name)?'Facebook' : null; }
-function openUploadModal(file){
-  pendingFile=file||null;
-  selBrand=null; selPlat=file?guessPlat(file.name):null;
+function openSaveModal(){
+  selBrand=null; selPlat=guessPlat(pending.fname);
+  $('#saveInfo').innerHTML=`ไฟล์: <b>${esc(pending.fname)}</b> · งวด <b>${esc(periodShort(pending.period))}</b> · ${fmt(pending.items.length)} รายการ · เลือกแบรนด์และแพลตฟอร์มเพื่อบันทึก`;
   $('#brandOpts').innerHTML=BRANDS.map(b=>`<button class="opt" data-b="${b}">${b}</button>`).join('');
   $('#platOpts').innerHTML=PLATFORMS.map(p=>`<button class="opt ${selPlat===p?'on':''}" data-p="${p}">${p}</button>`).join('');
-  $('#brandOpts').querySelectorAll('.opt').forEach(o=>o.onclick=()=>{ selBrand=o.dataset.b; $('#brandOpts').querySelectorAll('.opt').forEach(x=>x.classList.toggle('on',x===o)); syncPick(); });
-  $('#platOpts').querySelectorAll('.opt').forEach(o=>o.onclick=()=>{ selPlat=o.dataset.p; $('#platOpts').querySelectorAll('.opt').forEach(x=>x.classList.toggle('on',x===o)); syncPick(); });
-  $('#saveInfo').innerHTML = file ? `ไฟล์: <b>${esc(file.name)}</b>` : '';
-  $('#savePick').textContent = file ? 'บันทึก & ดูข้อมูล' : 'เลือกไฟล์…';
-  syncPick(); $('#saveModal').classList.remove('hidden');
+  $('#brandOpts').querySelectorAll('.opt').forEach(o=>o.onclick=()=>{ selBrand=o.dataset.b; $('#brandOpts').querySelectorAll('.opt').forEach(x=>x.classList.toggle('on',x===o)); syncSaveBtn(); });
+  $('#platOpts').querySelectorAll('.opt').forEach(o=>o.onclick=()=>{ selPlat=o.dataset.p; $('#platOpts').querySelectorAll('.opt').forEach(x=>x.classList.toggle('on',x===o)); syncSaveBtn(); });
+  syncSaveBtn(); $('#saveModal').classList.remove('hidden');
 }
-function syncPick(){ $('#savePick').disabled=!(selBrand&&selPlat); }
-function closeSaveModal(){ $('#saveModal').classList.add('hidden'); pendingFile=null; }
-// primary button: if a file is already in hand (drag-drop) process it, else open the file picker
-$('#savePick').addEventListener('click',()=>{ if(!(selBrand&&selPlat))return; if(pendingFile) processFile(pendingFile); else $('#fileIn').click(); });
-$('#saveCancel').addEventListener('click',closeSaveModal);
-$('#saveModal').addEventListener('click',e=>{ if(e.target.id==='saveModal') closeSaveModal(); });
+function syncSaveBtn(){ $('#saveConfirm').disabled=!(selBrand&&selPlat&&pending); }
+function closeSaveModal(){ $('#saveModal').classList.add('hidden'); }
+async function doSave(){
+  if(!(pending&&selBrand&&selPlat))return;
+  const id='ds_'+selBrand+'_'+selPlat+'_'+pending.period;
+  const rec={ id, brand:selBrand, platform:selPlat, period:pending.period, count:pending.items.length, savedAt:Date.now(), enc:encode(pending.items) };
+  try{ await dbPut(rec); }catch(e){ alert('บันทึกไม่สำเร็จ (พื้นที่เครื่องเต็มหรือเบราว์เซอร์ไม่รองรับ): '+(e&&e.message||e)); return; }
+  pending=null; closeSaveModal(); await renderSidebar(); await loadDataset(id);
+}
+$('#saveConfirm').addEventListener('click',doSave);
+$('#saveCancel').addEventListener('click',()=>{ pending=null; closeSaveModal(); });
+$('#saveModal').addEventListener('click',e=>{ if(e.target.id==='saveModal'){ pending=null; closeSaveModal(); } });
 
-// upload triggers — both buttons open the brand/platform picker first
-$('#fileIn').addEventListener('change',e=>{ const f=e.target.files[0]; if(f)processFile(f); e.target.value=''; });
-$('#headAdd').addEventListener('click',()=>openUploadModal());
-$('#sideAdd').addEventListener('click',()=>openUploadModal());
+// upload triggers — open the file picker directly; ask brand/platform AFTER the file is read
+$('#fileIn').addEventListener('change',e=>{ const f=e.target.files[0]; if(f)handleFile(f); e.target.value=''; });
+$('#headAdd').addEventListener('click',()=>$('#fileIn').click());
+$('#sideAdd').addEventListener('click',()=>$('#fileIn').click());
 $('#sideTog').addEventListener('click',()=>$('#side').classList.toggle('collapsed'));
 ['dragover','drop'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault();}));
-document.addEventListener('drop',e=>{ const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f)openUploadModal(f); });
+document.addEventListener('drop',e=>{ const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f)handleFile(f); });
 
 function showMsg(t,err){ const m=$('#msg'); m.className='msg'+(err?' err':''); m.textContent=t; m.style.display=''; }
 function hideMsg(){ $('#msg').style.display='none'; $('#app').classList.remove('hidden'); }
