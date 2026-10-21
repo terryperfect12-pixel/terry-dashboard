@@ -78,9 +78,10 @@
   .splitbar{grid-column:1/-1;height:7px;border-radius:5px;overflow:hidden;display:flex;background:var(--surface-2)}
   .splitbar .p{background:var(--good)} .splitbar .u{background:var(--warn)}
   /* daily trend */
-  .trend{display:flex;align-items:flex-end;gap:3px;height:150px;margin-top:6px;overflow-x:auto;padding-bottom:2px}
-  .tcol{flex:1;min-width:14px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer}
-  .tbarwrap{width:100%;height:120px;display:flex;align-items:flex-end;justify-content:center}
+  .trend{display:flex;align-items:flex-end;gap:3px;height:178px;margin-top:6px;overflow-x:auto;padding-bottom:2px}
+  .tcol{flex:1;min-width:16px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+  .tnum{font-size:9.5px;font-weight:700;color:var(--ink-2);height:12px;line-height:12px}
+  .tbarwrap{width:100%;height:132px;display:flex;align-items:flex-end;justify-content:center}
   .tbar{width:72%;max-width:22px;border-radius:4px 4px 0 0;background:var(--accent);min-height:2px;transition:background .1s}
   .tcol:hover .tbar{background:var(--accent)} .tcol.act .tbar{background:var(--bad)}
   .tcol.weekend .tbar{opacity:.78}
@@ -89,8 +90,9 @@
   .hleg{display:flex;flex-wrap:wrap;gap:16px;font-size:12.5px;font-weight:700;margin:2px 0 8px}
   .hleg span{display:inline-flex;align-items:center;gap:6px}
   .hleg i{width:12px;height:12px;border-radius:3px;display:inline-block}
-  .hours{display:flex;align-items:flex-end;gap:4px;height:188px;overflow-x:auto;padding-bottom:2px}
-  .hcol{flex:1;min-width:26px;display:flex;flex-direction:column;align-items:center;gap:5px}
+  .hours{display:flex;align-items:flex-end;gap:4px;height:208px;overflow-x:auto;padding-bottom:2px}
+  .hcol{flex:1;min-width:30px;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .hnum{display:flex;flex-direction:column;align-items:center;font-size:8.5px;font-weight:700;line-height:10px;height:22px}
   .hbars{width:100%;height:150px;display:flex;align-items:flex-end;justify-content:center;gap:2px}
   .hbar{width:44%;max-width:13px;border-radius:3px 3px 0 0;min-height:2px}
   .hbar.c{background:var(--accent)} .hbar.x{background:var(--warn)}
@@ -110,6 +112,11 @@
   .pill.good{background:var(--good)} .pill.warn{background:var(--warn)} .pill.bad{background:var(--bad)}
   .hidden{display:none}
   .ovrsep{margin:22px 0 2px;font-size:14px;font-weight:800;color:var(--ink-2);border-top:2px solid var(--line);padding-top:14px}
+  #ovrSales .sline{font-size:13px;font-weight:800;margin-bottom:9px;border-top:1px solid var(--line);padding-top:12px}
+  .sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .stat{background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:10px 13px}
+  .stat .sv{font-size:18px;font-weight:800;line-height:1.15}
+  .stat .sk{font-size:11px;color:var(--muted);margin-top:2px}
   .foot{margin-top:18px;font-size:11px;color:var(--muted);line-height:1.6}
   /* upload drop */
   .drop{border:2px dashed var(--line-2);border-radius:12px;padding:10px 14px;font-size:12.5px;color:var(--muted);text-align:center;cursor:pointer}
@@ -184,6 +191,7 @@
       <p class="cnote" id="ovrNote">—</p>
       <div class="kpi" id="ovrKpi" style="margin:10px 0"></div>
       <div id="ovrBar"></div>
+      <div id="ovrSales" class="hidden" style="margin-top:16px"></div>
     </div>
     <div class="ovrsep hidden" id="ovrSep">🔻 เจาะลึกเฉพาะคำสั่งซื้อที่ยกเลิก</div>
 
@@ -345,22 +353,22 @@ function buildFromRaw(rows){
 // ---- all-orders overview (เข้ามา/ขายได้/ยกเลิก) from the raw rows; null if no real statuses ----
 function computeOverview(rows){
   const H=rows[0].map(x=>String(x||'').trim()); const ci=n=>H.indexOf(n);
-  const cS=ci('Order Status'), cO=ci('Order ID'), cA=ci('Order Amount'), cP=ci('Paid Time'), cC=ci('Created Time'), cR=ci('Order Refund Amount');
+  const cS=ci('Order Status'), cO=ci('Order ID'), cA=ci('Order Amount'), cP=ci('Paid Time'), cC=ci('Created Time'), cR=ci('Order Refund Amount'), cQ=ci('Quantity'), cSub=ci('SKU Subtotal After Discount'), cShip=ci('Shipping Fee After Discount');
   if(cS<0||cO<0) return null;
   const num=s=>{const v=parseFloat(String(s==null?'':s).replace(/[^0-9.\-]/g,''));return isNaN(v)?0:v;};
   const toISO=s=>{const m=String(s==null?'':s).match(/(\d+)\/(\d+)\/(\d+)/);return m?`${m[3]}-${String(+m[2]).padStart(2,'0')}-${String(+m[1]).padStart(2,'0')}`:'';};
-  const seen=new Map();
+  const ord=new Map(), by=new Map(); let totAmt=0,totRefund=0,totUnits=0; const dates=[];
   for(let i=1;i<rows.length;i++){ const r=rows[i]; const oid=r[cO]&&String(r[cO]).trim(); if(!oid)continue;
     const st=String(r[cS]||'').trim(); if(!st||/current order status/i.test(st))continue;
-    if(!seen.has(oid)) seen.set(oid,{status:st,amt:num(r[cA]),refund:cR>=0?num(r[cR]):0,paid:!!(r[cP]&&String(r[cP]).trim()),created:toISO(r[cC])}); }
-  if(!seen.size) return null;
-  const by=new Map(); let totAmt=0,totRefund=0; const dates=[];
-  for(const [,o] of seen){ const e=by.get(o.status)||{orders:0,amt:0,paid:0,refund:0}; e.orders++; e.amt+=o.amt; e.refund+=o.refund; if(o.paid)e.paid++; by.set(o.status,e); totAmt+=o.amt; totRefund+=o.refund; if(o.created)dates.push(o.created); }
+    let e=by.get(st); if(!e){e={orders:0,amt:0,paid:0,refund:0,units:0,sub:0,ship:0};by.set(st,e);}
+    e.units+=num(r[cQ]); e.sub+=cSub>=0?num(r[cSub]):0; e.ship+=cShip>=0?num(r[cShip]):0; totUnits+=num(r[cQ]);
+    if(!ord.has(oid)){ ord.set(oid,st); e.orders++; const a=num(r[cA]); e.amt+=a; totAmt+=a; const rf=cR>=0?num(r[cR]):0; e.refund+=rf; totRefund+=rf; if(r[cP]&&String(r[cP]).trim())e.paid++; const d=toISO(r[cC]); if(d)dates.push(d); } }
+  if(!ord.size) return null;
   dates.sort();
-  const statuses=[...by.entries()].sort((a,b)=>b[1].orders-a[1].orders).map(([k,e])=>({status:k,orders:e.orders,amt:Math.round(e.amt),paid:e.paid,refund:Math.round(e.refund)}));
+  const statuses=[...by.entries()].sort((a,b)=>b[1].orders-a[1].orders).map(([k,e])=>({status:k,orders:e.orders,amt:Math.round(e.amt),paid:e.paid,refund:Math.round(e.refund),units:Math.round(e.units),sub:Math.round(e.sub),ship:Math.round(e.ship)}));
   // only meaningful if there's more than just the cancelled status
   if(statuses.length<=1 && /ยกเลิก|cancel/i.test(statuses[0]?.status||'')) return null;
-  return { totalOrders:seen.size, totalAmt:Math.round(totAmt), totalRefund:Math.round(totRefund), from:dates[0], to:dates[dates.length-1], statuses };
+  return { totalOrders:ord.size, totalAmt:Math.round(totAmt), totalRefund:Math.round(totRefund), totalUnits:Math.round(totUnits), from:dates[0], to:dates[dates.length-1], statuses };
 }
 
 // ---- filtering ----
@@ -408,7 +416,24 @@ function renderOverview(){
       <span>🟩 ขายสำเร็จ ฿${fmt(done.amt)} (${pct(done.orders,tot)}%)</span>
       <span>🟥 ยกเลิก ฿${fmt(canc.amt)} (${pct(canc.orders,tot)}%)</span>
       ${ship.orders?`<span>🟧 จัดส่ง ฿${fmt(ship.amt)}</span>`:''}</div>`;
+  // extra sales totals from the sheet (shown when available)
+  const extra=$('#ovrSales'); if(extra){
+    if(done.units||done.sub){
+      const aov=done.orders?Math.round(done.amt/done.orders):0;
+      extra.classList.remove('hidden');
+      extra.innerHTML = `<div class="sline"><b>💰 สรุปยอดขาย (ขายสำเร็จ)</b></div>`+
+        `<div class="sgrid">`+
+        statTile('ยอดขายรวม (GMV)','฿'+fmt(done.amt))+
+        statTile('มูลค่าสินค้าสุทธิ','฿'+fmt(done.sub))+
+        statTile('ค่าจัดส่งที่เก็บได้','฿'+fmt(done.ship))+
+        statTile('ชิ้นที่ขายได้',fmt(done.units)+' ชิ้น')+
+        statTile('เฉลี่ย/ออเดอร์ (AOV)','฿'+fmt(aov))+
+        (o.totalUnits?statTile('ชิ้นที่สั่งทั้งหมด',fmt(o.totalUnits)+' ชิ้น'):'')+
+        `</div>`;
+    } else extra.classList.add('hidden');
+  }
 }
+const statTile=(k,v)=>`<div class="stat"><div class="sv">${v}</div><div class="sk">${esc(k)}</div></div>`;
 function render(){
   renderOverview();
   const list=filtered(); const ords=orders(list);
@@ -448,14 +473,17 @@ function render(){
   renderBars('#chanBars', [...chg.entries()].sort((a,b)=>b[1].orders-a[1].orders), totOrders,
     k=>CHLBL[k]||k||'(ไม่ระบุ)', F.chan, k=>toggle('chan',k), false, '#14b8a6');
 
-  // daily trend
+  // daily trend — only the days of the uploaded month (e.g. ก.ย. 1–30)
   const dg=groupOrders(list,o=>o.cancDate);
-  const days=[...dg.keys()].filter(Boolean).sort();
-  const maxD=Math.max(1,...days.map(d=>dg.get(d).orders));
-  $('#trend').innerHTML = days.map(d=>{const e=dg.get(d);const h=Math.round(e.orders/maxD*118);
+  const pm=/(\d{4})-(\d{2})/.exec(PERIOD||'');
+  let days;
+  if(pm){ const y=+pm[1], m=+pm[2], dim=new Date(y,m,0).getDate(); days=[]; for(let d=1;d<=dim;d++) days.push(`${pm[1]}-${pm[2]}-${String(d).padStart(2,'0')}`); }
+  else days=[...dg.keys()].filter(Boolean).sort();
+  const maxD=Math.max(1,...days.map(d=>(dg.get(d)||{orders:0}).orders));
+  $('#trend').innerHTML = days.map(d=>{const e=dg.get(d)||{orders:0,amt:0};const h=Math.round(e.orders/maxD*128);
     const wd=new Date(d).getDay(); const we=(wd===0||wd===6)?'weekend':'';
     return `<div class="tcol ${we} ${F.day===d?'act':''}" data-d="${d}" title="${dLabel(d)} · ${e.orders} ออเดอร์ · ${bahtT(e.amt)}">
-      <div class="tbarwrap"><div class="tbar" style="height:${h}px"></div></div><div class="tlbl">${/^\d+-\d+-(\d+)/.exec(d)[1]}</div></div>`;}).join('');
+      <div class="tnum">${e.orders||''}</div><div class="tbarwrap"><div class="tbar" style="height:${h}px"></div></div><div class="tlbl">${(+d.slice(-2))}</div></div>`;}).join('');
   $('#trend').querySelectorAll('.tcol').forEach(c=>c.onclick=()=>toggle('day',c.dataset.d));
 
   renderHours(list);
@@ -545,6 +573,7 @@ function renderHours(list){
   for(let h=0;h<24;h++){
     const hc=Math.round(cre[h]/max*140), hx=Math.round(can[h]/max*140);
     html+=`<div class="hcol ${h===pkC?'peakc':''} ${h===pkX?'peakx':''}" title="${h}:00 น. · สั่งซื้อ ${cre[h]} · ยกเลิก ${can[h]}">
+      <div class="hnum"><span style="color:var(--accent)">${cre[h]||''}</span><span style="color:var(--warn)">${can[h]||''}</span></div>
       <div class="hbars"><div class="hbar c" style="height:${hc}px"></div><div class="hbar x" style="height:${hx}px"></div></div>
       <div class="hlbl">${h}</div></div>`;
   }
