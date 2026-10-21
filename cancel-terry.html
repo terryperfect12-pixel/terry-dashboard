@@ -23,7 +23,7 @@
   }}
   *{box-sizing:border-box} html,body{margin:0}
   body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1620px;margin:0 auto;padding:16px 22px 72px}  /* centered */
+  .wrap{flex:1;max-width:2100px;margin:0 auto;padding:16px 26px 72px}  /* fills the space next to the sidebar */
   .muted{color:var(--muted)}
   /* header */
   .head{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
@@ -202,25 +202,6 @@
       <div id="insight"></div>
     </div>
 
-    <div class="grid2">
-      <div class="card" style="margin-top:16px">
-        <h2>📋 สาเหตุการยกเลิก</h2>
-        <p class="cnote">ตามจำนวนออเดอร์ · แถบเขียว = ชำระแล้ว (เสียยอดจริง) / ส้ม = ยังไม่ชำระ · คลิกเพื่อกรอง</p>
-        <div class="bars" id="reasonBars"></div>
-      </div>
-      <div class="card" style="margin-top:16px">
-        <h2>🙋 ยกเลิกโดยใคร</h2>
-        <p class="cnote">ลูกค้า / ระบบ (หมดเวลาชำระ) / แอดมิน · คลิกเพื่อกรอง</p>
-        <div class="bars" id="byBars"></div>
-        <h2 style="margin-top:18px">💳 วิธีชำระเงิน</h2>
-        <p class="cnote">ของออเดอร์ที่ยกเลิก · คลิกเพื่อกรอง</p>
-        <div class="bars" id="payBars"></div>
-        <h2 style="margin-top:18px">🛒 ช่องทางขาย (Order Channel)</h2>
-        <p class="cnote">LIVE / วิดีโอ / การ์ดสินค้า — ออเดอร์ที่ยกเลิกมาจากช่องทางไหน · คลิกเพื่อกรอง</p>
-        <div class="bars" id="chanBars"></div>
-      </div>
-    </div>
-
     <div class="card">
       <h2>📅 การยกเลิกรายวัน</h2>
       <p class="cnote">ตามวันที่ยกเลิก · ความสูง = จำนวนออเดอร์ · คลิกวันเพื่อกรอง</p>
@@ -253,6 +234,25 @@
       <h2>🔎 ตารางสาเหตุแบบละเอียด</h2>
       <p class="cnote">แยกชำระแล้ว/ยังไม่ชำระ เพื่อดูว่าสาเหตุไหนคือ “เสียยอดขายจริง”</p>
       <div class="tblwrap"><table id="reasonTbl"></table></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card" style="margin-top:16px">
+        <h2>📋 สาเหตุการยกเลิก</h2>
+        <p class="cnote">ตามจำนวนออเดอร์ · แถบเขียว = ชำระแล้ว (เสียยอดจริง) / ส้ม = ยังไม่ชำระ · คลิกเพื่อกรอง</p>
+        <div class="bars" id="reasonBars"></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h2>🙋 ยกเลิกโดยใคร</h2>
+        <p class="cnote">ลูกค้า / ระบบ (หมดเวลาชำระ) / แอดมิน · คลิกเพื่อกรอง</p>
+        <div class="bars" id="byBars"></div>
+        <h2 style="margin-top:18px">💳 วิธีชำระเงิน</h2>
+        <p class="cnote">ของออเดอร์ที่ยกเลิก · คลิกเพื่อกรอง</p>
+        <div class="bars" id="payBars"></div>
+        <h2 style="margin-top:18px">🛒 ช่องทางขาย (Order Channel)</h2>
+        <p class="cnote">LIVE / วิดีโอ / การ์ดสินค้า — ออเดอร์ที่ยกเลิกมาจากช่องทางไหน · คลิกเพื่อกรอง</p>
+        <div class="bars" id="chanBars"></div>
+      </div>
     </div>
 
     <p class="foot" id="foot"></p>
