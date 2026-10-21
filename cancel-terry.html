@@ -323,7 +323,7 @@ function render(){
   // products
   const prodMap=new Map();
   for(const it of list){ const e=prodMap.get(it.sku)||{sku:it.sku,prod:it.prod,lines:0,qty:0,sub:0,oids:new Set()}; e.lines++; e.qty+=it.qty; e.sub+=it.sub; e.oids.add(it.oid); prodMap.set(it.sku,e); }
-  const allProd=[...prodMap.values()];
+  const allProd=[...prodMap.values()].filter(e=>e.sub>0);   // ตัดสินค้าที่ยอดขาย ฿0 ออก (เช่น tester "Not For Sale")
   const SK={name:e=>e.sku, ord:e=>e.oids.size, qty:e=>e.qty, sub:e=>e.sub};
   allProd.sort((a,b)=>{ const va=SK[prodSort.k](a), vb=SK[prodSort.k](b);
     const c = (prodSort.k==='name') ? String(va).localeCompare(String(vb),'th') : (va-vb); return c*prodSort.dir; });
