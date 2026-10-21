@@ -110,15 +110,62 @@
   /* upload drop */
   .drop{border:2px dashed var(--line-2);border-radius:12px;padding:10px 14px;font-size:12.5px;color:var(--muted);text-align:center;cursor:pointer}
   .drop.over{border-color:var(--accent);color:var(--accent);background:color-mix(in oklab,var(--accent) 7%,var(--surface))}
+  /* ---- saved-datasets sidebar ---- */
+  .shell{display:flex;align-items:flex-start;min-height:100dvh}
+  .side{width:244px;flex:none;position:sticky;top:0;height:100dvh;overflow:auto;border-right:1px solid var(--line);background:var(--surface);padding:14px 12px}
+  .side h3{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0 0 10px;display:flex;align-items:center;gap:7px}
+  .addbtn{width:100%;border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:10px;padding:9px;font:inherit;font-weight:800;font-size:13px;cursor:pointer;margin-bottom:14px}
+  .addbtn:hover{background:color-mix(in oklab,var(--accent) 8%,var(--surface))}
+  .dsgroup{margin-bottom:12px}
+  .dsgroup .gh{font-size:12px;font-weight:800;color:var(--ink-2);margin:0 0 5px;padding:2px 4px;display:flex;align-items:center;gap:7px}
+  .dsgroup .gh .gdot{width:8px;height:8px;border-radius:50%;flex:none}
+  .dsitem{display:flex;align-items:center;gap:6px;border-radius:9px;padding:7px 9px;cursor:pointer;transition:background .1s}
+  .dsitem:hover{background:var(--surface-2)}
+  .dsitem.active{background:color-mix(in oklab,var(--accent) 14%,var(--surface))}
+  .dsitem .di-main{min-width:0;flex:1}
+  .dsitem .di-t{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dsitem.active .di-t{color:var(--accent)}
+  .dsitem .di-s{font-size:10.5px;color:var(--muted)}
+  .dsitem .di-del{opacity:0;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:12px;flex:none}
+  .dsitem:hover .di-del{opacity:.65} .dsitem .di-del:hover{opacity:1;color:var(--bad)}
+  .side .empty{font-size:11.5px;color:var(--muted);padding:8px;line-height:1.55}
+  .sidetoggle{display:none}
+  .wrap{min-width:0}
+  @media(max-width:900px){
+    .shell{flex-direction:column}
+    .side{position:static;width:100%;height:auto;border-right:0;border-bottom:1px solid var(--line);max-height:46dvh}
+    .side.collapsed{display:none}
+    .sidetoggle{display:inline-flex}
+  }
+  /* ---- brand/platform picker modal ---- */
+  .modal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:16px}
+  .modal .box{background:var(--surface);border:1px solid var(--line);border-radius:16px;width:100%;max-width:450px;padding:20px 22px}
+  .modal .box h3{margin:0 0 4px;font-size:16px;font-weight:800}
+  .modal .mnote{font-size:12px;color:var(--muted);margin:0 0 6px}
+  .mlabel{font-size:12px;font-weight:800;color:var(--ink-2);margin:16px 0 8px}
+  .opts{display:flex;flex-wrap:wrap;gap:8px}
+  .opt{border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink-2);border-radius:10px;padding:8px 15px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+  .opt:hover{border-color:var(--ink-2)} .opt.on{background:var(--accent);color:#fff;border-color:transparent}
+  .mrow{display:flex;gap:10px;margin-top:22px}
+  .mrow button{flex:1;border-radius:10px;padding:10px;font:inherit;font-weight:800;font-size:14px;cursor:pointer;border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink-2)}
+  .mrow button.pri{background:var(--accent);color:#fff;border-color:transparent}
+  .mrow button:disabled{opacity:.5;cursor:not-allowed}
 </style>
 </head>
 <body>
+<div class="shell">
+<aside class="side" id="side">
+  <button class="addbtn" id="sideAdd">⬆ โหลดไฟล์ใหม่</button>
+  <h3>📁 ชุดข้อมูลที่บันทึก</h3>
+  <div id="dsList"></div>
+</aside>
 <div class="wrap">
   <div class="head">
+    <button class="btn sidetoggle" id="sideTog">☰ ชุดข้อมูล</button>
     <h1><span class="dot"></span>วิเคราะห์การยกเลิกคำสั่งซื้อ <span class="badge" id="brandBadge">Terry</span></h1>
     <span class="muted" style="font-size:12px" id="periodNote">—</span>
     <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
-      <label class="btn accent" for="fileIn">⬆ โหลดไฟล์เดือนอื่น</label>
+      <label class="btn accent" for="fileIn">⬆ โหลดไฟล์ใหม่</label>
       <input id="fileIn" type="file" accept=".xlsx,.xls,.csv" class="hidden">
     </div>
   </div>
@@ -205,6 +252,23 @@
     </div>
 
     <p class="foot" id="foot"></p>
+  </div>
+</div>
+</div>
+
+<!-- brand / platform picker when saving an uploaded file -->
+<div class="modal hidden" id="saveModal">
+  <div class="box">
+    <h3>บันทึกชุดข้อมูลนี้</h3>
+    <p class="mnote" id="saveInfo">—</p>
+    <div class="mlabel">แบรนด์ <span class="muted" style="font-weight:400">(แยกข้อมูลแต่ละแบรนด์)</span></div>
+    <div class="opts" id="brandOpts"></div>
+    <div class="mlabel">แพลตฟอร์ม</div>
+    <div class="opts" id="platOpts"></div>
+    <div class="mrow">
+      <button id="saveCancel">ยกเลิก</button>
+      <button class="pri" id="saveConfirm" disabled>บันทึก &amp; ดูข้อมูล</button>
+    </div>
   </div>
 </div>
 
@@ -466,21 +530,122 @@ let xlsxP=null;
 function loadXLSX(){ if(window.XLSX)return Promise.resolve(window.XLSX);
   if(!xlsxP)xlsxP=new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=()=>res(window.XLSX);s.onerror=()=>{xlsxP=null;rej(new Error('โหลดตัวอ่านไฟล์ไม่สำเร็จ'));};document.head.appendChild(s);});
   return xlsxP; }
+// parse an uploaded file → then ask brand/platform before saving
+let pending=null;
 async function handleFile(f){
   try{ showMsg('กำลังอ่านไฟล์ '+f.name+' …');
     const XLSX=await loadXLSX();
     const wb=/\.csv$/i.test(f.name)?XLSX.read(await f.text(),{type:'string',raw:true}):XLSX.read(await f.arrayBuffer(),{type:'array'});
     let rows=null; for(const nm of wb.SheetNames){ const ws=wb.Sheets[nm]; rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:''}); if(rows&&rows.length>1&&rows[0].includes('Order ID'))break; }
-    ITEMS=buildFromRaw(rows);
-    PERIOD = guessPeriod(ITEMS);
-    $('#periodNote').textContent='งวด '+PERIOD+' · จากไฟล์ที่อัปโหลด ('+fmt(ITEMS.length)+' รายการ) · ประมวลผลในเครื่องคุณ ไม่ส่งข้อมูลออก';
-    resetF(); hideMsg(); render();
+    const items=buildFromRaw(rows);
+    pending={ items, period:guessPeriod(items), fname:f.name };
+    hideMsg(); openSaveModal();
   }catch(err){ showMsg('ผิดพลาด: '+(err&&err.message||err), true); }
 }
 function guessPeriod(items){ const m=new Map(); for(const it of items){ const k=(it.createDate||it.cancDate||'').slice(0,7); if(k)m.set(k,(m.get(k)||0)+1);} const top=[...m.entries()].sort((a,b)=>b[1]-a[1])[0]; return top?top[0]:'—'; }
 function resetF(){ F={paid:'all',by:'all',reason:null,pay:null,chan:null,prod:null,prov:null,day:null,search:''}; const s=$('#srch'); if(s)s.value=''; }
+const periodShort=p=>{ const m=/(\d{4})-(\d{2})/.exec(p||''); return m?(TH_M[+m[2]]+' '+m[1]):(p||'—'); };
+
+// ---- compact encoder (store PII-free, dictionary-encoded, in the browser) ----
+function encode(items){
+  const dict={reason:[],pay:[],prov:[],sku:[],prod:[],cat:[],chan:[],oid:[],date:[]};
+  const idx={}; for(const k in dict) idx[k]=new Map();
+  const di=(k,v)=>{ v=String(v==null?'':v); const m=idx[k]; if(m.has(v))return m.get(v); const i=dict[k].length; dict[k].push(v); m.set(v,i); return i; };
+  const rec=items.map(it=>[di('oid',it.oid),(it.by|0),di('reason',it.reason),di('date',it.cancDate),di('date',it.createDate),it.paid?1:0,di('pay',it.pay),di('prov',it.prov),di('sku',it.sku),di('prod',it.prod),di('cat',it.cat),+it.qty||0,+it.sub||0,+it.oamt||0,+it.refund||0,di('chan',it.chan),it.pre?1:0,(it.cancHour??-1),(it.createHour??-1)]);
+  return { dict, rec };
+}
+
+// ---- IndexedDB (saved datasets live only on this device) ----
+const DB='cancelTool', STORE='datasets'; let _db=null;
+function idb(){ if(_db)return Promise.resolve(_db); return new Promise((res,rej)=>{ const r=indexedDB.open(DB,1);
+  r.onupgradeneeded=()=>{ const db=r.result; if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE,{keyPath:'id'}); };
+  r.onsuccess=()=>{_db=r.result;res(_db);}; r.onerror=()=>rej(r.error); }); }
+function dbAll(){ return idb().then(db=>new Promise((res,rej)=>{ const rq=db.transaction(STORE,'readonly').objectStore(STORE).getAll(); rq.onsuccess=()=>res(rq.result||[]); rq.onerror=()=>rej(rq.error); })); }
+function dbGet(id){ return idb().then(db=>new Promise((res,rej)=>{ const rq=db.transaction(STORE,'readonly').objectStore(STORE).get(id); rq.onsuccess=()=>res(rq.result); rq.onerror=()=>rej(rq.error); })); }
+function dbPut(rec){ return idb().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); tx.objectStore(STORE).put(rec); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); })); }
+function dbDel(id){ return idb().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); tx.objectStore(STORE).delete(id); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); })); }
+
+// ---- brand / platform config ----
+const BRANDS=['Terry','Gala','Benutra'];
+const BRAND_C={Terry:'#2563eb',Gala:'#8b5cf6',Benutra:'#16a34a'};
+const PLATFORMS=['TikTok','Shopee','Lazada','Facebook','อื่นๆ'];
+
+// ---- sidebar ----
+let activeDsId=null;
+async function renderSidebar(){
+  let saved=[]; try{ saved=await dbAll(); }catch{ saved=[]; }
+  const all=[{id:'builtin',brand:'Terry',platform:'TikTok',period:'2026-09',builtin:true}, ...saved];
+  const groups=new Map();
+  for(const d of all){ if(!groups.has(d.brand))groups.set(d.brand,[]); groups.get(d.brand).push(d); }
+  const order=[...BRANDS, ...[...groups.keys()].filter(b=>!BRANDS.includes(b))];
+  let html='';
+  for(const b of order){ const items=groups.get(b); if(!items)continue;
+    items.sort((x,y)=>(y.period||'').localeCompare(x.period||'')||(x.platform||'').localeCompare(y.platform||''));
+    html+=`<div class="dsgroup"><div class="gh"><span class="gdot" style="background:${BRAND_C[b]||'#8a929c'}"></span>${esc(b)}</div>`
+      + items.map(dsItemHtml).join('') + `</div>`;
+  }
+  $('#dsList').innerHTML=html || '<div class="empty">ยังไม่มีชุดข้อมูล<br>กด “โหลดไฟล์ใหม่” เพื่อเพิ่ม</div>';
+  $('#dsList').querySelectorAll('.dsitem').forEach(el=>{
+    el.querySelector('.di-main').onclick=()=>loadDataset(el.dataset.id);
+    const del=el.querySelector('.di-del'); if(del) del.onclick=async ev=>{ ev.stopPropagation(); if(confirm('ลบชุดข้อมูลนี้ออกจากเครื่อง?')){ try{await dbDel(el.dataset.id);}catch{} if(activeDsId===el.dataset.id)activeDsId=null; renderSidebar(); } };
+  });
+  markActive();
+}
+function dsItemHtml(d){
+  return `<div class="dsitem ${activeDsId===d.id?'active':''}" data-id="${esc(d.id)}">
+    <div class="di-main"><div class="di-t">${esc(d.platform||'')} · ${esc(periodShort(d.period))}</div>
+    <div class="di-s">${d.builtin?'ตัวอย่างในระบบ':fmt(d.count||0)+' รายการ'}</div></div>
+    ${d.builtin?'':'<button class="di-del" title="ลบ">🗑</button>'}</div>`;
+}
+function markActive(){ document.querySelectorAll('#dsList .dsitem').forEach(el=>el.classList.toggle('active',el.dataset.id===activeDsId)); }
+
+let _builtin=null;
+async function loadBuiltin(){
+  if(!_builtin){ _builtin=await (await fetch('cancel-terry-2026-09.json?cb='+Date.now())).json(); }
+  ITEMS=decode(_builtin); PERIOD=_builtin.period||'2026-09';
+  $('#brandBadge').textContent=_builtin.brand||'Terry';
+  $('#periodNote').textContent='Terry · TikTok · งวด '+PERIOD+' (เดือน 9) · ตัวอย่างในระบบ';
+  activeDsId='builtin'; resetF(); hideMsg(); render(); markActive();
+}
+async function loadDataset(id){
+  if(id==='builtin'){ await loadBuiltin(); return; }
+  let d; try{ d=await dbGet(id); }catch{} if(!d)return;
+  ITEMS=decode(d.enc); PERIOD=d.period||'—';
+  $('#brandBadge').textContent=d.brand;
+  $('#periodNote').textContent=`${d.brand} · ${d.platform} · งวด ${periodShort(d.period)} · ${fmt(ITEMS.length)} รายการ · บันทึกในเครื่อง`;
+  activeDsId=id; resetF(); hideMsg(); render(); markActive();
+  if(innerWidth<=900) $('#side').classList.add('collapsed');
+}
+
+// ---- save modal (ask brand + platform) ----
+let selBrand=null, selPlat=null;
+function openSaveModal(){
+  selBrand=null;
+  selPlat = /tiktok|tt/i.test(pending.fname)?'TikTok' : /shopee|sp/i.test(pending.fname)?'Shopee' : /lazada|lzd/i.test(pending.fname)?'Lazada' : null;
+  $('#saveInfo').innerHTML=`ไฟล์: <b>${esc(pending.fname)}</b> · งวด <b>${esc(periodShort(pending.period))}</b> · ${fmt(pending.items.length)} รายการ · ข้อมูลตัดชื่อ/เบอร์/ที่อยู่ลูกค้าออกแล้ว`;
+  $('#brandOpts').innerHTML=BRANDS.map(b=>`<button class="opt ${selBrand===b?'on':''}" data-b="${b}">${b}</button>`).join('');
+  $('#platOpts').innerHTML=PLATFORMS.map(p=>`<button class="opt ${selPlat===p?'on':''}" data-p="${p}">${p}</button>`).join('');
+  $('#brandOpts').querySelectorAll('.opt').forEach(o=>o.onclick=()=>{ selBrand=o.dataset.b; $('#brandOpts').querySelectorAll('.opt').forEach(x=>x.classList.toggle('on',x===o)); syncSaveBtn(); });
+  $('#platOpts').querySelectorAll('.opt').forEach(o=>o.onclick=()=>{ selPlat=o.dataset.p; $('#platOpts').querySelectorAll('.opt').forEach(x=>x.classList.toggle('on',x===o)); syncSaveBtn(); });
+  syncSaveBtn(); $('#saveModal').classList.remove('hidden');
+}
+function syncSaveBtn(){ $('#saveConfirm').disabled=!(selBrand&&selPlat&&pending); }
+function closeSaveModal(){ $('#saveModal').classList.add('hidden'); }
+async function doSave(){
+  if(!(pending&&selBrand&&selPlat))return;
+  const id='ds_'+selBrand+'_'+selPlat+'_'+pending.period;
+  const rec={ id, brand:selBrand, platform:selPlat, period:pending.period, count:pending.items.length, savedAt:Date.now(), enc:encode(pending.items) };
+  try{ await dbPut(rec); }catch(e){ alert('บันทึกไม่สำเร็จ (พื้นที่เครื่องเต็มหรือเบราว์เซอร์ไม่รองรับ): '+(e&&e.message||e)); }
+  pending=null; closeSaveModal(); await renderSidebar(); await loadDataset(id);
+}
+$('#saveConfirm').addEventListener('click',doSave);
+$('#saveCancel').addEventListener('click',()=>{ pending=null; closeSaveModal(); });
+$('#saveModal').addEventListener('click',e=>{ if(e.target.id==='saveModal'){ pending=null; closeSaveModal(); } });
+
+// upload triggers
 $('#fileIn').addEventListener('change',e=>{ const f=e.target.files[0]; if(f)handleFile(f); e.target.value=''; });
-// drag-drop onto whole page
+$('#sideAdd').addEventListener('click',()=>$('#fileIn').click());
+$('#sideTog').addEventListener('click',()=>$('#side').classList.toggle('collapsed'));
 ['dragover','drop'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault();}));
 document.addEventListener('drop',e=>{ const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f)handleFile(f); });
 
@@ -489,12 +654,8 @@ function hideMsg(){ $('#msg').style.display='none'; $('#app').classList.remove('
 
 let PERIOD='2026-09';
 (async()=>{ try{
-    const j=await (await fetch('cancel-terry-2026-09.json?cb='+Date.now())).json();
-    ITEMS=decode(j); if(Array.isArray(j.byLabels))BYLBL=['ลูกค้า','ระบบ','แอดมิน','อื่นๆ'];
-    PERIOD=j.period||'2026-09';
-    $('#brandBadge').textContent=j.brand||'Terry';
-    $('#periodNote').textContent='งวด '+PERIOD+' (เดือน 9) · ที่มา: รายงานออเดอร์ TikTok Shop เฉพาะที่ยกเลิก · อัปโหลดไฟล์เดือนอื่นได้';
-    hideMsg(); render();
+    await renderSidebar();
+    await loadBuiltin();
   }catch(err){ showMsg('โหลดข้อมูลเริ่มต้นไม่สำเร็จ — อัปโหลดไฟล์รายงานออเดอร์ (.xlsx/.csv) เพื่อเริ่มใช้งาน', true); $('#app').classList.remove('hidden'); $('#kpi').innerHTML=''; }
 })();
 </script>
