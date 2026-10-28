@@ -210,14 +210,20 @@
   .btnghost.on{background:var(--accent);color:#fff;border-color:transparent}
 
   /* full table */
-  .tblwrap{overflow-x:auto;border:1px solid var(--line-2);border-radius:12px;margin-top:14px;background:var(--surface)}
-  table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}
-  th,td{border:1px solid var(--line);padding:6px 10px;text-align:right;font-variant-numeric:tabular-nums}
-  th{font-weight:800;font-size:11.5px;color:var(--ink);background:var(--surface-2)}
+  .tblwrap{overflow-x:auto;border:1px solid var(--line-2);border-radius:14px;margin-top:16px;background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:14.5px;white-space:nowrap}
+  th,td{border:1px solid var(--line);padding:10px 15px;text-align:right;font-variant-numeric:tabular-nums}
+  th{font-weight:800;font-size:13px;color:var(--ink);background:var(--surface-2)}
   td.l,th.l{text-align:left;position:sticky;left:0;background:var(--surface);z-index:1}
   th.l{background:var(--surface-2);z-index:2}
   tr:hover td{background:color-mix(in oklab,var(--accent) 5%,var(--surface))}
   td.cheap{font-weight:800;color:var(--good)}
+  /* main-basket row stands out; its options nest beneath */
+  tr.mainrow td{border-top:2px solid var(--line-2)}
+  tr.optlabel td{background:var(--surface-2);font-weight:800;font-size:12px;color:var(--muted);padding:5px 15px;letter-spacing:.2px}
+  tr.subrow td{background:color-mix(in oklab,var(--accent) 4%,var(--surface))}
+  tr.subrow td.l{background:color-mix(in oklab,var(--accent) 4%,var(--surface))}
+  tr.subrow:hover td{background:color-mix(in oklab,var(--accent) 9%,var(--surface))}
   .hidden{display:none}
 </style>
 </head>
@@ -563,15 +569,28 @@ function renderTable(){
   const head=`<tr><th class="l">สินค้า</th><th>SKU</th><th>ราคาเต็ม</th>`+
     CAMP.map(c=>`<th style="color:${c.c}">${esc(c.k)}</th>`).join('')+
     `<th>GWP</th><th class="l" style="left:auto;position:static">Remark</th></tr>`;
-  const body=list.map(it=>{
+  const rowHtml=(it,child)=>{
     const allP=Object.values(it.prices).filter(v=>v>0); const minP=allP.length?Math.min(...allP):0;
-    const timg=displayImg(it);
-    return `<tr><td class="l" style="text-align:left">${timg?`<img src="${esc(thumbUrl(timg))}" loading="lazy" style="width:26px;height:26px;object-fit:cover;vertical-align:middle;margin-right:7px;border-radius:5px">`:''}${esc(it.name)}</td>`+
+    const timg=displayImg(it); const sz=child?28:36;
+    const nm = child
+      ? `<span style="color:var(--muted);font-weight:700;margin:0 6px 0 16px">↳</span>${esc(it.name)}`
+      : `<strong>${esc(it.name)}</strong>`;
+    return `<tr class="${child?'subrow':'mainrow'}"><td class="l" style="text-align:left">${timg?`<img src="${esc(thumbUrl(timg))}" loading="lazy" style="width:${sz}px;height:${sz}px;object-fit:cover;vertical-align:middle;margin-right:9px;border-radius:7px">`:''}${nm}</td>`+
       `<td style="text-align:left">${esc(it.sku)||'—'}</td>`+
       `<td class="muted">${it.full>0?'฿'+fmt(it.full):'—'}</td>`+
       CAMP.map(c=>{const v=it.prices[c.k];return `<td class="${v>0&&v===minP&&allP.length>1?'cheap':''}">${v>0?'฿'+fmt(v):'—'}</td>`;}).join('')+
       `<td style="text-align:left">${esc(it.gwp)||'—'}</td>`+
       `<td style="text-align:left">${esc(it.remark)||'—'}</td></tr>`;
+  };
+  const span=CAMP.length+5;
+  const body=list.map(it=>{
+    const kids=childrenOf(it);
+    let s=rowHtml(it,false);
+    if(kids.length){
+      s+=`<tr class="optlabel"><td colspan="${span}" style="text-align:left">🧩 ตัวเลือก (${kids.length}) — ตัวเลือกย่อยของตะกร้าหลักนี้</td></tr>`;
+      s+=kids.map(k=>rowHtml(k,true)).join('');
+    }
+    return s;
   }).join('');
   $('#table').innerHTML=`<div class="tblwrap"><table>${head}${body}</table></div>
     <div class="muted" style="font-size:11px;margin-top:8px">* ช่องสีเขียว = ราคาถูกสุดของรายการนั้น · อ่านสดจากชีต Master Promotion Plan</div>`;
