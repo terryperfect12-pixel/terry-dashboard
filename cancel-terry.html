@@ -197,17 +197,6 @@
   <div class="msg" id="msg">กำลังโหลดข้อมูล…</div>
 
   <div id="app" class="hidden">
-    <!-- all-orders overview (shown only when the file has all statuses) -->
-    <div class="card hidden" id="ovrCard" style="margin-top:4px">
-      <h2>📊 ภาพรวมคำสั่งซื้อทั้งหมด</h2>
-      <p class="cnote" id="ovrNote">—</p>
-      <div class="kpi" id="ovrKpi" style="margin:10px 0"></div>
-      <div id="ovrBar"></div>
-      <div id="ovrSales" class="hidden" style="margin-top:16px"></div>
-      <div id="ovrTarget" class="hidden" style="margin-top:16px"></div>
-    </div>
-    <div class="ovrsep hidden" id="ovrSep">🔻 เจาะลึกเฉพาะคำสั่งซื้อที่ยกเลิก</div>
-
     <!-- controls -->
     <div class="filtbar">
       <div class="seg" id="paidSeg">
@@ -469,7 +458,6 @@ function renderTarget(actual){
   const inp=$('#tgtIn'); if(inp) inp.onchange=()=>{ const v=Math.max(0,+inp.value||0); if(v)TARGETS[activeDsId]={units:v}; else delete TARGETS[activeDsId]; saveTargets(); renderTarget(actual); };
 }
 function render(){
-  renderOverview();
   const list=filtered(); const ords=orders(list);
   const totOrders=ords.length, totLines=list.length;
   let totAmt=0,totRefund=0,paidN=0,paidAmt=0,unpaidN=0,unpaidAmt=0;

@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>ภาพรวมยอดขาย & เป้าหมาย — Terry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f7f9; --surface:#ffffff; --surface-2:#f1f3f6; --line:#e5e8ec; --line-2:#d3d8df;
+    --ink:#121619; --ink-2:#3b434c; --muted:#8a929c; --accent:#2563eb;
+    --good:#16a34a; --bad:#e11d48; --warn:#d97706;
+    --f:"Sarabun","TH Sarabun New","Segoe UI",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#0f1317; --surface:#171c22; --surface-2:#1e242c; --line:#2a313a; --line-2:#394250;
+    --ink:#eef1f4; --ink-2:#c3cad2; --muted:#8893a0; --accent:#5b9bff;
+  }}
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .muted{color:var(--muted)}
+  .head{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
+  .head h1{font-size:21px;font-weight:800;margin:0;display:flex;align-items:center;gap:9px}
+  .dot{width:11px;height:11px;border-radius:50%;background:var(--good)}
+  .badge{font-size:11px;font-weight:800;color:#fff;background:var(--accent);border-radius:7px;padding:3px 9px}
+  .sub{font-size:12.5px;color:var(--muted);margin:3px 0 0}
+  .btn{border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink-2);border-radius:10px;padding:8px 13px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+  .btn:hover{border-color:var(--ink-2);color:var(--ink)}
+  .btn.accent{border-color:var(--accent);color:var(--accent)}
+  .msg{margin:12px 0;font-size:13px;padding:10px 13px;border-radius:10px;background:var(--surface-2);color:var(--ink-2)}
+  .msg.err{background:color-mix(in oklab,var(--bad) 13%,var(--surface));color:var(--bad)}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-top:16px}
+  .card h2{font-size:14.5px;font-weight:800;margin:0 0 3px;display:flex;align-items:center;gap:8px}
+  .card .cnote{font-size:11.5px;color:var(--muted);margin:0 0 12px}
+  .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(176px,1fr));gap:12px}
+  .ktile{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 15px}
+  .ktile.hl{border-color:color-mix(in oklab,var(--warn) 55%,var(--line))}
+  .ktile.hl2{border-color:color-mix(in oklab,var(--good) 55%,var(--line))}
+  .kk{font-size:11.5px;font-weight:700;color:var(--muted)}
+  .kv{font-size:24px;font-weight:800;margin-top:4px;letter-spacing:-.01em;line-height:1.1}
+  .ks{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .splitbar{height:7px;border-radius:5px;overflow:hidden;display:flex;background:var(--surface-2)}
+  .hidden{display:none}
+  .foot{margin-top:18px;font-size:11px;color:var(--muted);line-height:1.6}
+  /* sales summary stat tiles */
+  #ovrSales .sline{font-size:13px;font-weight:800;margin-bottom:9px;border-top:1px solid var(--line);padding-top:12px}
+  .sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .stat{background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:10px 13px}
+  .stat .sv{font-size:18px;font-weight:800;line-height:1.15}
+  .stat .sk{font-size:11px;color:var(--muted);margin-top:2px}
+  /* target vs actual */
+  #ovrTarget .tgt-h{font-size:13px;font-weight:800;margin-bottom:10px;border-top:1px solid var(--line);padding-top:12px}
+  .tgtgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end}
+  .tgtfield{background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:10px 13px}
+  .tgtfield .sk{font-size:11px;color:var(--muted);margin-bottom:4px}
+  .tgtfield .sv{font-size:19px;font-weight:800;line-height:1.1}
+  .tgtfield input{width:100%;border:1.5px solid var(--accent);background:var(--surface);color:var(--ink);border-radius:8px;padding:6px 9px;font:inherit;font-size:18px;font-weight:800}
+  .tgtfield.ach .sv{color:var(--good)} .tgtfield.ach.under .sv{color:var(--warn)}
+  .tgtbar{height:16px;border-radius:8px;background:var(--surface-2);overflow:hidden;margin-top:12px;border:1px solid var(--line)}
+  .tgtbar>div{height:100%;border-radius:8px;background:var(--good);transition:width .2s}
+  .tgtbar>div.under{background:var(--warn)}
+  .tgtnote{font-size:11.5px;color:var(--muted);margin-top:6px}
+  /* sidebar */
+  .shell{display:flex;align-items:flex-start;min-height:100dvh}
+  .side{width:244px;flex:none;position:sticky;top:0;height:100dvh;overflow:auto;border-right:1px solid var(--line);background:var(--surface);padding:14px 12px}
+  .side h3{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0 0 10px;display:flex;align-items:center;gap:7px}
+  .addbtn{width:100%;border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:10px;padding:9px;font:inherit;font-weight:800;font-size:13px;cursor:pointer;margin-bottom:14px}
+  .addbtn:hover{background:color-mix(in oklab,var(--accent) 8%,var(--surface))}
+  .dsgroup{margin-bottom:12px}
+  .dsgroup .gh{font-size:12px;font-weight:800;color:var(--ink-2);margin:0 0 5px;padding:2px 4px;display:flex;align-items:center;gap:7px}
+  .dsgroup .gh .gdot{width:8px;height:8px;border-radius:50%;flex:none}
+  .dsitem{display:flex;align-items:center;gap:6px;border-radius:9px;padding:7px 9px;cursor:pointer;transition:background .1s}
+  .dsitem:hover{background:var(--surface-2)}
+  .dsitem.active{background:color-mix(in oklab,var(--accent) 14%,var(--surface))}
+  .dsitem .di-main{min-width:0;flex:1}
+  .dsitem .di-t{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dsitem.active .di-t{color:var(--accent)}
+  .dsitem .di-s{font-size:10.5px;color:var(--muted)}
+  .dsitem .di-del{opacity:0;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:12px;flex:none}
+  .dsitem:hover .di-del{opacity:.65} .dsitem .di-del:hover{opacity:1;color:var(--bad)}
+  .side .empty{font-size:11.5px;color:var(--muted);padding:8px;line-height:1.55}
+  .sidetoggle{display:none}
+  .wrap{flex:1;min-width:0;max-width:2100px;margin:0 auto;padding:16px 26px 72px}
+  @media(max-width:900px){
+    .shell{flex-direction:column}
+    .side{position:static;width:100%;height:auto;border-right:0;border-bottom:1px solid var(--line);max-height:46dvh}
+    .side.collapsed{display:none}
+    .sidetoggle{display:inline-flex}
+  }
+  /* modal */
+  .modal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:16px}
+  .modal.hidden{display:none}
+  .modal .box{background:var(--surface);border:1px solid var(--line);border-radius:16px;width:100%;max-width:450px;padding:20px 22px}
+  .modal .box h3{margin:0 0 4px;font-size:16px;font-weight:800}
+  .modal .mnote{font-size:12px;color:var(--muted);margin:0 0 6px}
+  .mlabel{font-size:12px;font-weight:800;color:var(--ink-2);margin:16px 0 8px}
+  .opts{display:flex;flex-wrap:wrap;gap:8px}
+  .opt{border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink-2);border-radius:10px;padding:8px 15px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+  .opt:hover{border-color:var(--ink-2)} .opt.on{background:var(--accent);color:#fff;border-color:transparent}
+  .mrow{display:flex;gap:10px;margin-top:22px}
+  .mrow button{flex:1;border-radius:10px;padding:10px;font:inherit;font-weight:800;font-size:14px;cursor:pointer;border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink-2)}
+  .mrow button.pri{background:var(--accent);color:#fff;border-color:transparent}
+  .mrow button:disabled{opacity:.5;cursor:not-allowed}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="side" id="side">
+  <button class="addbtn" id="sideAdd">⬆ โหลดไฟล์ใหม่</button>
+  <h3>📁 ชุดข้อมูลที่บันทึก</h3>
+  <div id="dsList"></div>
+</aside>
+<div class="wrap">
+  <div class="head">
+    <button class="btn sidetoggle" id="sideTog">☰ ชุดข้อมูล</button>
+    <h1><span class="dot"></span>ภาพรวมยอดขาย & เป้าหมาย <span class="badge" id="brandBadge">Terry</span></h1>
+    <span class="muted" style="font-size:12px" id="periodNote">—</span>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      <button class="btn accent" id="headAdd">⬆ โหลดไฟล์ใหม่</button>
+      <input id="fileIn" type="file" accept=".xlsx,.xls,.csv" class="hidden">
+    </div>
+  </div>
+  <p class="sub">ยอดคำสั่งซื้อเข้ามา · ขายได้จริง · ยกเลิก · สรุปยอดขาย และเป้าหมาย (Target) vs ขายได้จริง · ไม่มีข้อมูลส่วนตัวลูกค้า</p>
+  <div class="msg" id="msg">กำลังโหลดข้อมูล…</div>
+
+  <div id="app" class="hidden">
+    <div class="card" id="ovrCard" style="margin-top:4px">
+      <h2>📊 ภาพรวมคำสั่งซื้อทั้งหมด</h2>
+      <p class="cnote" id="ovrNote">—</p>
+      <div class="kpi" id="ovrKpi" style="margin:10px 0"></div>
+      <div id="ovrBar"></div>
+      <div id="ovrSales" class="hidden" style="margin-top:16px"></div>
+      <div id="ovrTarget" class="hidden" style="margin-top:16px"></div>
+    </div>
+    <div class="card hidden" id="noOvr">
+      <h2>ℹ️ ชุดข้อมูลนี้ไม่มีภาพรวมยอดขาย</h2>
+      <p class="cnote">ชุดนี้เป็นไฟล์เฉพาะที่ยกเลิก จึงไม่มีสถานะ "ขายสำเร็จ" ให้สรุป · อัปโหลดไฟล์ "คำสั่งซื้อทั้งหมด" (ทุกสถานะ) เพื่อดูภาพรวม + เป้าหมาย · ส่วนการยกเลิกดูได้ในเครื่องมือ "การยกเลิกคำสั่งซื้อ"</p>
+    </div>
+    <p class="foot" id="foot"></p>
+  </div>
+</div>
+</div>
+
+<div class="modal hidden" id="saveModal">
+  <div class="box">
+    <h3>ไฟล์นี้เป็นของแบรนด์/แพลตฟอร์มไหน?</h3>
+    <p class="mnote" id="saveInfo">—</p>
+    <div class="mlabel">แบรนด์ <span class="muted" style="font-weight:400">(แยกข้อมูลแต่ละแบรนด์)</span></div>
+    <div class="opts" id="brandOpts"></div>
+    <div class="mlabel">แพลตฟอร์ม</div>
+    <div class="opts" id="platOpts"></div>
+    <div class="mrow">
+      <button id="saveCancel">ยกเลิก</button>
+      <button class="pri" id="saveConfirm" disabled>บันทึก &amp; ดูข้อมูล</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const fmt=n=>{n=Math.round(+n||0);return n.toLocaleString('en-US');};
+const pct=(a,b)=>b>0?Math.round(a/b*100):0;
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const TH_M=['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const periodShort=p=>{ const m=/(\d{4})-(\d{2})/.exec(p||''); return m?(TH_M[+m[2]]+' '+m[1]):(p||'—'); };
+const tile=(k,v,s,cls)=>`<div class="ktile ${cls||''}"><div class="kk">${k}</div><div class="kv">${v}</div><div class="ks">${esc(s)}</div></div>`;
+const statTile=(k,v)=>`<div class="stat"><div class="sv">${v}</div><div class="sk">${esc(k)}</div></div>`;
+
+let OVERVIEW=null, PERIOD='2026-09', activeDsId=null;
+let TARGETS={};
+function loadTargets(){ try{TARGETS=JSON.parse(localStorage.getItem('cancelTargets')||'{}')}catch{TARGETS={}} if(!TARGETS||typeof TARGETS!=='object')TARGETS={}; }
+function saveTargets(){ try{localStorage.setItem('cancelTargets',JSON.stringify(TARGETS))}catch{} }
+
+// ---- parse a raw TikTok Shop export: cancelled items (for the other tool) + all-orders overview ----
+function buildFromRaw(rows){
+  const H=rows[0].map(x=>String(x||'').trim()); const ci=n=>H.indexOf(n);
+  const I={oid:ci('Order ID'),by:ci('Cancel By'),reason:ci('Cancel Reason'),canc:ci('Cancelled Time'),create:ci('Created Time'),
+    paid:ci('Paid Time'),pay:ci('Payment Method'),prov:ci('Province'),sku:ci('Seller SKU'),prod:ci('Product Name'),
+    cat:ci('Product Category'),qty:ci('Quantity'),sub:ci('SKU Subtotal After Discount'),oamt:ci('Order Amount'),
+    refund:ci('Order Refund Amount'),chan:ci('Order Channel'),pre:ci('Normal or Pre-order'),status:ci('Order Status')};
+  if(I.oid<0||I.reason<0||I.canc<0) throw new Error('ไฟล์นี้ไม่ใช่รายงานออเดอร์ TikTok (ไม่พบคอลัมน์ Order ID / Cancel Reason)');
+  const num=s=>{const v=parseFloat(String(s==null?'':s).replace(/[^0-9.\-]/g,''));return isNaN(v)?0:v;};
+  const toISO=s=>{const m=String(s==null?'':s).match(/(\d+)\/(\d+)\/(\d+)/);if(!m)return'';return `${m[3]}-${String(+m[2]).padStart(2,'0')}-${String(+m[1]).padStart(2,'0')}`;};
+  const toHour=s=>{const m=String(s==null?'':s).match(/\d+\/\d+\/\d+[\sT]+(\d+):/);return m?(+m[1]):-1;};
+  const byCode=s=>({'User':0,'System':1,'Operator':2}[String(s||'').trim()] ?? 3);
+  const out=[];
+  for(let i=1;i<rows.length;i++){ const r=rows[i]; if(!r||!String(r[I.oid]||'').trim())continue;
+    const canc=toISO(r[I.canc]); if(I.status>=0 && !canc) continue;
+    out.push({ oid:String(r[I.oid]).trim(), by:byCode(r[I.by]), reason:String(r[I.reason]||'(ไม่ระบุ)').trim()||'(ไม่ระบุ)',
+      cancHour:toHour(r[I.canc]), createHour:toHour(r[I.create]),
+      cancDate:canc, createDate:toISO(r[I.create]), paid:(r[I.paid]&&String(r[I.paid]).trim())?1:0,
+      pay:String(r[I.pay]||'(ไม่ระบุ)').trim()||'(ไม่ระบุ)', prov:String(r[I.prov]||'(ไม่ระบุ)').trim()||'(ไม่ระบุ)',
+      sku:String(r[I.sku]||r[I.prod]||'(ไม่ระบุ)').trim(), prod:String(r[I.prod]||'(ไม่ระบุ)').trim(),
+      cat:String(r[I.cat]||'(ไม่ระบุ)').trim(), qty:num(r[I.qty]), sub:num(r[I.sub]), oamt:num(r[I.oamt]),
+      refund:num(r[I.refund]), chan:String(r[I.chan]||'').trim(), pre:String(r[I.pre]||'').toLowerCase().includes('pre')?1:0 });
+  }
+  return out;  // may be empty if the file has no cancelled rows — that's fine for the sales overview
+}
+function computeOverview(rows){
+  const H=rows[0].map(x=>String(x||'').trim()); const ci=n=>H.indexOf(n);
+  const cS=ci('Order Status'), cO=ci('Order ID'), cA=ci('Order Amount'), cP=ci('Paid Time'), cC=ci('Created Time'), cR=ci('Order Refund Amount'), cQ=ci('Quantity'), cSub=ci('SKU Subtotal After Discount'), cShip=ci('Shipping Fee After Discount');
+  if(cS<0||cO<0) return null;
+  const num=s=>{const v=parseFloat(String(s==null?'':s).replace(/[^0-9.\-]/g,''));return isNaN(v)?0:v;};
+  const toISO=s=>{const m=String(s==null?'':s).match(/(\d+)\/(\d+)\/(\d+)/);return m?`${m[3]}-${String(+m[2]).padStart(2,'0')}-${String(+m[1]).padStart(2,'0')}`:'';};
+  const ord=new Map(), by=new Map(); let totAmt=0,totRefund=0,totUnits=0; const dates=[];
+  for(let i=1;i<rows.length;i++){ const r=rows[i]; const oid=r[cO]&&String(r[cO]).trim(); if(!oid)continue;
+    const st=String(r[cS]||'').trim(); if(!st||/current order status/i.test(st))continue;
+    let e=by.get(st); if(!e){e={orders:0,amt:0,paid:0,refund:0,units:0,sub:0,ship:0};by.set(st,e);}
+    e.units+=num(r[cQ]); e.sub+=cSub>=0?num(r[cSub]):0; e.ship+=cShip>=0?num(r[cShip]):0; totUnits+=num(r[cQ]);
+    if(!ord.has(oid)){ ord.set(oid,st); e.orders++; const a=num(r[cA]); e.amt+=a; totAmt+=a; const rf=cR>=0?num(r[cR]):0; e.refund+=rf; totRefund+=rf; if(r[cP]&&String(r[cP]).trim())e.paid++; const d=toISO(r[cC]); if(d)dates.push(d); } }
+  if(!ord.size) return null;
+  dates.sort();
+  const statuses=[...by.entries()].sort((a,b)=>b[1].orders-a[1].orders).map(([k,e])=>({status:k,orders:e.orders,amt:Math.round(e.amt),paid:e.paid,refund:Math.round(e.refund),units:Math.round(e.units),sub:Math.round(e.sub),ship:Math.round(e.ship)}));
+  if(statuses.length<=1 && /ยกเลิก|cancel/i.test(statuses[0]?.status||'')) return null;
+  return { totalOrders:ord.size, totalAmt:Math.round(totAmt), totalRefund:Math.round(totRefund), totalUnits:Math.round(totUnits), from:dates[0], to:dates[dates.length-1], statuses };
+}
+// compact encoder (store cancelled items PII-free, so the cancellation tool can read them)
+function encode(items){
+  const dict={reason:[],pay:[],prov:[],sku:[],prod:[],cat:[],chan:[],oid:[],date:[]};
+  const idx={}; for(const k in dict) idx[k]=new Map();
+  const di=(k,v)=>{ v=String(v==null?'':v); const m=idx[k]; if(m.has(v))return m.get(v); const i=dict[k].length; dict[k].push(v); m.set(v,i); return i; };
+  const rec=items.map(it=>[di('oid',it.oid),(it.by|0),di('reason',it.reason),di('date',it.cancDate),di('date',it.createDate),it.paid?1:0,di('pay',it.pay),di('prov',it.prov),di('sku',it.sku),di('prod',it.prod),di('cat',it.cat),+it.qty||0,+it.sub||0,+it.oamt||0,+it.refund||0,di('chan',it.chan),it.pre?1:0,(it.cancHour??-1),(it.createHour??-1)]);
+  return { dict, rec };
+}
+
+// ---- shared IndexedDB (same DB as the cancellation tool) ----
+const DB='cancelTool', STORE='datasets'; let _db=null;
+function idb(){ if(_db)return Promise.resolve(_db); return new Promise((res,rej)=>{ const r=indexedDB.open(DB,1);
+  r.onupgradeneeded=()=>{ const db=r.result; if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE,{keyPath:'id'}); };
+  r.onsuccess=()=>{_db=r.result;res(_db);}; r.onerror=()=>rej(r.error); }); }
+function dbAll(){ return idb().then(db=>new Promise((res,rej)=>{ const rq=db.transaction(STORE,'readonly').objectStore(STORE).getAll(); rq.onsuccess=()=>res(rq.result||[]); rq.onerror=()=>rej(rq.error); })); }
+function dbGet(id){ return idb().then(db=>new Promise((res,rej)=>{ const rq=db.transaction(STORE,'readonly').objectStore(STORE).get(id); rq.onsuccess=()=>res(rq.result); rq.onerror=()=>rej(rq.error); })); }
+function dbPut(rec){ return idb().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); tx.objectStore(STORE).put(rec); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); })); }
+function dbDel(id){ return idb().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); tx.objectStore(STORE).delete(id); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); })); }
+
+const BRANDS=['Terry','Gala','Benutra'];
+const BRAND_C={Terry:'#2563eb',Gala:'#8b5cf6',Benutra:'#16a34a'};
+const PLATFORMS=['TikTok','Shopee','Lazada','Facebook','อื่นๆ'];
+
+// ---- sidebar (shared datasets) ----
+async function renderSidebar(){
+  let saved=[]; try{ saved=await dbAll(); }catch{ saved=[]; }
+  const all=[{id:'builtin',brand:'Terry',platform:'TikTok',period:'2026-09',builtin:true}, ...saved];
+  const groups=new Map();
+  for(const d of all){ if(!groups.has(d.brand))groups.set(d.brand,[]); groups.get(d.brand).push(d); }
+  const order=[...BRANDS, ...[...groups.keys()].filter(b=>!BRANDS.includes(b))];
+  let html='';
+  for(const b of order){ const items=groups.get(b); if(!items)continue;
+    items.sort((x,y)=>(y.period||'').localeCompare(x.period||'')||(x.platform||'').localeCompare(y.platform||''));
+    html+=`<div class="dsgroup"><div class="gh"><span class="gdot" style="background:${BRAND_C[b]||'#8a929c'}"></span>${esc(b)}</div>`
+      + items.map(dsItemHtml).join('') + `</div>`;
+  }
+  $('#dsList').innerHTML=html || '<div class="empty">ยังไม่มีชุดข้อมูล<br>กด “โหลดไฟล์ใหม่” เพื่อเพิ่ม</div>';
+  $('#dsList').querySelectorAll('.dsitem').forEach(el=>{
+    el.querySelector('.di-main').onclick=()=>loadDataset(el.dataset.id);
+    const del=el.querySelector('.di-del'); if(del) del.onclick=async ev=>{ ev.stopPropagation(); if(confirm('ลบชุดข้อมูลนี้ออกจากเครื่อง?')){ try{await dbDel(el.dataset.id);}catch{} if(activeDsId===el.dataset.id)activeDsId=null; renderSidebar(); } };
+  });
+  markActive();
+}
+function dsItemHtml(d){
+  return `<div class="dsitem ${activeDsId===d.id?'active':''}" data-id="${esc(d.id)}">
+    <div class="di-main"><div class="di-t">${esc(d.platform||'')} · ${esc(periodShort(d.period))}</div>
+    <div class="di-s">${d.builtin?'ตัวอย่างในระบบ':fmt(d.count||0)+' รายการ'}</div></div>
+    ${d.builtin?'':'<button class="di-del" title="ลบ">🗑</button>'}</div>`;
+}
+function markActive(){ document.querySelectorAll('#dsList .dsitem').forEach(el=>el.classList.toggle('active',el.dataset.id===activeDsId)); }
+
+let _builtin=null;
+async function loadBuiltin(){
+  if(!_builtin){ _builtin=await (await fetch('cancel-terry-2026-09.json?cb='+Date.now())).json(); }
+  OVERVIEW=_builtin.overview||null; PERIOD=_builtin.period||'2026-09';
+  $('#brandBadge').textContent=_builtin.brand||'Terry';
+  $('#periodNote').textContent='Terry · TikTok · งวด '+PERIOD+' (เดือน 9) · ตัวอย่างในระบบ';
+  activeDsId='builtin'; hideMsg(); render(); markActive();
+}
+async function loadDataset(id){
+  if(id==='builtin'){ await loadBuiltin(); return; }
+  let d; try{ d=await dbGet(id); }catch{} if(!d)return;
+  OVERVIEW=d.overview||null; PERIOD=d.period||'—';
+  $('#brandBadge').textContent=d.brand;
+  $('#periodNote').textContent=`${d.brand} · ${d.platform} · งวด ${periodShort(d.period)} · ${fmt(d.count||0)} รายการ · บันทึกในเครื่อง`;
+  activeDsId=id; hideMsg(); render(); markActive();
+  if(innerWidth<=900) $('#side').classList.add('collapsed');
+}
+
+// ---- render overview + sales + target ----
+function render(){
+  const card=$('#ovrCard'), no=$('#noOvr');
+  if(!OVERVIEW||!OVERVIEW.statuses||!OVERVIEW.statuses.length){ card.classList.add('hidden'); no.classList.remove('hidden'); $('#foot').textContent=''; return; }
+  card.classList.remove('hidden'); no.classList.add('hidden');
+  const o=OVERVIEW, tot=o.totalOrders;
+  const S=k=>o.statuses.find(s=>new RegExp(k).test(s.status))||{orders:0,amt:0,units:0,sub:0,ship:0};
+  const done=S('เสร็จ|complete'), canc=S('ยกเลิก|cancel'), ship=S('จัดส่ง|ship|deliver');
+  const other=Math.max(0, tot-done.orders-canc.orders-ship.orders);
+  const otherAmt=Math.max(0, o.totalAmt-done.amt-canc.amt-ship.amt);
+  $('#ovrNote').innerHTML=`งวด ${esc(periodShort((o.from||'').slice(0,7)))} · ${esc(o.from||'')} ถึง ${esc(o.to||'')} · มูลค่าคำสั่งซื้อรวม <b>฿${fmt(o.totalAmt)}</b>`;
+  $('#ovrKpi').innerHTML =
+    tile('คำสั่งซื้อเข้ามา', fmt(tot), 'ทุกสถานะ · ฿'+fmt(o.totalAmt),'')+
+    tile('ขายสำเร็จ', fmt(done.orders)+' <span class="ks" style="display:inline">('+pct(done.orders,tot)+'%)</span>', '฿'+fmt(done.amt)+' · ยอดขายจริง','hl2')+
+    tile('ยกเลิก', fmt(canc.orders)+' <span class="ks" style="display:inline">('+pct(canc.orders,tot)+'%)</span>', '฿'+fmt(canc.amt)+' · ดูในเครื่องมือยกเลิก','hl')+
+    (ship.orders?tile('กำลังจัดส่ง', fmt(ship.orders), '฿'+fmt(ship.amt),''):'')+
+    (other>0?tile('อื่นๆ', fmt(other), '฿'+fmt(otherAmt),''):'');
+  const seg=(w,c,t)=>w>0?`<div style="width:${w}%;background:${c}" title="${t}"></div>`:'';
+  $('#ovrBar').innerHTML=`<div class="splitbar" style="height:24px;border-radius:7px">
+      ${seg(pct(done.amt,o.totalAmt),'var(--good)','ขายสำเร็จ')}${seg(pct(canc.amt,o.totalAmt),'var(--bad)','ยกเลิก')}${seg(pct(ship.amt,o.totalAmt),'var(--warn)','จัดส่ง')}${seg(pct(otherAmt,o.totalAmt),'var(--muted)','อื่นๆ')}</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;margin-top:7px;color:var(--muted)">
+      <span>🟩 ขายสำเร็จ ฿${fmt(done.amt)} (${pct(done.orders,tot)}%)</span>
+      <span>🟥 ยกเลิก ฿${fmt(canc.amt)} (${pct(canc.orders,tot)}%)</span>
+      ${ship.orders?`<span>🟧 จัดส่ง ฿${fmt(ship.amt)}</span>`:''}</div>`;
+  const extra=$('#ovrSales');
+  if(done.units||done.sub){ const aov=done.orders?Math.round(done.amt/done.orders):0;
+    extra.classList.remove('hidden');
+    extra.innerHTML = `<div class="sline"><b>💰 สรุปยอดขาย (ขายสำเร็จ)</b></div><div class="sgrid">`+
+      statTile('ยอดขายรวม (GMV)','฿'+fmt(done.amt))+ statTile('มูลค่าสินค้าสุทธิ','฿'+fmt(done.sub))+
+      statTile('ค่าจัดส่งที่เก็บได้','฿'+fmt(done.ship))+ statTile('ชิ้นที่ขายได้',fmt(done.units)+' ชิ้น')+
+      statTile('เฉลี่ย/ออเดอร์ (AOV)','฿'+fmt(aov))+ (o.totalUnits?statTile('ชิ้นที่สั่งทั้งหมด',fmt(o.totalUnits)+' ชิ้น'):'')+`</div>`;
+  } else extra.classList.add('hidden');
+  renderTarget(done.units||0);
+  $('#foot').innerHTML=`ที่มา: รายงานออเดอร์ TikTok Shop (ทุกสถานะ) · ข้อมูลนี้ตัดชื่อ/เบอร์/ที่อยู่ลูกค้าออกทั้งหมด แสดงเฉพาะตัวเลขสรุป · ใช้ชุดข้อมูลร่วมกับเครื่องมือ “การยกเลิกคำสั่งซื้อ”`;
+}
+function renderTarget(actual){
+  const el=$('#ovrTarget'); if(!el) return; el.classList.remove('hidden');
+  const t=(TARGETS[activeDsId]&&+TARGETS[activeDsId].units)||0;
+  const ach=t>0?Math.round(actual/t*100):0; const under=ach<100;
+  el.innerHTML = `<div class="tgt-h">🎯 เป้าหมายยอดขาย (ชิ้น) vs ขายได้จริง</div>
+    <div class="tgtgrid">
+      <div class="tgtfield"><div class="sk">Target จำนวนชิ้น (เดือนนี้)</div><input id="tgtIn" type="number" min="0" placeholder="ใส่เป้าหมาย…" value="${t||''}"></div>
+      <div class="tgtfield"><div class="sk">ขายได้จริง (ขายสำเร็จ)</div><div class="sv">${fmt(actual)} ชิ้น</div></div>
+      <div class="tgtfield ach ${under?'under':''}"><div class="sk">%Achieve</div><div class="sv">${t>0?ach+'%':'—'}</div></div>
+      <div class="tgtfield"><div class="sk">${t>0?(under?'ขาดอีก':'เกินเป้า'):'ส่วนต่าง'}</div><div class="sv">${t>0?fmt(Math.abs(t-actual))+' ชิ้น':'—'}</div></div>
+    </div>
+    <div class="tgtbar"><div class="${under?'under':''}" style="width:${t>0?Math.min(100,ach):0}%"></div></div>
+    <div class="tgtnote">${t>0?`เป้า ${fmt(t)} ชิ้น · ทำได้ ${fmt(actual)} ชิ้น (${ach}%)`:'ยังไม่ได้ตั้งเป้า — พิมพ์ Target ในช่องด้านบน (หรือรอเชื่อมจากชีต Revenue by monthly)'} · บันทึกต่อชุดข้อมูลในเครื่องนี้`;
+  const inp=$('#tgtIn'); if(inp) inp.onchange=()=>{ const v=Math.max(0,+inp.value||0); if(v)TARGETS[activeDsId]={units:v}; else delete TARGETS[activeDsId]; saveTargets(); renderTarget(actual); };
+}
+
+// ---- upload: open file, then ask brand/platform, then save to the shared DB ----
+let xlsxP=null;
+function loadXLSX(){ if(window.XLSX)return Promise.resolve(window.XLSX);
+  if(!xlsxP)xlsxP=new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=()=>res(window.XLSX);s.onerror=()=>{xlsxP=null;rej(new Error('โหลดตัวอ่านไฟล์ไม่สำเร็จ'));};document.head.appendChild(s);});
+  return xlsxP; }
+let pending=null;
+async function handleFile(f){
+  try{ showMsg('กำลังอ่านไฟล์ '+f.name+' …');
+    const XLSX=await loadXLSX();
+    const wb=/\.csv$/i.test(f.name)?XLSX.read(await f.text(),{type:'string',raw:true}):XLSX.read(await f.arrayBuffer(),{type:'array'});
+    let rows=null; for(const nm of wb.SheetNames){ const ws=wb.Sheets[nm]; rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:''}); if(rows&&rows.length>1&&rows[0].includes('Order ID'))break; }
+    const items=buildFromRaw(rows); const overview=computeOverview(rows);
+    if(!overview) throw new Error('ไฟล์นี้ไม่มีข้อมูลยอดขาย (ทุกสถานะ) — ถ้าเป็นไฟล์เฉพาะที่ยกเลิก ให้ใช้เครื่องมือ “การยกเลิกคำสั่งซื้อ”');
+    pending={ items, overview, period:guessPeriod(items.length?items:null, overview), fname:f.name };
+    hideMsg(); openSaveModal();
+  }catch(err){ showMsg('ผิดพลาด: '+(err&&err.message||err), true); }
+}
+function guessPeriod(items, overview){ if(overview&&overview.from) return overview.from.slice(0,7);
+  const m=new Map(); for(const it of (items||[])){ const k=(it.createDate||it.cancDate||'').slice(0,7); if(k)m.set(k,(m.get(k)||0)+1);} const top=[...m.entries()].sort((a,b)=>b[1]-a[1])[0]; return top?top[0]:'—'; }
+let selBrand=null, selPlat=null;
+function guessPlat(name){ return /tiktok|tt/i.test(name)?'TikTok' : /shopee|sp/i.test(name)?'Shopee' : /lazada|lzd/i.test(name)?'Lazada' : /facebook|fb/i.test(name)?'Facebook' : null; }
+function openSaveModal(){
+  selBrand=null; selPlat=guessPlat(pending.fname);
+  $('#saveInfo').innerHTML=`ไฟล์: <b>${esc(pending.fname)}</b> · งวด <b>${esc(periodShort(pending.period))}</b> · ${fmt(pending.items.length)} รายการยกเลิก · เลือกแบรนด์และแพลตฟอร์มเพื่อบันทึก`;
+  $('#brandOpts').innerHTML=BRANDS.map(b=>`<button class="opt" data-b="${b}">${b}</button>`).join('');
+  $('#platOpts').innerHTML=PLATFORMS.map(p=>`<button class="opt ${selPlat===p?'on':''}" data-p="${p}">${p}</button>`).join('');
+  $('#brandOpts').querySelectorAll('.opt').forEach(o=>o.onclick=()=>{ selBrand=o.dataset.b; $('#brandOpts').querySelectorAll('.opt').forEach(x=>x.classList.toggle('on',x===o)); syncSaveBtn(); });
+  $('#platOpts').querySelectorAll('.opt').forEach(o=>o.onclick=()=>{ selPlat=o.dataset.p; $('#platOpts').querySelectorAll('.opt').forEach(x=>x.classList.toggle('on',x===o)); syncSaveBtn(); });
+  syncSaveBtn(); $('#saveModal').classList.remove('hidden');
+}
+function syncSaveBtn(){ $('#saveConfirm').disabled=!(selBrand&&selPlat&&pending); }
+function closeSaveModal(){ $('#saveModal').classList.add('hidden'); }
+async function doSave(){
+  if(!(pending&&selBrand&&selPlat))return;
+  const id='ds_'+selBrand+'_'+selPlat+'_'+pending.period;
+  const rec={ id, brand:selBrand, platform:selPlat, period:pending.period, count:pending.items.length, savedAt:Date.now(), enc:encode(pending.items), overview:pending.overview||null };
+  try{ await dbPut(rec); }catch(e){ alert('บันทึกไม่สำเร็จ: '+(e&&e.message||e)); return; }
+  pending=null; closeSaveModal(); await renderSidebar(); await loadDataset(id);
+}
+$('#saveConfirm').addEventListener('click',doSave);
+$('#saveCancel').addEventListener('click',()=>{ pending=null; closeSaveModal(); });
+$('#saveModal').addEventListener('click',e=>{ if(e.target.id==='saveModal'){ pending=null; closeSaveModal(); } });
+$('#fileIn').addEventListener('change',e=>{ const f=e.target.files[0]; if(f)handleFile(f); e.target.value=''; });
+$('#headAdd').addEventListener('click',()=>$('#fileIn').click());
+$('#sideAdd').addEventListener('click',()=>$('#fileIn').click());
+$('#sideTog').addEventListener('click',()=>$('#side').classList.toggle('collapsed'));
+['dragover','drop'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault();}));
+document.addEventListener('drop',e=>{ const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f)handleFile(f); });
+
+function showMsg(t,err){ const m=$('#msg'); m.className='msg'+(err?' err':''); m.textContent=t; m.style.display=''; }
+function hideMsg(){ $('#msg').style.display='none'; $('#app').classList.remove('hidden'); }
+
+(async()=>{ try{
+    loadTargets();
+    await renderSidebar();
+    await loadBuiltin();
+  }catch(err){ showMsg('โหลดข้อมูลเริ่มต้นไม่สำเร็จ — อัปโหลดไฟล์คำสั่งซื้อทั้งหมด (.xlsx/.csv) เพื่อเริ่มใช้งาน', true); $('#app').classList.remove('hidden'); }
+})();
+</script>
+</body>
+</html>
