@@ -58,6 +58,25 @@
   .part-img img{width:100%;height:100%;object-fit:cover}
   .part-nm{font-size:9.5px;line-height:1.2;text-align:center;margin-top:4px;max-height:23px;overflow:hidden;color:var(--ink-2)}
   .part-q{font-size:10px;font-weight:800;color:var(--accent);margin-top:1px}
+  /* grouping: drag-to-group + options (ตัวเลือก) under a main basket */
+  .grpchip{position:absolute;left:8px;bottom:8px;border-radius:7px;padding:3px 8px;font-size:10px;font-weight:800;color:#fff;background:rgba(0,0,0,.6)}
+  .pc.grouped{outline:2px solid color-mix(in oklab,var(--accent) 45%,transparent);outline-offset:-2px}
+  .pc[draggable]{cursor:grab}
+  .pc.dragging{opacity:.4}
+  .pc.dragover{outline:2px dashed var(--accent);outline-offset:2px;box-shadow:0 0 0 4px color-mix(in oklab,var(--accent) 18%,transparent)}
+  .opts2{margin-top:8px;border-top:1px dashed var(--line);padding-top:9px}
+  .opts2-h{font-size:10.5px;font-weight:800;color:var(--muted);margin-bottom:7px}
+  .opts2-list{display:flex;flex-direction:column;gap:7px}
+  .opt2{position:relative;display:flex;align-items:center;gap:9px;border:1.5px solid var(--line);border-radius:11px;padding:7px 9px;cursor:pointer;transition:all .1s}
+  .opt2:hover{border-color:var(--line-2);background:var(--surface-2)}
+  .opt2.on{border-color:var(--accent);background:color-mix(in oklab,var(--accent) 10%,var(--surface))}
+  .opt2-img{width:44px;height:44px;flex:none;border-radius:8px;background:var(--surface-2);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:16px}
+  .opt2-img img{width:100%;height:100%;object-fit:cover}
+  .opt2-nm{flex:1;min-width:0;font-size:11.5px;font-weight:600;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .opt2-pr{font-size:13px;font-weight:800;white-space:nowrap}
+  .opt2-x{border:0;background:var(--surface-2);color:var(--muted);border-radius:6px;width:22px;height:22px;cursor:pointer;flex:none;font-size:11px}
+  .opt2-x:hover{background:color-mix(in oklab,var(--bad) 15%,var(--surface));color:var(--bad)}
+  .opt2-main{font-size:9.5px;font-weight:800;color:var(--accent);flex:none}
   .pc{background:var(--surface);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;transition:box-shadow .12s,transform .12s}
   .pc:hover{box-shadow:0 10px 24px -14px rgba(0,0,0,.35);transform:translateY(-2px)}
   .pimg{position:relative;width:100%;aspect-ratio:1/1;background:var(--surface-2)}
@@ -207,7 +226,7 @@
     <span class="muted" style="font-size:12px">ราคาโปรแต่ละแคมเปญ · อ่านสดจาก Master Promotion Plan + Promotion TT (รูปสินค้าแมพอัตโนมัติ)</span>
     <select id="monthSel" class="monthsel hidden" title="เลือกเดือนของโปรโมชัน"></select>
   </div>
-  <p class="sub" id="sub">เลือกแคมเปญเพื่อดูราคาโปรของแต่ละรายการ · ราคาเต็มจะขีดฆ่าและแสดงส่วนที่ประหยัด</p>
+  <p class="sub" id="sub">เลือกแคมเปญเพื่อดูราคาโปรของแต่ละรายการ · ลากตะกร้าไปวางบนอีกตะกร้าเพื่อรวมเป็น “ตัวเลือก” ใต้ตะกร้าหลัก</p>
   <div class="msg" id="msg">กำลังโหลดข้อมูลโปรโมชัน…</div>
 
   <div id="result" hidden>
@@ -391,8 +410,24 @@ async function load(){
 }
 
 const inMonth=it=>!MONTH||it.month===MONTH;
+// ---- grouping: drag a basket onto another → it becomes an option (ตัวเลือก) under that main basket ----
+let GROUP={};  // childUid -> parentUid (per device)
+let ACTIVE={}; // mainUid -> currently-shown member uid (session only)
+function loadGroups(){ try{GROUP=JSON.parse(localStorage.getItem('promoGroups')||'{}')}catch{GROUP={}} if(!GROUP||typeof GROUP!=='object')GROUP={}; }
+function saveGroups(){ try{localStorage.setItem('promoGroups',JSON.stringify(GROUP))}catch{} }
+const uidOf=u=>ITEMS.find(x=>x.uid===u);
+const childrenOf=main=>ITEMS.filter(x=>GROUP[x.uid]===main.uid && inMonth(x));
+function groupUnder(childUid, targetUid){
+  if(childUid===targetUid) return;
+  const main = GROUP[targetUid] || targetUid;          // if target is itself an option, use its main
+  if(main===childUid) return;                          // don't nest a main under its own option
+  ITEMS.forEach(x=>{ if(GROUP[x.uid]===childUid) GROUP[x.uid]=main; });  // flatten: move child's own options up
+  GROUP[childUid]=main; saveGroups();
+  ACTIVE[main]=childUid;                                // show the one you just dropped
+  rerender();
+}
 function filtered(){
-  return ITEMS.filter(it=>inMonth(it) && (TYPE==='all'||(TYPE==='set'?it.isSet:!it.isSet)) && (showHidden || !isHidden(it)));
+  return ITEMS.filter(it=>inMonth(it) && !GROUP[it.uid] && (TYPE==='all'||(TYPE==='set'?it.isSet:!it.isSet)) && (showHidden || !isHidden(it)));
 }
 function campCount(k){return ITEMS.filter(it=>inMonth(it) && it.prices[k]>0).length;}
 
@@ -451,29 +486,38 @@ function rowHtml(it,cp){
     </div>
   </div>`;
 }
-// big-image product card (single) / basket card with its components (set)
+// big-image product card. If the item has options grouped under it, show the active option
+// big + an "ตัวเลือก" strip (SET A/B/C style). Cards are draggable → drop onto another to group.
 function cardHtml(it,cp){
-  const now=it.prices[SEL], base=baseOf(it), save=saveOf(it), pct=base>0?Math.round(save/base*100):0;
-  const k=esc(imgKey(it)), lbl=esc(it.name), img=displayImg(it), manual=!!IMG[imgKey(it)], closed=isHidden(it);
-  const liveRm=/only live|live/i.test(it.remark);
-  const allP=Object.values(it.prices).filter(v=>v>0); const minP=allP.length?Math.min(...allP):0; const best=now>0&&now===minP&&allP.length>1;
-  const parts = it.isSet && it.parts && it.parts.length
-    ? `<div class="parts"><div class="parts-h">🧺 ในตะกร้า · ${it.parts.length} อย่าง</div><div class="parts-list">${it.parts.map(p=>`<div class="part" title="${esc(p.name)} ×${fmt(p.qty)}"><div class="part-img">${p.img?`<img src="${esc(thumbUrl(p.img))}" loading="lazy">`:'<span>📦</span>'}</div><div class="part-nm">${esc(p.name)}</div><div class="part-q">×${fmt(p.qty)}</div></div>`).join('')}</div></div>`
+  const members=[it,...childrenOf(it)]; const grouped=members.length>1;
+  const aUid = grouped ? (members.some(m=>m.uid===ACTIVE[it.uid])?ACTIVE[it.uid]:it.uid) : it.uid;
+  const act = members.find(m=>m.uid===aUid)||it;
+  const now=act.prices[SEL], base=baseOf(act), save=saveOf(act), pct=base>0?Math.round(save/base*100):0;
+  const k=esc(imgKey(act)), lbl=esc(act.name), img=displayImg(act), manual=!!IMG[imgKey(act)], closed=isHidden(act);
+  const liveRm=/only live|live/i.test(act.remark);
+  const allP=Object.values(act.prices).filter(v=>v>0); const minP=allP.length?Math.min(...allP):0; const best=now>0&&now===minP&&allP.length>1;
+  const parts = act.isSet && act.parts && act.parts.length
+    ? `<div class="parts"><div class="parts-h">🧺 ในตะกร้า · ${act.parts.length} อย่าง</div><div class="parts-list">${act.parts.map(p=>`<div class="part" title="${esc(p.name)} ×${fmt(p.qty)}"><div class="part-img">${p.img?`<img src="${esc(thumbUrl(p.img))}" loading="lazy">`:'<span>📦</span>'}</div><div class="part-nm">${esc(p.name)}</div><div class="part-q">×${fmt(p.qty)}</div></div>`).join('')}</div></div>`
     : '';
-  return `<div class="pc ${closed?'closed':''}">
+  const optStrip = grouped
+    ? `<div class="opts2"><div class="opts2-h">🧩 ตัวเลือก (${members.length}) · กดเพื่อสลับ</div><div class="opts2-list">${members.map(m=>{const mp=m.prices[SEL], mi=displayImg(m); return `<div class="opt2 ${m.uid===aUid?'on':''}" data-optsel="${esc(m.uid)}" data-main="${esc(it.uid)}" title="${esc(m.name)}"><div class="opt2-img">${mi?imgTag(mi,'',true):'<span>📦</span>'}</div><div class="opt2-nm">${esc(m.name)}</div><div class="opt2-pr" style="color:${cp.c}">${mp>0?'฿'+fmt(mp):'—'}</div>${m.uid!==it.uid?`<button class="opt2-x" data-act="ungroup" data-k="${esc(m.uid)}" title="เอาออกจากกลุ่ม">✕</button>`:'<span class="opt2-main">หลัก</span>'}</div>`;}).join('')}</div></div>`
+    : '';
+  return `<div class="pc ${closed?'closed':''} ${grouped?'grouped':''}" draggable="true" data-uid="${esc(it.uid)}">
     <div class="pimg">
       ${img?imgTag(img,'',true):'<span class="ph">📷 ไม่มีรูป</span>'}
       <span class="campchip" style="background:${cp.c}">${esc(SEL)}</span>
+      ${grouped?`<span class="grpchip">🧩 ${members.length} ตัวเลือก</span>`:''}
       <button class="edit" data-act="pick" data-k="${k}" data-label="${lbl}">✎ รูป</button>
       ${manual?`<button class="edit del" data-act="delimg" data-k="${k}" title="ลบรูป">🗑</button>`:''}
-      <button class="hidebtn" data-act="${it.custom?'delpromo':'hide'}" data-k="${k}" title="${it.custom?'ลบโปรฯ นี้':(closed?'เปิดตะกร้า':'ปิดตะกร้า')}">${it.custom?'🗑':(closed?'↺':'✕')}</button>
+      <button class="hidebtn" data-act="${act.custom?'delpromo':'hide'}" data-k="${k}" title="${act.custom?'ลบโปรฯ นี้':(closed?'เปิดตะกร้า':'ปิดตะกร้า')}">${act.custom?'🗑':(closed?'↺':'✕')}</button>
     </div>
     <div class="pbody">
-      <div class="nm" title="${lbl}">${esc(it.name)}</div>
-      <div class="row1">${it.sku?`<span class="sku">${esc(it.sku)}</span>`:''}<span class="typ ${it.isSet?'set':'single'}">${it.isSet?'เซ็ต/ตะกร้า':'ชิ้นเดียว'}</span>${best?'<span class="tag best">ถูกสุด</span>':''}</div>
-      <div class="prices"><span class="pnow" style="color:${cp.c}">฿${fmt(now)}</span>${it.full>0&&it.full>now?`<span class="pfull">฿${fmt(it.full)}</span>`:''}${save>0?`<span class="save">-${pct}%</span>`:''}</div>
+      <div class="nm" title="${lbl}">${esc(act.name)}</div>
+      <div class="row1">${act.sku?`<span class="sku">${esc(act.sku)}</span>`:''}<span class="typ ${act.isSet?'set':'single'}">${act.isSet?'เซ็ต/ตะกร้า':'ชิ้นเดียว'}</span>${best?'<span class="tag best">ถูกสุด</span>':''}</div>
+      <div class="prices"><span class="pnow" style="color:${cp.c}">฿${fmt(now)}</span>${act.full>0&&act.full>now?`<span class="pfull">฿${fmt(act.full)}</span>`:''}${save>0?`<span class="save">-${pct}%</span>`:''}</div>
       ${parts}
-      ${(it.gwp||liveRm)?`<div class="meta">${it.gwp?`<span class="tag gwp">🎁 ${esc(it.gwp)}</span>`:''}${liveRm?'<span class="tag live">LIVE</span>':''}</div>`:''}
+      ${(act.gwp||liveRm)?`<div class="meta">${act.gwp?`<span class="tag gwp">🎁 ${esc(act.gwp)}</span>`:''}${liveRm?'<span class="tag live">LIVE</span>':''}</div>`:''}
+      ${optStrip}
     </div>
   </div>`;
 }
@@ -586,12 +630,25 @@ $('#pickGrid').addEventListener('click',e=>{
   const ph=e.target.closest('[data-pick]');
   if(ph&&pickKey){ IMG[pickKey]=ph.dataset.pick; saveImg(); closePicker(); rerender(); }
 });
-$('#cards').addEventListener('click',e=>{ const b=e.target.closest('[data-act]'); if(!b)return; const key=b.dataset.k; const act=b.dataset.act;
-  if(act==='delimg'){ delete IMG[key]; saveImg(); rerender(); }
-  else if(act==='delpromo'){ const it=ITEMS.find(x=>imgKey(x)===key&&x.custom); if(it&&confirm('ลบโปรฯ นี้?')){ CUSTOM=CUSTOM.filter(c=>c!==it); saveCustom(); ITEMS=ITEMS.filter(x=>x!==it); renderChips(); renderCards(); } }
-  else if(act==='hide'){ if(PHID[key]) delete PHID[key]; else PHID[key]=1; savePHID(); updateHiddenBtn(); rerender(); }
-  else if(act==='copy'){ const it=ITEMS.find(x=>imgKey(x)===key); if(it){ copyScript(it); const t=b.textContent; b.textContent='✓ คัดลอกแล้ว'; b.classList.add('done'); setTimeout(()=>{b.textContent=t;b.classList.remove('done');},1400); } }
-  else openPicker(key,b.dataset.label||key); });
+$('#cards').addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');
+  if(b){ const key=b.dataset.k; const act=b.dataset.act;
+    if(act==='delimg'){ delete IMG[key]; saveImg(); rerender(); }
+    else if(act==='delpromo'){ const it=ITEMS.find(x=>imgKey(x)===key&&x.custom); if(it&&confirm('ลบโปรฯ นี้?')){ delete GROUP[it.uid]; Object.keys(GROUP).forEach(c=>{ if(GROUP[c]===it.uid) delete GROUP[c]; }); saveGroups(); CUSTOM=CUSTOM.filter(c=>c!==it); saveCustom(); ITEMS=ITEMS.filter(x=>x!==it); renderChips(); renderCards(); } }
+    else if(act==='hide'){ if(PHID[key]) delete PHID[key]; else PHID[key]=1; savePHID(); updateHiddenBtn(); rerender(); }
+    else if(act==='ungroup'){ delete GROUP[key]; saveGroups(); rerender(); }
+    else if(act==='copy'){ const it=ITEMS.find(x=>imgKey(x)===key); if(it){ copyScript(it); const t=b.textContent; b.textContent='✓ คัดลอกแล้ว'; b.classList.add('done'); setTimeout(()=>{b.textContent=t;b.classList.remove('done');},1400); } }
+    else openPicker(key,b.dataset.label||key);
+    return; }
+  const os=e.target.closest('[data-optsel]');
+  if(os){ ACTIVE[os.dataset.main]=os.dataset.optsel; rerender(); }
+});
+// drag a card onto another → group it as an option under that main basket
+let dragUid=null;
+$('#cards').addEventListener('dragstart',e=>{ const c=e.target.closest('.pc[data-uid]'); if(!c)return; dragUid=c.dataset.uid; c.classList.add('dragging'); try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',dragUid); }catch{} });
+$('#cards').addEventListener('dragover',e=>{ if(!dragUid)return; const c=e.target.closest('.pc[data-uid]'); document.querySelectorAll('.pc.dragover').forEach(x=>x.classList.remove('dragover')); if(c&&c.dataset.uid!==dragUid){ e.preventDefault(); c.classList.add('dragover'); } });
+$('#cards').addEventListener('drop',e=>{ const c=e.target.closest('.pc[data-uid]'); if(c&&dragUid&&c.dataset.uid!==dragUid){ e.preventDefault(); groupUnder(dragUid,c.dataset.uid); } document.querySelectorAll('.pc.dragover').forEach(x=>x.classList.remove('dragover')); dragUid=null; });
+$('#cards').addEventListener('dragend',()=>{ document.querySelectorAll('.pc.dragging,.pc.dragover').forEach(x=>x.classList.remove('dragging','dragover')); dragUid=null; });
 $('#mainSrch').addEventListener('input',e=>{ SRCH=e.target.value; renderCards(); });
 $('#hiddenBtn').addEventListener('click',()=>{ showHidden=!showHidden; $('#hiddenBtn').classList.toggle('on',showHidden); rerender(); });
 function updateHiddenBtn(){ const n=ITEMS.filter(it=>inMonth(it)&&isHidden(it)).length; const el=$('#hiddenCount'); if(el) el.textContent=n?'('+n+')':''; }
@@ -646,7 +703,7 @@ $('#viewTog').addEventListener('click',e=>{const b=e.target.closest('button');if
   VIEW=b.dataset.v;[...$('#viewTog').children].forEach(x=>x.classList.toggle('on',x===b));applyView();});
 $('#monthSel').addEventListener('change',e=>{ MONTH=e.target.value; updateHiddenBtn(); renderChips(); VIEW==='cards'?renderCards():renderTable(); });
 
-(async()=>{try{await load(); loadImg(); loadPST(); loadPHID(); loadCustom();
+(async()=>{try{await load(); loadImg(); loadPST(); loadPHID(); loadCustom(); loadGroups();
   CUSTOM.forEach(c=>{ if(!c.uid) c.uid=c.cid||('c'+Math.random().toString(36).slice(2)); if(!c.month) c.month=SHEET_MONTH; });   // backfill uid+month for older saved promos
   if(CUSTOM.length)ITEMS.push(...CUSTOM);
   if(!ITEMS.length){$('#msg').className='msg err';$('#msg').textContent='ไม่พบรายการโปรโมชันในชีต';return;}
