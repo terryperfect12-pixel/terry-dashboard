@@ -47,7 +47,17 @@
   .ctrls{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-top:6px}
 
   /* product cards — symmetric, image on top */
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(224px,1fr));gap:13px;margin-top:14px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:15px;margin-top:12px}
+  .grid.sets{grid-template-columns:repeat(auto-fill,minmax(360px,1fr))}
+  /* set components (what's inside the basket) */
+  .parts{margin-top:4px;border-top:1px dashed var(--line);padding-top:9px}
+  .parts-h{font-size:10.5px;font-weight:800;color:var(--muted);margin-bottom:7px;letter-spacing:.02em}
+  .parts-list{display:flex;flex-wrap:wrap;gap:9px}
+  .part{display:flex;flex-direction:column;align-items:center;width:60px}
+  .part-img{width:56px;height:56px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:20px}
+  .part-img img{width:100%;height:100%;object-fit:cover}
+  .part-nm{font-size:9.5px;line-height:1.2;text-align:center;margin-top:4px;max-height:23px;overflow:hidden;color:var(--ink-2)}
+  .part-q{font-size:10px;font-weight:800;color:var(--accent);margin-top:1px}
   .pc{background:var(--surface);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;transition:box-shadow .12s,transform .12s}
   .pc:hover{box-shadow:0 10px 24px -14px rgba(0,0,0,.35);transform:translateY(-2px)}
   .pimg{position:relative;width:100%;aspect-ratio:1/1;background:var(--surface-2)}
@@ -369,8 +379,12 @@ async function load(){
     const pid = ttBySku.get(normSku(sku)) || ttByName.get(normNm(name)) || '';   // map via Promotion TT
     const autoImg = pid ? (cover.get(pid)||'') : '';                              // image via cover sheet
     const bk=name+'|'+sku; const n=occ.get(bk)||0; occ.set(bk,n+1); const uid=bk+'|'+n;
+    // set components: columns SKU1,QTY,SKU2,QTY,...,SKU5,QTY (0..9) → each with its own image via TT→cover
+    const parts=[];
+    for(let c=0;c<10;c+=2){ const pn=String(r[c]||'').trim(); if(!pn)continue; const q=num(r[c+1])||1;
+      const ppid=ttByName.get(normNm(pn)); parts.push({ name:pn, qty:q, img: ppid?(cover.get(ppid)||''):'' }); }
     ITEMS.push({ uid, name, sku, full, prices, tiktok:num(r[base+8]),
-      gwp:String(r[base+9]||'').trim(), remark:String(r[base+10]||'').trim(), isSet, pid, autoImg, month:SHEET_MONTH });
+      gwp:String(r[base+9]||'').trim(), remark:String(r[base+10]||'').trim(), isSet, pid, autoImg, month:SHEET_MONTH, parts });
   }
 }
 
@@ -435,20 +449,44 @@ function rowHtml(it,cp){
     </div>
   </div>`;
 }
+// big-image product card (single) / basket card with its components (set)
+function cardHtml(it,cp){
+  const now=it.prices[SEL], base=baseOf(it), save=saveOf(it), pct=base>0?Math.round(save/base*100):0;
+  const k=esc(imgKey(it)), lbl=esc(it.name), img=displayImg(it), manual=!!IMG[imgKey(it)], closed=isHidden(it);
+  const liveRm=/only live|live/i.test(it.remark);
+  const allP=Object.values(it.prices).filter(v=>v>0); const minP=allP.length?Math.min(...allP):0; const best=now>0&&now===minP&&allP.length>1;
+  const parts = it.isSet && it.parts && it.parts.length
+    ? `<div class="parts"><div class="parts-h">🧺 ในตะกร้า · ${it.parts.length} อย่าง</div><div class="parts-list">${it.parts.map(p=>`<div class="part" title="${esc(p.name)} ×${fmt(p.qty)}"><div class="part-img">${p.img?`<img src="${esc(thumbUrl(p.img))}" loading="lazy">`:'<span>📦</span>'}</div><div class="part-nm">${esc(p.name)}</div><div class="part-q">×${fmt(p.qty)}</div></div>`).join('')}</div></div>`
+    : '';
+  return `<div class="pc ${closed?'closed':''}">
+    <div class="pimg">
+      ${img?imgTag(img,'',true):'<span class="ph">📷 ไม่มีรูป</span>'}
+      <span class="campchip" style="background:${cp.c}">${esc(SEL)}</span>
+      <button class="edit" data-act="pick" data-k="${k}" data-label="${lbl}">✎ รูป</button>
+      ${manual?`<button class="edit del" data-act="delimg" data-k="${k}" title="ลบรูป">🗑</button>`:''}
+      <button class="hidebtn" data-act="${it.custom?'delpromo':'hide'}" data-k="${k}" title="${it.custom?'ลบโปรฯ นี้':(closed?'เปิดตะกร้า':'ปิดตะกร้า')}">${it.custom?'🗑':(closed?'↺':'✕')}</button>
+    </div>
+    <div class="pbody">
+      <div class="nm" title="${lbl}">${esc(it.name)}</div>
+      <div class="row1">${it.sku?`<span class="sku">${esc(it.sku)}</span>`:''}<span class="typ ${it.isSet?'set':'single'}">${it.isSet?'เซ็ต/ตะกร้า':'ชิ้นเดียว'}</span>${best?'<span class="tag best">ถูกสุด</span>':''}</div>
+      <div class="prices"><span class="pnow" style="color:${cp.c}">฿${fmt(now)}</span>${it.full>0&&it.full>now?`<span class="pfull">฿${fmt(it.full)}</span>`:''}${save>0?`<span class="save">-${pct}%</span>`:''}</div>
+      ${parts}
+      ${(it.gwp||liveRm)?`<div class="meta">${it.gwp?`<span class="tag gwp">🎁 ${esc(it.gwp)}</span>`:''}${liveRm?'<span class="tag live">LIVE</span>':''}</div>`:''}
+    </div>
+  </div>`;
+}
 function renderCards(){
   const cp=CAMP.find(c=>c.k===SEL);
   const s=SRCH.trim().toLowerCase();
   const list=filtered().filter(it=>it.prices[SEL]>0 && (!s||it.name.toLowerCase().includes(s)||it.sku.toLowerCase().includes(s)));
   if(!list.length){ const monthHas=ITEMS.some(it=>inMonth(it));
     $('#cards').innerHTML=`<div class="empty">${!monthHas?('ยังไม่มีโปรโมชันสำหรับ'+esc(monthLabel(MONTH))+' — กด “➕ สร้างโปรฯ ใหม่” เพื่อเพิ่ม'):('ไม่มีรายการราคาสำหรับแคมเปญนี้'+(s?' (ลองล้างคำค้นหา)':''))}</div>`; return; }
-  const singles=list.filter(it=>!it.isSet), sets=list.filter(it=>it.isSet);
-  const groups=[]; if(singles.length)groups.push(['สินค้าเดี่ยว',singles]); if(sets.length)groups.push(['เซ็ต / ตะกร้า',sets]);
-  const head=`<div class="rhead"><span>สินค้า</span><span>ราคาเต็ม</span><span style="color:${cp.c}">ราคา ${esc(SEL)}</span><span>ประหยัด</span><span></span></div>`;
-  $('#cards').innerHTML = groups.map(([title,items])=>{
-    items=items.slice().sort((a,b)=>saveOf(b)-saveOf(a) || a.prices[SEL]-b.prices[SEL]);
-    return `<div class="grp"><div class="grp-h">${esc(title)} <span>${items.length} รายการ</span></div>
-      <div class="rowtbl">${head}${items.map(it=>rowHtml(it,cp)).join('')}</div></div>`;
-  }).join('');
+  const srt=(a,b)=>saveOf(b)-saveOf(a) || a.prices[SEL]-b.prices[SEL];
+  const singles=list.filter(it=>!it.isSet).sort(srt), sets=list.filter(it=>it.isSet).sort(srt);
+  let html='';
+  if(singles.length) html+=`<div class="grp"><div class="grp-h">🧴 สินค้าเดี่ยว <span>${singles.length} รายการ</span></div><div class="grid">${singles.map(it=>cardHtml(it,cp)).join('')}</div></div>`;
+  if(sets.length) html+=`<div class="grp"><div class="grp-h">🧺 เซ็ต / ตะกร้า <span>${sets.length} รายการ</span></div><div class="grid sets">${sets.map(it=>cardHtml(it,cp)).join('')}</div></div>`;
+  $('#cards').innerHTML=html;
 }
 function copyScript(it){
   const now=it.prices[SEL], base=baseOf(it), save=saveOf(it), pct=base>0?Math.round(save/base*100):0;
@@ -574,7 +612,8 @@ function addComposer(){ const parts=compParts(); if(!parts.length){ alert('เ�
   const cid='c'+Date.now();
   const mon=$('#cMonth').value||MONTH||SHEET_MONTH;
   const item={ uid:cid, name:compName(parts), sku:'', full, prices, gwp:$('#cGwp').value.trim(), remark:$('#cRemark').value.trim(),
-    isSet:parts.length>1||parts[0].qty>1, pid:'', autoImg:parts[0].img||'', custom:true, cid, month:mon };
+    isSet:parts.length>1||parts[0].qty>1, pid:'', autoImg:parts[0].img||'', custom:true, cid, month:mon,
+    parts:parts.map(p=>({name:p.name,qty:p.qty,img:p.img||''})) };
   CUSTOM.push(item); saveCustom(); ITEMS.push(item);
   MONTH=mon;   // jump to the month we just added to, so the new promo is visible
   closeComposer(); renderMonthSel(); renderChips(); renderCards(); }
@@ -597,7 +636,7 @@ $('#monthSel').addEventListener('change',e=>{ MONTH=e.target.value; updateHidden
   if(!ITEMS.length){$('#msg').className='msg err';$('#msg').textContent='ไม่พบรายการโปรโมชันในชีต';return;}
   MONTH=SHEET_MONTH;   // start on the sheet's month
   // default to the campaign with the most prices
-  SEL=CAMP.slice().sort((a,b)=>campCount(b.k)-campCount(a.k))[0].k;
+  SEL='AWO';   // first page = AWO
   $('#sub').textContent=`สรุปราคาโปรสำหรับไลฟ์ · เลือกช่วงแคมเปญด้านล่างเพื่อดูราคาของช่วงนั้น · กด "คัดลอกคำพูด" ไว้ใช้พูดตอนไลฟ์`;
   renderMonthSel();renderChips();renderCards();updateCount();updateHiddenBtn();
   $('#msg').style.display='none';$('#result').hidden=false;
