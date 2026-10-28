@@ -271,6 +271,8 @@
       <b>เลือกรูปสินค้า</b>
       <span class="who" id="pickFor"></span>
       <input class="srch" id="pickSrch" placeholder="ค้นหาชื่อสินค้า…">
+      <label class="btnghost" for="pickUpload" style="border-color:var(--accent);color:var(--accent);white-space:nowrap">⬆ อัปโหลดจากเครื่อง</label>
+      <input id="pickUpload" type="file" accept="image/*" class="hidden">
       <button class="xbtn" id="pickX">✕</button>
     </div>
     <div class="sh-tabs" id="pickTabs">
@@ -559,6 +561,20 @@ function renderPickGrid(q){ const cat=CAT||[]; const s=(q||'').trim().toLowerCas
   $('#pickGrid').scrollTop=0; }
 async function openPicker(key,label){ pickKey=key; pickPage=1; $('#pickFor').textContent='สำหรับ: '+(label||''); $('#pickSrch').value=''; $('#picker').classList.remove('hidden'); $('#pickGrid').innerHTML='<div class="empty" style="grid-column:1/-1">กำลังโหลดรายการสินค้า…</div>'; await ensureCat(); renderPickGrid(''); setTimeout(()=>$('#pickSrch').focus(),50); }
 function closePicker(){ $('#picker').classList.add('hidden'); pickKey=null; }
+// upload an image from the computer (resized so it fits in local storage), used when the product isn't in the catalog
+function fileToResizedDataURL(file, maxDim, quality){ return new Promise((res,rej)=>{
+  const fr=new FileReader();
+  fr.onload=()=>{ const img=new Image();
+    img.onload=()=>{ let w=img.width,h=img.height; const sc=Math.min(1,maxDim/Math.max(w,h)); w=Math.max(1,Math.round(w*sc)); h=Math.max(1,Math.round(h*sc));
+      const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,w,h); x.drawImage(img,0,0,w,h);
+      try{ res(c.toDataURL('image/jpeg',quality)); }catch(e){ rej(e); } };
+    img.onerror=()=>rej(new Error('ไฟล์รูปไม่ถูกต้อง')); img.src=fr.result; };
+  fr.onerror=()=>rej(new Error('อ่านไฟล์ไม่ได้')); fr.readAsDataURL(file);
+}); }
+$('#pickUpload').addEventListener('change', async e=>{ const f=e.target.files[0]; e.target.value=''; if(!f||!pickKey)return;
+  if(!/^image\//.test(f.type)){ alert('กรุณาเลือกไฟล์รูปภาพ'); return; }
+  try{ const url=await fileToResizedDataURL(f,520,0.82); IMG[pickKey]=url; saveImg(); closePicker(); rerender(); }
+  catch(err){ alert('อัปโหลดรูปไม่สำเร็จ: '+((err&&err.message)||err)); } });
 $('#pickX').addEventListener('click',closePicker);
 $('#picker').addEventListener('click',e=>{ if(e.target.id==='picker')closePicker(); });
 $('#pickSrch').addEventListener('input',e=>{pickPage=1;renderPickGrid(e.target.value);});
