@@ -329,6 +329,20 @@ const PROMO_SHEET='1A9zb0Duv4xj8-JGflSgbtD2NhpoO9Xa4sAgMWyrcfyc';
 const GID_MASTER=280317179, GID_TT=1322032194;     // Master Promotion Plan + Promotion TT (maps SKU→Product ID)
 const COVER_SHEET='1Omn_T1Y3UUnP9d5IcVXnhL2TsXD9AI3IB3A80IUoKqY';
 const COVER_TABS=[720887439,919830494];            // Terry tiktok, Terry Shopee (code→image)
+// Terry single-product images (from the "Terry" image tab, gid=455187715): master product name → TikTok Product ID.
+// The image itself is resolved LIVE from the cover sheet by this Product ID. Only single products are overridden;
+// sets and custom/other-month promos are untouched (the Master plan loads one month at a time).
+const TERRY_SINGLE_PID={
+  'กันแดดหนมปัง20ml':'1731186913826539668',  // (กันแดดหนมปัง) Watery Bomb 20 ml.
+  'กันแดดหนมปัง50ml':'1730139596818057364',  // (กันแดดหนมปังไซส์ใหญ่) Watery Bomb 50 ml.
+  'กันแดดแรปผิว':'1732916914711266452',       // UV Defense Double Shield
+  'กันแดดโทนอัพ':'1735176679486424212',       // (กันแดดฟ้าโทนอัพ) Tone Up Routine
+  'ลิปบาล์ม01':'1731284818143709332',         // (ลิปบาล์ม) Moisture Blend Retinoid Lip Balm
+  'ลิปบาล์ม02':'1731284818143709332',
+  'ลิปบาล์ม03':'1731284818143709332',
+  'สลีปปิ้งมาสก์':'1731773966167869588',       // (สลีปปิ้งมาส์ก) Recovery Cloud Sleeping Mask
+  'serum':'1731186904519575700',              // เซรั่ม
+};
 async function csvTab(id,gid){ const t=await (await fetch(`https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}&cb=${Date.now()}`)).text(); return t.trim().startsWith('<')?[]:parseCSV(t); }
 const normSku=s=>String(s||'').toUpperCase().replace(/\s+/g,'');
 const normNm=s=>String(s||'').toLowerCase().replace(/\s+/g,'');
@@ -406,8 +420,10 @@ async function load(){
     const full=num(r[base+2]); const sku=String(r[base+1]||'').trim();
     const typRaw=String(r[10]||'').trim().toLowerCase();
     const isSet = typRaw==='set' || (/\+|x\s*\d|x\d/i.test(name) && typRaw!=='single');
-    const pid = ttBySku.get(normSku(sku)) || ttByName.get(normNm(name)) || '';   // map via Promotion TT
-    const autoImg = pid ? (cover.get(pid)||'') : '';                              // image via cover sheet
+    let pid = ttBySku.get(normSku(sku)) || ttByName.get(normNm(name)) || '';     // map via Promotion TT
+    let autoImg = pid ? (cover.get(pid)||'') : '';                               // image via cover sheet
+    // single Terry products: use the curated image from the "Terry" image tab (resolved live via cover)
+    if(!isSet){ const tpid=TERRY_SINGLE_PID[normNm(name)]; if(tpid){ pid=tpid; autoImg=cover.get(tpid)||autoImg; } }
     const bk=name+'|'+sku; const n=occ.get(bk)||0; occ.set(bk,n+1); const uid=bk+'|'+n;
     // set components: columns SKU1,QTY,SKU2,QTY,...,SKU5,QTY (0..9) → each with its own image via TT→cover
     const parts=[];
