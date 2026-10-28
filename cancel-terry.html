@@ -117,6 +117,18 @@
   .stat{background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:10px 13px}
   .stat .sv{font-size:18px;font-weight:800;line-height:1.15}
   .stat .sk{font-size:11px;color:var(--muted);margin-top:2px}
+  /* target vs actual */
+  #ovrTarget .tgt-h{font-size:13px;font-weight:800;margin-bottom:10px;border-top:1px solid var(--line);padding-top:12px}
+  .tgtgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end}
+  .tgtfield{background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:10px 13px}
+  .tgtfield .sk{font-size:11px;color:var(--muted);margin-bottom:4px}
+  .tgtfield .sv{font-size:19px;font-weight:800;line-height:1.1}
+  .tgtfield input{width:100%;border:1.5px solid var(--accent);background:var(--surface);color:var(--ink);border-radius:8px;padding:6px 9px;font:inherit;font-size:18px;font-weight:800}
+  .tgtfield.ach .sv{color:var(--good)} .tgtfield.ach.under .sv{color:var(--warn)}
+  .tgtbar{height:16px;border-radius:8px;background:var(--surface-2);overflow:hidden;margin-top:12px;border:1px solid var(--line)}
+  .tgtbar>div{height:100%;border-radius:8px;background:var(--good);transition:width .2s}
+  .tgtbar>div.under{background:var(--warn)}
+  .tgtnote{font-size:11.5px;color:var(--muted);margin-top:6px}
   .foot{margin-top:18px;font-size:11px;color:var(--muted);line-height:1.6}
   /* upload drop */
   .drop{border:2px dashed var(--line-2);border-radius:12px;padding:10px 14px;font-size:12.5px;color:var(--muted);text-align:center;cursor:pointer}
@@ -192,6 +204,7 @@
       <div class="kpi" id="ovrKpi" style="margin:10px 0"></div>
       <div id="ovrBar"></div>
       <div id="ovrSales" class="hidden" style="margin-top:16px"></div>
+      <div id="ovrTarget" class="hidden" style="margin-top:16px"></div>
     </div>
     <div class="ovrsep hidden" id="ovrSep">🔻 เจาะลึกเฉพาะคำสั่งซื้อที่ยกเลิก</div>
 
@@ -306,6 +319,9 @@ const dLabel=iso=>{const m=/^(\d+)-(\d+)-(\d+)/.exec(iso||'');return m?(+m[3])+'
 
 let ITEMS=[], BYLBL=['ลูกค้า','ระบบ','แอดมิน','อื่นๆ'];
 let OVERVIEW=null;   // all-orders summary (เข้ามา/ขายได้/ยกเลิก) when the file has all statuses
+let TARGETS={};      // per-dataset monthly unit target (manual now; sheet-fed later) keyed by dataset id
+function loadTargets(){ try{TARGETS=JSON.parse(localStorage.getItem('cancelTargets')||'{}')}catch{TARGETS={}} if(!TARGETS||typeof TARGETS!=='object')TARGETS={}; }
+function saveTargets(){ try{localStorage.setItem('cancelTargets',JSON.stringify(TARGETS))}catch{} }
 const CHLBL={'LIVE':'LIVE (ไลฟ์)','Videos':'วิดีโอ','Product cards':'การ์ดสินค้า'};
 let F={paid:'all', by:'all', reason:null, pay:null, chan:null, prod:null, prov:null, day:null, search:''};
 let prodSort={k:'ord', dir:-1};   // product table sort: ord/qty/sub/name, dir -1=desc 1=asc
@@ -432,8 +448,26 @@ function renderOverview(){
         `</div>`;
     } else extra.classList.add('hidden');
   }
+  renderTarget(done.units||0);
 }
 const statTile=(k,v)=>`<div class="stat"><div class="sv">${v}</div><div class="sk">${esc(k)}</div></div>`;
+// Target (จำนวนชิ้น) vs ขายได้จริง — manual now, sheet-fed later
+function renderTarget(actual){
+  const el=$('#ovrTarget'); if(!el) return;
+  el.classList.remove('hidden');
+  const t=(TARGETS[activeDsId]&&+TARGETS[activeDsId].units)||0;
+  const ach=t>0?Math.round(actual/t*100):0; const under=ach<100;
+  el.innerHTML = `<div class="tgt-h">🎯 เป้าหมายยอดขาย (ชิ้น) vs ขายได้จริง</div>
+    <div class="tgtgrid">
+      <div class="tgtfield"><div class="sk">Target จำนวนชิ้น (เดือนนี้)</div><input id="tgtIn" type="number" min="0" placeholder="ใส่เป้าหมาย…" value="${t||''}"></div>
+      <div class="tgtfield"><div class="sk">ขายได้จริง (ขายสำเร็จ)</div><div class="sv">${fmt(actual)} ชิ้น</div></div>
+      <div class="tgtfield ach ${under?'under':''}"><div class="sk">%Achieve</div><div class="sv">${t>0?ach+'%':'—'}</div></div>
+      <div class="tgtfield"><div class="sk">${t>0?(under?'ขาดอีก':'เกินเป้า'):'ส่วนต่าง'}</div><div class="sv">${t>0?fmt(Math.abs(t-actual))+' ชิ้น':'—'}</div></div>
+    </div>
+    <div class="tgtbar"><div class="${under?'under':''}" style="width:${t>0?Math.min(100,ach):0}%"></div></div>
+    <div class="tgtnote">${t>0?`เป้า ${fmt(t)} ชิ้น · ทำได้ ${fmt(actual)} ชิ้น (${ach}%)`:'ยังไม่ได้ตั้งเป้า — พิมพ์ Target ในช่องด้านบน (หรือรอเชื่อมจากชีต Revenue by monthly)'} · บันทึกต่อชุดข้อมูลในเครื่องนี้`;
+  const inp=$('#tgtIn'); if(inp) inp.onchange=()=>{ const v=Math.max(0,+inp.value||0); if(v)TARGETS[activeDsId]={units:v}; else delete TARGETS[activeDsId]; saveTargets(); renderTarget(actual); };
+}
 function render(){
   renderOverview();
   const list=filtered(); const ords=orders(list);
@@ -746,6 +780,7 @@ function hideMsg(){ $('#msg').style.display='none'; $('#app').classList.remove('
 
 let PERIOD='2026-09';
 (async()=>{ try{
+    loadTargets();
     await renderSidebar();
     await loadBuiltin();
   }catch(err){ showMsg('โหลดข้อมูลเริ่มต้นไม่สำเร็จ — อัปโหลดไฟล์รายงานออเดอร์ (.xlsx/.csv) เพื่อเริ่มใช้งาน', true); $('#app').classList.remove('hidden'); $('#kpi').innerHTML=''; }
