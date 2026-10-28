@@ -205,7 +205,6 @@
       <div class="chips" id="camps"></div>
       <input class="srch main-srch" id="mainSrch" placeholder="ค้นหาสินค้า เช่น 50ml, สลีปปิ้ง">
     </div>
-    <div class="kpi" id="kpi"></div>
 
     <div class="ctrls">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -388,8 +387,12 @@ function renderChips(){
   $('#camps').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{SEL=b.dataset.k;renderChips();renderCards();});
 }
 
-function renderMonthSel(){ const sel=$('#monthSel'); if(!sel)return; const months=availMonths();
-  sel.classList.remove('hidden');   // always show so the active month is visible
+function renderMonthSel(){ const sel=$('#monthSel'); if(!sel)return;
+  const yr=+((SHEET_MONTH||MONTH||'2026-01').slice(0,4))||2026;
+  const months=[]; for(let m=1;m<=12;m++) months.push(monthKey(yr,m));   // all 12 months of the year
+  availMonths().forEach(k=>{ if(!months.includes(k)) months.push(k); });  // + any custom months from other years
+  months.sort();
+  sel.classList.remove('hidden');
   sel.innerHTML=months.map(k=>`<option value="${k}" ${k===MONTH?'selected':''}>📅 ${esc(monthLabel(k))}</option>`).join('');
 }
 // composer month options: active month + sheet month + next 12 months, de-duped & sorted
@@ -434,10 +437,10 @@ function rowHtml(it,cp){
 }
 function renderCards(){
   const cp=CAMP.find(c=>c.k===SEL);
-  renderKPI();
   const s=SRCH.trim().toLowerCase();
   const list=filtered().filter(it=>it.prices[SEL]>0 && (!s||it.name.toLowerCase().includes(s)||it.sku.toLowerCase().includes(s)));
-  if(!list.length){ $('#cards').innerHTML=`<div class="empty">ไม่มีรายการราคาสำหรับแคมเปญนี้${s?' (ลองล้างคำค้นหา)':''}</div>`; return; }
+  if(!list.length){ const monthHas=ITEMS.some(it=>inMonth(it));
+    $('#cards').innerHTML=`<div class="empty">${!monthHas?('ยังไม่มีโปรโมชันสำหรับ'+esc(monthLabel(MONTH))+' — กด “➕ สร้างโปรฯ ใหม่” เพื่อเพิ่ม'):('ไม่มีรายการราคาสำหรับแคมเปญนี้'+(s?' (ลองล้างคำค้นหา)':''))}</div>`; return; }
   const singles=list.filter(it=>!it.isSet), sets=list.filter(it=>it.isSet);
   const groups=[]; if(singles.length)groups.push(['สินค้าเดี่ยว',singles]); if(sets.length)groups.push(['เซ็ต / ตะกร้า',sets]);
   const head=`<div class="rhead"><span>สินค้า</span><span>ราคาเต็ม</span><span style="color:${cp.c}">ราคา ${esc(SEL)}</span><span>ประหยัด</span><span></span></div>`;
