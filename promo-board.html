@@ -82,13 +82,16 @@
   /* stacked campaign chips (a basket can be copied to several promos) */
   .campchips{position:absolute;left:8px;top:8px;display:flex;flex-direction:column;gap:4px;max-width:72%;z-index:2}
   .campchips .campchip{position:static}
-  /* price bar shown when copying a basket to a campaign */
-  .pricebar{position:absolute;left:8px;right:8px;bottom:8px;display:flex;gap:6px;align-items:center;z-index:5;background:rgba(0,0,0,.78);padding:7px;border-radius:11px;box-shadow:0 8px 22px -8px rgba(0,0,0,.6)}
-  .pricebar .pblbl{font-size:10.5px;font-weight:800;color:#fff;border-radius:6px;padding:5px 8px;white-space:nowrap;max-width:46%;overflow:hidden;text-overflow:ellipsis}
-  .pricebar .pbin{flex:1;min-width:0;border:0;border-radius:8px;padding:7px 9px;font:inherit;font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
-  .pricebar .pbbtn{border:0;border-radius:8px;padding:7px 10px;font:inherit;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}
-  .pricebar .pbbtn.ok{background:#10b981;color:#fff}
-  .pricebar .pbbtn.no{background:rgba(255,255,255,.22);color:#fff}
+  /* price bar shown when copying a basket to a campaign — large & clear, two rows */
+  .pricebar{position:absolute;left:10px;right:10px;bottom:10px;display:flex;flex-direction:column;gap:9px;z-index:5;background:rgba(10,12,18,.9);padding:12px;border-radius:14px;box-shadow:0 12px 30px -10px rgba(0,0,0,.7)}
+  .pricebar .pbrow{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .pricebar .pbrow2{display:flex;align-items:center;gap:8px}
+  .pricebar .pblbl{flex:1;min-width:0;font-size:12.5px;font-weight:800;color:#fff;border-radius:8px;padding:6px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pricebar .pbbaht{font-size:20px;font-weight:800;color:#fff;flex:none}
+  .pricebar .pbin{flex:1;min-width:0;border:0;border-radius:10px;padding:12px 12px;font:inherit;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;text-align:right}
+  .pricebar .pbbtn{border:0;border-radius:10px;font:inherit;font-weight:800;cursor:pointer;white-space:nowrap}
+  .pricebar .pbbtn.ok{background:#10b981;color:#fff;padding:12px 16px;font-size:14px;flex:none}
+  .pricebar .pbbtn.no{background:rgba(255,255,255,.22);color:#fff;padding:6px 11px;font-size:13px;flex:none}
   .assignsel{flex:1;min-width:0;max-width:170px;border:0;border-radius:8px;background:rgba(0,0,0,.66);color:#fff;font:inherit;font-size:11px;font-weight:700;padding:6px 8px;cursor:pointer}
   .assignsel option{color:#111}
   .pbar .edit{position:static !important;opacity:1 !important;flex:none}
@@ -556,17 +559,19 @@ function cardHtml(it,cp){
   return `<div class="pc ${closed?'closed':''} ${grouped?'grouped':''}" draggable="true" data-uid="${esc(it.uid)}">
     <div class="pimg">
       ${img?imgTag(img,'',true):'<span class="ph">📷 ไม่มีรูป</span>'}
-      ${camps.length
-        ? `<span class="campchips">${camps.map(ck=>{const c=CAMP.find(x=>x.k===ck)||cp;return `<span class="campchip" style="background:${c.c}" title="คัดลอกไปโปรฯ: ${esc(ck)}">📍 ${esc(ck)}</span>`;}).join('')}</span>`
-        : `<span class="campchip" style="background:#64748b" title="อยู่หน้าแรก AWO">🏠 AWO</span>`}
       ${grouped?`<span class="grpchip">🧩 ${members.length} ตัวเลือก</span>`:''}
       <button class="hidebtn" data-act="hide" data-k="${k}" title="${closed?'เปิดสินค้า (แสดง)':'ปิดสินค้า (ซ่อน)'}">${closed?'↺ เปิด':'🙈 ปิด'}</button>
       ${ (PENDING&&PENDING.uid===it.uid)
         ? `<div class="pricebar" draggable="false">
-             <span class="pblbl" style="background:${(CAMP.find(c=>c.k===PENDING.camp)||cp).c}" title="${esc(PENDING.camp)}">฿ ${esc(PENDING.camp)}</span>
-             <input type="number" class="pbin" min="0" step="1" value="${esc(String(campPrice(it,PENDING.camp)||''))}" placeholder="ราคาโปรฯ">
-             <button class="pbbtn ok" data-act="pbok" data-k="${esc(it.uid)}" data-camp="${esc(PENDING.camp)}">✓ บันทึก</button>
-             <button class="pbbtn no" data-act="pbcancel">✕</button>
+             <div class="pbrow">
+               <span class="pblbl" style="background:${(CAMP.find(c=>c.k===PENDING.camp)||cp).c}" title="${esc(PENDING.camp)}">💰 ราคา ${esc(PENDING.camp)}</span>
+               <button class="pbbtn no" data-act="pbcancel" title="ยกเลิก">✕</button>
+             </div>
+             <div class="pbrow2">
+               <span class="pbbaht">฿</span>
+               <input type="number" class="pbin" min="0" step="1" value="${esc(String(campPrice(it,PENDING.camp)||''))}" placeholder="กรอกราคา">
+               <button class="pbbtn ok" data-act="pbok" data-k="${esc(it.uid)}" data-camp="${esc(PENDING.camp)}">✓ บันทึก</button>
+             </div>
            </div>`
         : `<div class="pbar" draggable="false">
              <select class="assignsel" data-assign="${esc(it.uid)}" title="คัดลอกตะกร้านี้ไปแคมเปญ" draggable="false">
@@ -574,8 +579,7 @@ function cardHtml(it,cp){
                ${CAMP.filter(c=>c.k!=='AWO').map(c=>`<option value="${esc(c.k)}">📍 ${esc(c.k)}${camps.includes(c.k)?' ✓':''}</option>`).join('')}
              </select>
              ${SEL!=='AWO'?`<button class="edit" data-act="editprice" data-k="${esc(it.uid)}" data-camp="${esc(SEL)}" title="แก้ราคาโปรฯ นี้">✎ ฿</button><button class="edit del" data-act="rmcamp" data-k="${esc(it.uid)}" data-camp="${esc(SEL)}" title="เอาออกจากโปรฯ นี้">✕ โปร</button>`:''}
-             ${manual?`<button class="edit del" data-act="delimg" data-k="${k}" title="ลบรูป">🗑</button>`:''}
-             ${act.custom?`<button class="edit del" data-act="delpromo" data-k="${k}" title="ลบโปรฯ นี้ถาวร">🗑 ลบ</button>`:''}
+             ${(act.custom&&closed)?`<button class="edit del" data-act="delpromo" data-k="${k}" title="ลบโปรฯ นี้ถาวร">🗑 ลบถาวร</button>`:''}
              <button class="edit" data-act="pick" data-k="${k}" data-label="${lbl}">✎ รูป</button>
            </div>`
       }
