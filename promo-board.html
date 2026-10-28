@@ -77,6 +77,11 @@
   .opt2-x{border:0;background:var(--surface-2);color:var(--muted);border-radius:6px;width:22px;height:22px;cursor:pointer;flex:none;font-size:11px}
   .opt2-x:hover{background:color-mix(in oklab,var(--bad) 15%,var(--surface));color:var(--bad)}
   .opt2-main{font-size:9.5px;font-weight:800;color:var(--accent);flex:none}
+  /* per-card promo (campaign) assignment bar at the bottom of the image */
+  .pbar{position:absolute;left:8px;right:8px;bottom:8px;display:flex;gap:6px;align-items:center;z-index:3}
+  .assignsel{flex:1;min-width:0;max-width:170px;border:0;border-radius:8px;background:rgba(0,0,0,.66);color:#fff;font:inherit;font-size:11px;font-weight:700;padding:6px 8px;cursor:pointer}
+  .assignsel option{color:#111}
+  .pbar .edit{position:static !important;opacity:1 !important;flex:none}
   .pc{background:var(--surface);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;transition:box-shadow .12s,transform .12s}
   .pc:hover{box-shadow:0 10px 24px -14px rgba(0,0,0,.35);transform:translateY(-2px)}
   .pimg{position:relative;width:100%;aspect-ratio:1/1;background:var(--surface-2)}
@@ -413,6 +418,12 @@ let GROUP={};  // childUid -> parentUid (per device)
 let ACTIVE={}; // mainUid -> currently-shown member uid (session only)
 function loadGroups(){ try{GROUP=JSON.parse(localStorage.getItem('promoGroups')||'{}')}catch{GROUP={}} if(!GROUP||typeof GROUP!=='object')GROUP={}; }
 function saveGroups(){ try{localStorage.setItem('promoGroups',JSON.stringify(GROUP))}catch{} }
+// campaign assignment: AWO = home (shows every basket); other campaigns show only baskets tagged to them
+let ASSIGN={}; // uid -> campaign key (none = AWO/home)
+function loadAssign(){ try{ASSIGN=JSON.parse(localStorage.getItem('promoAssign')||'{}')}catch{ASSIGN={}} if(!ASSIGN||typeof ASSIGN!=='object')ASSIGN={}; }
+function saveAssign(){ try{localStorage.setItem('promoAssign',JSON.stringify(ASSIGN))}catch{} }
+const assignOf=uid=>ASSIGN[uid]||'AWO';
+const inCampaign=it=> SEL==='AWO' ? !ASSIGN[it.uid] : ASSIGN[it.uid]===SEL;   // AWO = all unassigned; others = tagged
 const uidOf=u=>ITEMS.find(x=>x.uid===u);
 const childrenOf=main=>ITEMS.filter(x=>GROUP[x.uid]===main.uid && inMonth(x));
 function groupUnder(childUid, targetUid){
@@ -427,7 +438,7 @@ function groupUnder(childUid, targetUid){
 function filtered(){
   return ITEMS.filter(it=>inMonth(it) && !GROUP[it.uid] && (TYPE==='all'||(TYPE==='set'?it.isSet:!it.isSet)) && (showHidden || !isHidden(it)));
 }
-function campCount(k){return ITEMS.filter(it=>inMonth(it) && it.prices[k]>0).length;}
+function campCount(k){return ITEMS.filter(it=>inMonth(it) && !GROUP[it.uid] && (k==='AWO'?!ASSIGN[it.uid]:ASSIGN[it.uid]===k)).length;}
 
 function renderChips(){
   $('#camps').innerHTML=CAMP.map(cp=>{const on=cp.k===SEL;
@@ -490,7 +501,8 @@ function cardHtml(it,cp){
   const members=[it,...childrenOf(it)]; const grouped=members.length>1;
   const aUid = grouped ? (members.some(m=>m.uid===ACTIVE[it.uid])?ACTIVE[it.uid]:it.uid) : it.uid;
   const act = members.find(m=>m.uid===aUid)||it;
-  const now=act.prices[SEL], base=baseOf(act), save=saveOf(act), pct=base>0?Math.round(save/base*100):0;
+  const asg=assignOf(it.uid), acp=CAMP.find(c=>c.k===asg)||cp;   // which promo this basket is tagged to
+  const now=act.prices[SEL]||act.prices.AWO||0, base=baseOf(act), save=(base>now&&now>0)?base-now:0, pct=(base>0&&save>0)?Math.round(save/base*100):0;
   const k=esc(imgKey(act)), lbl=esc(act.name), img=displayImg(act), manual=!!IMG[imgKey(act)], closed=isHidden(act);
   const liveRm=/only live|live/i.test(act.remark);
   const allP=Object.values(act.prices).filter(v=>v>0); const minP=allP.length?Math.min(...allP):0; const best=now>0&&now===minP&&allP.length>1;
@@ -503,11 +515,16 @@ function cardHtml(it,cp){
   return `<div class="pc ${closed?'closed':''} ${grouped?'grouped':''}" draggable="true" data-uid="${esc(it.uid)}">
     <div class="pimg">
       ${img?imgTag(img,'',true):'<span class="ph">📷 ไม่มีรูป</span>'}
-      <span class="campchip" style="background:${cp.c}">${esc(SEL)}</span>
+      <span class="campchip" style="background:${acp.c}" title="โปรฯ: ${esc(asg)}">${esc(asg)}</span>
       ${grouped?`<span class="grpchip">🧩 ${members.length} ตัวเลือก</span>`:''}
-      <button class="edit" data-act="pick" data-k="${k}" data-label="${lbl}">✎ รูป</button>
-      ${manual?`<button class="edit del" data-act="delimg" data-k="${k}" title="ลบรูป">🗑</button>`:''}
       <button class="hidebtn" data-act="${act.custom?'delpromo':'hide'}" data-k="${k}" title="${act.custom?'ลบโปรฯ นี้':(closed?'เปิดตะกร้า':'ปิดตะกร้า')}">${act.custom?'🗑':(closed?'↺':'✕')}</button>
+      <div class="pbar" draggable="false">
+        <select class="assignsel" data-assign="${esc(it.uid)}" title="เลือกโปรฯ ของตะกร้านี้" draggable="false">
+          ${CAMP.map(c=>`<option value="${esc(c.k)}" ${asg===c.k?'selected':''}>${c.k==='AWO'?'🏠 AWO (หน้าแรก)':'📍 '+esc(c.k)}</option>`).join('')}
+        </select>
+        ${manual?`<button class="edit del" data-act="delimg" data-k="${k}" title="ลบรูป">🗑</button>`:''}
+        <button class="edit" data-act="pick" data-k="${k}" data-label="${lbl}">✎ รูป</button>
+      </div>
     </div>
     <div class="pbody">
       <div class="nm" title="${lbl}">${esc(act.name)}</div>
@@ -522,9 +539,9 @@ function cardHtml(it,cp){
 function renderCards(){
   const cp=CAMP.find(c=>c.k===SEL);
   const s=SRCH.trim().toLowerCase();
-  const list=filtered().filter(it=>it.prices[SEL]>0 && (!s||it.name.toLowerCase().includes(s)||it.sku.toLowerCase().includes(s)));
+  const list=filtered().filter(it=>inCampaign(it) && (!s||it.name.toLowerCase().includes(s)||it.sku.toLowerCase().includes(s)));
   if(!list.length){ const monthHas=ITEMS.some(it=>inMonth(it));
-    $('#cards').innerHTML=`<div class="empty">${!monthHas?('ยังไม่มีโปรโมชันสำหรับ'+esc(monthLabel(MONTH))+' — กด “➕ สร้างโปรฯ ใหม่” เพื่อเพิ่ม'):('ไม่มีรายการราคาสำหรับแคมเปญนี้'+(s?' (ลองล้างคำค้นหา)':''))}</div>`; return; }
+    $('#cards').innerHTML=`<div class="empty">${!monthHas?('ยังไม่มีโปรโมชันสำหรับ'+esc(monthLabel(MONTH))+' — กด “➕ สร้างโปรฯ ใหม่” เพื่อเพิ่ม'):(s?'ไม่พบรายการที่ค้นหา':(SEL==='AWO'?'ยังไม่มีตะกร้า':'ยังไม่มีตะกร้าในโปรฯ นี้ — ไปที่ AWO แล้วเลือกโปรฯ ให้ตะกร้า'))}</div>`; return; }
   const srt=(a,b)=>saveOf(b)-saveOf(a) || a.prices[SEL]-b.prices[SEL];
   const singles=list.filter(it=>!it.isSet).sort(srt), sets=list.filter(it=>it.isSet).sort(srt);
   let html='';
@@ -647,6 +664,9 @@ $('#cards').addEventListener('dragstart',e=>{ const c=e.target.closest('.pc[data
 $('#cards').addEventListener('dragover',e=>{ if(!dragUid)return; const c=e.target.closest('.pc[data-uid]'); document.querySelectorAll('.pc.dragover').forEach(x=>x.classList.remove('dragover')); if(c&&c.dataset.uid!==dragUid){ e.preventDefault(); c.classList.add('dragover'); } });
 $('#cards').addEventListener('drop',e=>{ const c=e.target.closest('.pc[data-uid]'); if(c&&dragUid&&c.dataset.uid!==dragUid){ e.preventDefault(); groupUnder(dragUid,c.dataset.uid); } document.querySelectorAll('.pc.dragover').forEach(x=>x.classList.remove('dragover')); dragUid=null; });
 $('#cards').addEventListener('dragend',()=>{ document.querySelectorAll('.pc.dragging,.pc.dragover').forEach(x=>x.classList.remove('dragging','dragover')); dragUid=null; });
+// assign a basket to a promo (campaign) via the per-card dropdown; AWO = back to home
+$('#cards').addEventListener('change',e=>{ const sel=e.target.closest('select[data-assign]'); if(!sel)return; const uid=sel.dataset.assign;
+  if(sel.value==='AWO') delete ASSIGN[uid]; else ASSIGN[uid]=sel.value; saveAssign(); renderChips(); renderCards(); });
 $('#mainSrch').addEventListener('input',e=>{ SRCH=e.target.value; renderCards(); });
 $('#hiddenBtn').addEventListener('click',()=>{ showHidden=!showHidden; $('#hiddenBtn').classList.toggle('on',showHidden); rerender(); });
 function updateHiddenBtn(){ const n=ITEMS.filter(it=>inMonth(it)&&isHidden(it)).length; const el=$('#hiddenCount'); if(el) el.textContent=n?'('+n+')':''; }
@@ -701,7 +721,7 @@ $('#viewTog').addEventListener('click',e=>{const b=e.target.closest('button');if
   VIEW=b.dataset.v;[...$('#viewTog').children].forEach(x=>x.classList.toggle('on',x===b));applyView();});
 $('#monthSel').addEventListener('change',e=>{ MONTH=e.target.value; updateHiddenBtn(); renderChips(); VIEW==='cards'?renderCards():renderTable(); });
 
-(async()=>{try{await load(); loadImg(); loadPST(); loadPHID(); loadCustom(); loadGroups();
+(async()=>{try{await load(); loadImg(); loadPST(); loadPHID(); loadCustom(); loadGroups(); loadAssign();
   CUSTOM.forEach(c=>{ if(!c.uid) c.uid=c.cid||('c'+Math.random().toString(36).slice(2)); if(!c.month) c.month=SHEET_MONTH; });   // backfill uid+month for older saved promos
   if(CUSTOM.length)ITEMS.push(...CUSTOM);
   if(!ITEMS.length){$('#msg').className='msg err';$('#msg').textContent='ไม่พบรายการโปรโมชันในชีต';return;}
