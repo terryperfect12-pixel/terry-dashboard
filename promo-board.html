@@ -78,7 +78,17 @@
   .opt2-x:hover{background:color-mix(in oklab,var(--bad) 15%,var(--surface));color:var(--bad)}
   .opt2-main{font-size:9.5px;font-weight:800;color:var(--accent);flex:none}
   /* per-card promo (campaign) assignment bar at the bottom of the image */
-  .pbar{position:absolute;left:8px;right:8px;bottom:8px;display:flex;gap:6px;align-items:center;z-index:3}
+  .pbar{position:absolute;left:8px;right:8px;bottom:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;z-index:3}
+  /* stacked campaign chips (a basket can be copied to several promos) */
+  .campchips{position:absolute;left:8px;top:8px;display:flex;flex-direction:column;gap:4px;max-width:72%;z-index:2}
+  .campchips .campchip{position:static}
+  /* price bar shown when copying a basket to a campaign */
+  .pricebar{position:absolute;left:8px;right:8px;bottom:8px;display:flex;gap:6px;align-items:center;z-index:5;background:rgba(0,0,0,.78);padding:7px;border-radius:11px;box-shadow:0 8px 22px -8px rgba(0,0,0,.6)}
+  .pricebar .pblbl{font-size:10.5px;font-weight:800;color:#fff;border-radius:6px;padding:5px 8px;white-space:nowrap;max-width:46%;overflow:hidden;text-overflow:ellipsis}
+  .pricebar .pbin{flex:1;min-width:0;border:0;border-radius:8px;padding:7px 9px;font:inherit;font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
+  .pricebar .pbbtn{border:0;border-radius:8px;padding:7px 10px;font:inherit;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}
+  .pricebar .pbbtn.ok{background:#10b981;color:#fff}
+  .pricebar .pbbtn.no{background:rgba(255,255,255,.22);color:#fff}
   .assignsel{flex:1;min-width:0;max-width:170px;border:0;border-radius:8px;background:rgba(0,0,0,.66);color:#fff;font:inherit;font-size:11px;font-weight:700;padding:6px 8px;cursor:pointer}
   .assignsel option{color:#111}
   .pbar .edit{position:static !important;opacity:1 !important;flex:none}
@@ -440,12 +450,19 @@ let GROUP={};  // childUid -> parentUid (per device)
 let ACTIVE={}; // mainUid -> currently-shown member uid (session only)
 function loadGroups(){ try{GROUP=JSON.parse(localStorage.getItem('promoGroups')||'{}')}catch{GROUP={}} if(!GROUP||typeof GROUP!=='object')GROUP={}; }
 function saveGroups(){ try{localStorage.setItem('promoGroups',JSON.stringify(GROUP))}catch{} }
-// campaign assignment: AWO = home (shows every basket); other campaigns show only baskets tagged to them
-let ASSIGN={}; // uid -> campaign key (none = AWO/home)
-function loadAssign(){ try{ASSIGN=JSON.parse(localStorage.getItem('promoAssign')||'{}')}catch{ASSIGN={}} if(!ASSIGN||typeof ASSIGN!=='object')ASSIGN={}; }
+// campaign copy: AWO = home (always shows EVERY basket). Copying a basket to a campaign ADDS it there
+// (it stays on AWO too) and can carry its own price for that campaign.
+let ASSIGN={}; // uid -> { campaignKey: price }  (price 0/empty = use the sheet price for that campaign)
+let PENDING=null; // {uid,camp} while a copy-to-campaign price bar is open
+function loadAssign(){ try{ASSIGN=JSON.parse(localStorage.getItem('promoAssign')||'{}')}catch{ASSIGN={}} if(!ASSIGN||typeof ASSIGN!=='object')ASSIGN={};
+  for(const u in ASSIGN){ const v=ASSIGN[u];                            // migrate old format (uid -> "campaign" string)
+    if(typeof v==='string') ASSIGN[u]=(v&&v!=='AWO')?{[v]:0}:null;
+    if(!ASSIGN[u]||typeof ASSIGN[u]!=='object') delete ASSIGN[u]; } }
 function saveAssign(){ try{localStorage.setItem('promoAssign',JSON.stringify(ASSIGN))}catch{} }
-const assignOf=uid=>ASSIGN[uid]||'AWO';
-const inCampaign=it=> SEL==='AWO' ? !ASSIGN[it.uid] : ASSIGN[it.uid]===SEL;   // AWO = all unassigned; others = tagged
+const campsOf=uid=>{ const m=ASSIGN[uid]; return m?Object.keys(m):[]; };
+const inCampaign=it=> SEL==='AWO' ? true : campsOf(it.uid).includes(SEL);   // AWO = all; campaign = copied there
+// price for a basket under a campaign: its custom price wins, else the sheet price for that campaign
+function campPrice(it,camp){ const m=ASSIGN[it.uid]; const c=m&&+m[camp]; return c>0?c:(it.prices[camp]||it.prices.AWO||0); }
 const uidOf=u=>ITEMS.find(x=>x.uid===u);
 const childrenOf=main=>ITEMS.filter(x=>GROUP[x.uid]===main.uid && inMonth(x));
 function groupUnder(childUid, targetUid){
@@ -460,13 +477,14 @@ function groupUnder(childUid, targetUid){
 function filtered(){
   return ITEMS.filter(it=>inMonth(it) && !GROUP[it.uid] && (TYPE==='all'||(TYPE==='set'?it.isSet:!it.isSet)) && (showHidden || !isHidden(it)));
 }
-function campCount(k){return ITEMS.filter(it=>inMonth(it) && !GROUP[it.uid] && (k==='AWO'?!ASSIGN[it.uid]:ASSIGN[it.uid]===k)).length;}
+function campCount(k){ if(k==='AWO') return ITEMS.filter(it=>inMonth(it)&&!GROUP[it.uid]).length;
+  return ITEMS.filter(it=>inMonth(it)&&!GROUP[it.uid]&&campsOf(it.uid).includes(k)).length; }
 
 function renderChips(){
   $('#camps').innerHTML=CAMP.map(cp=>{const on=cp.k===SEL;
     return `<button class="chip ${on?'on':''}" data-k="${esc(cp.k)}" style="${on?`background:${cp.c}`:''}">
       <span class="cdot" style="background:${cp.c}"></span>${esc(cp.k)}<span class="chint">${esc(cp.hint||'')}</span> <span class="cnt">${campCount(cp.k)}</span></button>`;}).join('');
-  $('#camps').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{SEL=b.dataset.k;renderChips();renderCards();});
+  $('#camps').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{SEL=b.dataset.k;PENDING=null;renderChips();renderCards();});
 }
 
 function renderMonthSel(){ const sel=$('#monthSel'); if(!sel)return;
@@ -523,8 +541,9 @@ function cardHtml(it,cp){
   const members=[it,...childrenOf(it)]; const grouped=members.length>1;
   const aUid = grouped ? (members.some(m=>m.uid===ACTIVE[it.uid])?ACTIVE[it.uid]:it.uid) : it.uid;
   const act = members.find(m=>m.uid===aUid)||it;
-  const asg=assignOf(it.uid), acp=CAMP.find(c=>c.k===asg)||cp;   // which promo this basket is tagged to
-  const now=act.prices[SEL]||act.prices.AWO||0, base=baseOf(act), save=(base>now&&now>0)?base-now:0, pct=(base>0&&save>0)?Math.round(save/base*100):0;
+  const camps=campsOf(it.uid);   // campaigns this basket has been copied to
+  let now; if(SEL==='AWO'){ now=act.prices.AWO||0; } else { const cm=ASSIGN[it.uid], cx=cm&&+cm[SEL]; now=cx>0?cx:(act.prices[SEL]||act.prices.AWO||0); }
+  const base=baseOf(act), save=(base>now&&now>0)?base-now:0, pct=(base>0&&save>0)?Math.round(save/base*100):0;
   const k=esc(imgKey(act)), lbl=esc(act.name), img=displayImg(act), manual=!!IMG[imgKey(act)], closed=isHidden(act);
   const liveRm=/only live|live/i.test(act.remark);
   const allP=Object.values(act.prices).filter(v=>v>0); const minP=allP.length?Math.min(...allP):0; const best=now>0&&now===minP&&allP.length>1;
@@ -537,16 +556,29 @@ function cardHtml(it,cp){
   return `<div class="pc ${closed?'closed':''} ${grouped?'grouped':''}" draggable="true" data-uid="${esc(it.uid)}">
     <div class="pimg">
       ${img?imgTag(img,'',true):'<span class="ph">📷 ไม่มีรูป</span>'}
-      <span class="campchip" style="background:${acp.c}" title="โปรฯ: ${esc(asg)}">${esc(asg)}</span>
+      ${camps.length
+        ? `<span class="campchips">${camps.map(ck=>{const c=CAMP.find(x=>x.k===ck)||cp;return `<span class="campchip" style="background:${c.c}" title="คัดลอกไปโปรฯ: ${esc(ck)}">📍 ${esc(ck)}</span>`;}).join('')}</span>`
+        : `<span class="campchip" style="background:#64748b" title="อยู่หน้าแรก AWO">🏠 AWO</span>`}
       ${grouped?`<span class="grpchip">🧩 ${members.length} ตัวเลือก</span>`:''}
-      <button class="hidebtn" data-act="${act.custom?'delpromo':'hide'}" data-k="${k}" title="${act.custom?'ลบโปรฯ นี้':(closed?'เปิดตะกร้า':'ปิดตะกร้า')}">${act.custom?'🗑':(closed?'↺':'✕')}</button>
-      <div class="pbar" draggable="false">
-        <select class="assignsel" data-assign="${esc(it.uid)}" title="เลือกโปรฯ ของตะกร้านี้" draggable="false">
-          ${CAMP.map(c=>`<option value="${esc(c.k)}" ${asg===c.k?'selected':''}>${c.k==='AWO'?'🏠 AWO (หน้าแรก)':'📍 '+esc(c.k)}</option>`).join('')}
-        </select>
-        ${manual?`<button class="edit del" data-act="delimg" data-k="${k}" title="ลบรูป">🗑</button>`:''}
-        <button class="edit" data-act="pick" data-k="${k}" data-label="${lbl}">✎ รูป</button>
-      </div>
+      <button class="hidebtn" data-act="hide" data-k="${k}" title="${closed?'เปิดสินค้า (แสดง)':'ปิดสินค้า (ซ่อน)'}">${closed?'↺ เปิด':'🙈 ปิด'}</button>
+      ${ (PENDING&&PENDING.uid===it.uid)
+        ? `<div class="pricebar" draggable="false">
+             <span class="pblbl" style="background:${(CAMP.find(c=>c.k===PENDING.camp)||cp).c}" title="${esc(PENDING.camp)}">฿ ${esc(PENDING.camp)}</span>
+             <input type="number" class="pbin" min="0" step="1" value="${esc(String(campPrice(it,PENDING.camp)||''))}" placeholder="ราคาโปรฯ">
+             <button class="pbbtn ok" data-act="pbok" data-k="${esc(it.uid)}" data-camp="${esc(PENDING.camp)}">✓ บันทึก</button>
+             <button class="pbbtn no" data-act="pbcancel">✕</button>
+           </div>`
+        : `<div class="pbar" draggable="false">
+             <select class="assignsel" data-assign="${esc(it.uid)}" title="คัดลอกตะกร้านี้ไปแคมเปญ" draggable="false">
+               <option value="">➕ เพิ่มไปแคมเปญ…</option>
+               ${CAMP.filter(c=>c.k!=='AWO').map(c=>`<option value="${esc(c.k)}">📍 ${esc(c.k)}${camps.includes(c.k)?' ✓':''}</option>`).join('')}
+             </select>
+             ${SEL!=='AWO'?`<button class="edit" data-act="editprice" data-k="${esc(it.uid)}" data-camp="${esc(SEL)}" title="แก้ราคาโปรฯ นี้">✎ ฿</button><button class="edit del" data-act="rmcamp" data-k="${esc(it.uid)}" data-camp="${esc(SEL)}" title="เอาออกจากโปรฯ นี้">✕ โปร</button>`:''}
+             ${manual?`<button class="edit del" data-act="delimg" data-k="${k}" title="ลบรูป">🗑</button>`:''}
+             ${act.custom?`<button class="edit del" data-act="delpromo" data-k="${k}" title="ลบโปรฯ นี้ถาวร">🗑 ลบ</button>`:''}
+             <button class="edit" data-act="pick" data-k="${k}" data-label="${lbl}">✎ รูป</button>
+           </div>`
+      }
     </div>
     <div class="pbody">
       <div class="nm" title="${lbl}">${esc(act.name)}</div>
@@ -563,7 +595,7 @@ function renderCards(){
   const s=SRCH.trim().toLowerCase();
   const list=filtered().filter(it=>inCampaign(it) && (!s||it.name.toLowerCase().includes(s)||it.sku.toLowerCase().includes(s)));
   if(!list.length){ const monthHas=ITEMS.some(it=>inMonth(it));
-    $('#cards').innerHTML=`<div class="empty">${!monthHas?('ยังไม่มีโปรโมชันสำหรับ'+esc(monthLabel(MONTH))+' — กด “➕ สร้างโปรฯ ใหม่” เพื่อเพิ่ม'):(s?'ไม่พบรายการที่ค้นหา':(SEL==='AWO'?'ยังไม่มีตะกร้า':'ยังไม่มีตะกร้าในโปรฯ นี้ — ไปที่ AWO แล้วเลือกโปรฯ ให้ตะกร้า'))}</div>`; return; }
+    $('#cards').innerHTML=`<div class="empty">${!monthHas?('ยังไม่มีโปรโมชันสำหรับ'+esc(monthLabel(MONTH))+' — กด “➕ สร้างโปรฯ ใหม่” เพื่อเพิ่ม'):(s?'ไม่พบรายการที่ค้นหา':(SEL==='AWO'?'ยังไม่มีตะกร้า':'ยังไม่มีสินค้าในโปรฯ นี้ — ไปที่ AWO แล้วกด “➕ เพิ่มไปแคมเปญ” ที่การ์ด เพื่อคัดลอกสินค้ามาที่นี่'))}</div>`; return; }
   const srt=(a,b)=>saveOf(b)-saveOf(a) || a.prices[SEL]-b.prices[SEL];
   const singles=list.filter(it=>!it.isSet).sort(srt), sets=list.filter(it=>it.isSet).sort(srt);
   let html='';
@@ -594,7 +626,7 @@ function renderTable(){
     return `<tr class="${child?'subrow':'mainrow'}"><td class="l" style="text-align:left">${timg?`<img src="${esc(thumbUrl(timg))}" loading="lazy" style="width:${sz}px;height:${sz}px;object-fit:cover;vertical-align:middle;margin-right:9px;border-radius:7px">`:''}${nm}</td>`+
       `<td style="text-align:left">${esc(it.sku)||'—'}</td>`+
       `<td class="muted">${it.full>0?'฿'+fmt(it.full):'—'}</td>`+
-      CAMP.map(c=>{const v=it.prices[c.k];return `<td class="${v>0&&v===minP&&allP.length>1?'cheap':''}">${v>0?'฿'+fmt(v):'—'}</td>`;}).join('')+
+      CAMP.map(c=>{const cust=ASSIGN[it.uid]&&+ASSIGN[it.uid][c.k]; const v=cust>0?cust:(it.prices[c.k]||0); const cz=cust>0?' style="font-weight:800"':''; return `<td class="${v>0&&v===minP&&allP.length>1?'cheap':''}"${cz}>${v>0?'฿'+fmt(v):'—'}</td>`;}).join('')+
       `<td style="text-align:left">${esc(it.gwp)||'—'}</td>`+
       `<td style="text-align:left">${esc(it.remark)||'—'}</td></tr>`;
   };
@@ -683,7 +715,11 @@ $('#pickGrid').addEventListener('click',e=>{
 $('#cards').addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');
   if(b){ const key=b.dataset.k; const act=b.dataset.act;
-    if(act==='delimg'){ delete IMG[key]; saveImg(); rerender(); }
+    if(act==='pbok'){ const inp=document.querySelector('.pbin'); const val=inp?Math.max(0,Math.round(+inp.value||0)):0; (ASSIGN[key]||(ASSIGN[key]={}))[b.dataset.camp]=val; PENDING=null; saveAssign(); renderChips(); renderCards(); return; }
+    else if(act==='pbcancel'){ PENDING=null; renderCards(); return; }
+    else if(act==='editprice'){ PENDING={uid:key,camp:b.dataset.camp}; renderCards(); setTimeout(()=>{const i=document.querySelector('.pbin'); if(i){i.focus();i.select();}},30); return; }
+    else if(act==='rmcamp'){ if(ASSIGN[key]){ delete ASSIGN[key][b.dataset.camp]; if(!Object.keys(ASSIGN[key]).length) delete ASSIGN[key]; saveAssign(); renderChips(); renderCards(); } return; }
+    else if(act==='delimg'){ delete IMG[key]; saveImg(); rerender(); }
     else if(act==='delpromo'){ const it=ITEMS.find(x=>imgKey(x)===key&&x.custom); if(it&&confirm('ลบโปรฯ นี้?')){ delete GROUP[it.uid]; Object.keys(GROUP).forEach(c=>{ if(GROUP[c]===it.uid) delete GROUP[c]; }); saveGroups(); CUSTOM=CUSTOM.filter(c=>c!==it); saveCustom(); ITEMS=ITEMS.filter(x=>x!==it); renderChips(); renderCards(); } }
     else if(act==='hide'){ if(PHID[key]) delete PHID[key]; else PHID[key]=1; savePHID(); updateHiddenBtn(); rerender(); }
     else if(act==='ungroup'){ delete GROUP[key]; saveGroups(); rerender(); }
@@ -699,9 +735,13 @@ $('#cards').addEventListener('dragstart',e=>{ const c=e.target.closest('.pc[data
 $('#cards').addEventListener('dragover',e=>{ if(!dragUid)return; const c=e.target.closest('.pc[data-uid]'); document.querySelectorAll('.pc.dragover').forEach(x=>x.classList.remove('dragover')); if(c&&c.dataset.uid!==dragUid){ e.preventDefault(); c.classList.add('dragover'); } });
 $('#cards').addEventListener('drop',e=>{ const c=e.target.closest('.pc[data-uid]'); if(c&&dragUid&&c.dataset.uid!==dragUid){ e.preventDefault(); groupUnder(dragUid,c.dataset.uid); } document.querySelectorAll('.pc.dragover').forEach(x=>x.classList.remove('dragover')); dragUid=null; });
 $('#cards').addEventListener('dragend',()=>{ document.querySelectorAll('.pc.dragging,.pc.dragover').forEach(x=>x.classList.remove('dragging','dragover')); dragUid=null; });
-// assign a basket to a promo (campaign) via the per-card dropdown; AWO = back to home
-$('#cards').addEventListener('change',e=>{ const sel=e.target.closest('select[data-assign]'); if(!sel)return; const uid=sel.dataset.assign;
-  if(sel.value==='AWO') delete ASSIGN[uid]; else ASSIGN[uid]=sel.value; saveAssign(); renderChips(); renderCards(); });
+// copy a basket to a promo (campaign) via the per-card dropdown → opens a price bar (basket stays on AWO)
+$('#cards').addEventListener('change',e=>{ const sel=e.target.closest('select[data-assign]'); if(!sel)return; const uid=sel.dataset.assign; const camp=sel.value; if(!camp)return;
+  PENDING={uid,camp}; renderCards(); setTimeout(()=>{ const i=document.querySelector('.pbin'); if(i){i.focus();i.select();} },30); });
+// Enter saves the price bar, Esc cancels it
+$('#cards').addEventListener('keydown',e=>{ if(!PENDING)return; const inp=e.target.closest('.pbin'); if(!inp)return;
+  if(e.key==='Enter'){ e.preventDefault(); const ok=inp.parentElement.querySelector('[data-act="pbok"]'); if(ok)ok.click(); }
+  else if(e.key==='Escape'){ e.preventDefault(); PENDING=null; renderCards(); } });
 $('#mainSrch').addEventListener('input',e=>{ SRCH=e.target.value; renderCards(); });
 $('#hiddenBtn').addEventListener('click',()=>{ showHidden=!showHidden; $('#hiddenBtn').classList.toggle('on',showHidden); rerender(); });
 function updateHiddenBtn(){ const n=ITEMS.filter(it=>inMonth(it)&&isHidden(it)).length; const el=$('#hiddenCount'); if(el) el.textContent=n?'('+n+')':''; }
