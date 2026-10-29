@@ -430,16 +430,20 @@ async function load(){
   let hr=cat.findIndex(r=>r.some(c=>/ชื่อสินค้า/.test(c))); if(hr<0)hr=0;
   const H=cat[hr]; const cNm=H.findIndex(c=>/ชื่อสินค้า/.test(c)), cVar=H.findIndex(c=>/ตัวเลือก/.test(c)), cSku=H.findIndex(c=>/SKU/i.test(c)), cPr=H.findIndex(c=>/ราคา/.test(c));
   SHEET_MONTH = monthKey(new Date().getFullYear(), new Date().getMonth()+1);
-  // one CARD per product (dedupe by name); every SKU variant is still available in the composer
-  const nameSeen=new Set(); ALLVARIANTS=[];
+  // every SKU variant becomes an item; variants of the SAME product name auto-group under the first
+  // (shown as switchable "ตัวเลือก" on the card). Full variant list also feeds the composer.
+  const mainByName=new Map(), occ=new Map(); ALLVARIANTS=[]; AUTOG={};
   for(let i=hr+1;i<cat.length;i++){ const r=cat[i]; const name=String(r[cNm]||'').trim(); if(!name)continue;
     const variant=String(r[cVar]||'').trim(); const sku=String(r[cSku]||'').trim(); const price=num(r[cPr]);
     const skuDisp=sku+(variant&&!/^default$/i.test(variant)?' · '+variant:'');
     const autoImg=imgByName.get(normNm(name))||'';
     ALLVARIANTS.push({ name, sku:skuDisp, full:price, awo:price, img:autoImg });
-    const key=normNm(name); if(nameSeen.has(key))continue; nameSeen.add(key);   // card = first variant of each product
+    const bk=name+'|'+skuDisp; const n=occ.get(bk)||0; occ.set(bk,n+1); const uid=bk+'|'+n;
     const prices={}; CAMP.forEach(cp=>prices[cp.k]= cp.k==='AWO'?price:0);        // AWO=ราคาปลีก; ราคาแคมเปญอื่นตั้งเองภายหลัง
-    ITEMS.push({ uid:name+'|'+skuDisp+'|0', name, sku:skuDisp, variant, full:price, prices, tiktok:0, gwp:'', remark:'', isSet:false, pid:'', autoImg, month:SHEET_MONTH, parts:[] });
+    ITEMS.push({ uid, name, sku:skuDisp, variant, full:price, prices, tiktok:0, gwp:'', remark:'', isSet:false, pid:'', autoImg, month:SHEET_MONTH, parts:[] });
+    const key=normNm(name);
+    if(!mainByName.has(key)) mainByName.set(key, uid);   // first variant = card; rest = its options
+    else AUTOG[uid]=mainByName.get(key);
   }
 }
 
@@ -463,7 +467,11 @@ const inCampaign=it=> SEL==='AWO' ? true : campsOf(it.uid).includes(SEL);   // A
 // price for a basket under a campaign: its custom price wins, else the sheet price for that campaign
 function campPrice(it,camp){ const m=ASSIGN[it.uid]; const c=m&&+m[camp]; return c>0?c:(it.prices[camp]||it.prices.AWO||0); }
 const uidOf=u=>ITEMS.find(x=>x.uid===u);
-const childrenOf=main=>ITEMS.filter(x=>GROUP[x.uid]===main.uid && inMonth(x));
+// AUTOG = auto-grouping of catalog SKU variants under the first card of the same product name
+// (computed at load, not saved). User drag-groups (GROUP, saved) take priority.
+let AUTOG={};
+const effParent=uid=>GROUP[uid]||AUTOG[uid];
+const childrenOf=main=>ITEMS.filter(x=>effParent(x.uid)===main.uid && inMonth(x));
 function groupUnder(childUid, targetUid){
   if(childUid===targetUid) return;
   const main = GROUP[targetUid] || targetUid;          // if target is itself an option, use its main
@@ -474,10 +482,10 @@ function groupUnder(childUid, targetUid){
   rerender();
 }
 function filtered(){
-  return ITEMS.filter(it=>inMonth(it) && !GROUP[it.uid] && (TYPE==='all'||(TYPE==='set'?it.isSet:!it.isSet)) && (showHidden || !isHidden(it)));
+  return ITEMS.filter(it=>inMonth(it) && !effParent(it.uid) && (TYPE==='all'||(TYPE==='set'?it.isSet:!it.isSet)) && (showHidden || !isHidden(it)));
 }
-function campCount(k){ if(k==='AWO') return ITEMS.filter(it=>inMonth(it)&&!GROUP[it.uid]).length;
-  return ITEMS.filter(it=>inMonth(it)&&!GROUP[it.uid]&&campsOf(it.uid).includes(k)).length; }
+function campCount(k){ if(k==='AWO') return ITEMS.filter(it=>inMonth(it)&&!effParent(it.uid)).length;
+  return ITEMS.filter(it=>inMonth(it)&&!effParent(it.uid)&&campsOf(it.uid).includes(k)).length; }
 
 function renderChips(){
   const chips=allCamps().map(cp=>{const on=cp.k===SEL; const custom=isCustomCamp(cp.k);
@@ -554,7 +562,7 @@ function cardHtml(it,cp){
     ? `<div class="parts"><div class="parts-h">🧺 ในตะกร้า · ${act.parts.length} อย่าง</div><div class="parts-list">${act.parts.map(p=>`<div class="part" title="${esc(p.name)} ×${fmt(p.qty)}"><div class="part-img">${p.img?`<img src="${esc(thumbUrl(p.img))}" loading="lazy">`:'<span>📦</span>'}</div><div class="part-nm">${esc(p.name)}</div><div class="part-q">×${fmt(p.qty)}</div></div>`).join('')}</div></div>`
     : '';
   const optStrip = grouped
-    ? `<div class="opts2"><div class="opts2-h">🧩 ตัวเลือก (${members.length}) · กดเพื่อสลับ</div><div class="opts2-list">${members.map(m=>{const mp=m.prices[SEL], mi=displayImg(m); return `<div class="opt2 ${m.uid===aUid?'on':''}" data-optsel="${esc(m.uid)}" data-main="${esc(it.uid)}" title="${esc(m.name)}"><div class="opt2-img">${mi?imgTag(mi,'',true):'<span>📦</span>'}</div><div class="opt2-nm">${esc(m.name)}</div><div class="opt2-pr" style="color:${cp.c}">${mp>0?'฿'+fmt(mp):'—'}</div>${m.uid!==it.uid?`<button class="opt2-x" data-act="ungroup" data-k="${esc(m.uid)}" title="เอาออกจากกลุ่ม">✕</button>`:'<span class="opt2-main">หลัก</span>'}</div>`;}).join('')}</div></div>`
+    ? `<div class="opts2"><div class="opts2-h">🧩 ตัวเลือกย่อย (${members.length}) · รหัส/ชื่อตะกร้า · กดเพื่อสลับ</div><div class="opts2-list">${members.map(m=>{const mp=m.prices[SEL]||m.prices.AWO, mi=displayImg(m); const lab=m.sku||m.name; return `<div class="opt2 ${m.uid===aUid?'on':''}" data-optsel="${esc(m.uid)}" data-main="${esc(it.uid)}" title="${esc(lab)}"><div class="opt2-img">${mi?imgTag(mi,'',true):'<span>📦</span>'}</div><div class="opt2-nm">${esc(lab)}</div><div class="opt2-pr" style="color:${cp.c}">${mp>0?'฿'+fmt(mp):'—'}</div>${m.uid===it.uid?'<span class="opt2-main">หลัก</span>':(GROUP[m.uid]?`<button class="opt2-x" data-act="ungroup" data-k="${esc(m.uid)}" title="เอาออกจากกลุ่ม">✕</button>`:'')}</div>`;}).join('')}</div></div>`
     : '';
   return `<div class="pc ${closed?'closed':''} ${grouped?'grouped':''}" draggable="true" data-uid="${esc(it.uid)}">
     <div class="pimg">
