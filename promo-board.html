@@ -134,6 +134,10 @@
   .toprow .chips{flex:1;min-width:240px}
   .main-srch{min-width:230px;flex:none}
   .chip .chint{font-size:10px;opacity:.6;font-weight:600;margin-left:1px}
+  .chip .cx{display:inline-flex;align-items:center;justify-content:center;margin-left:5px;width:15px;height:15px;border-radius:50%;background:rgba(0,0,0,.14);color:inherit;font-size:9px;font-weight:800}
+  .chip .cx:hover{background:var(--bad,#ef4444);color:#fff}
+  .chip.addcamp{border-style:dashed;color:var(--accent);font-weight:800;background:transparent}
+  .chip.addcamp:hover{background:color-mix(in oklab,var(--accent) 10%,var(--surface))}
   /* KPI tiles */
   .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:10px;margin-bottom:12px}
   .ktile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 14px}
@@ -368,6 +372,21 @@ const CAMP=[
   {k:'Pay Day',           c:'#10b981', off:6, hint:'25–31'},
   {k:'flash sale CEO live',c:'#ef4444', off:7, hint:'ไลฟ์'},
 ];
+// user-added campaigns (เผื่อมีโปรแทรก) — name+color only, no sheet column; price มาจากที่ตั้งต่อตะกร้า
+const CAMP_PALETTE=['#ec4899','#14b8a6','#6366f1','#f97316','#84cc16','#06b6d4','#a855f7','#eab308','#db2777','#0891b2'];
+let CUSTOM_CAMP=[]; // [{k,c}] (localStorage 'promoCamps')
+function loadCamps(){ try{CUSTOM_CAMP=JSON.parse(localStorage.getItem('promoCamps')||'[]')}catch{CUSTOM_CAMP=[]} if(!Array.isArray(CUSTOM_CAMP))CUSTOM_CAMP=[]; }
+function saveCamps(){ try{localStorage.setItem('promoCamps',JSON.stringify(CUSTOM_CAMP))}catch{} }
+const allCamps=()=>[...CAMP, ...CUSTOM_CAMP];                       // built-in + custom (for UI)
+const isCustomCamp=k=>CUSTOM_CAMP.some(c=>c.k===k);
+function addCamp(){ const name=(prompt('ชื่อหัวข้อโปรใหม่ (เช่น 11.11, Payday พิเศษ, Flash เสริม)')||'').trim(); if(!name)return;
+  if(allCamps().some(c=>c.k===name)){ alert('มีหัวข้อนี้อยู่แล้ว'); return; }
+  const used=new Set(allCamps().map(c=>c.c)); const col=CAMP_PALETTE.find(c=>!used.has(c))||CAMP_PALETTE[CUSTOM_CAMP.length%CAMP_PALETTE.length];
+  CUSTOM_CAMP.push({k:name,c:col}); saveCamps(); SEL=name; renderChips(); renderCards(); }
+function removeCamp(k){ if(!isCustomCamp(k))return; if(!confirm('ลบหัวข้อโปร "'+k+'" ?\n(ตะกร้าที่อยู่ในโปรนี้จะกลับไป AWO)'))return;
+  CUSTOM_CAMP=CUSTOM_CAMP.filter(c=>c.k!==k); saveCamps();
+  Object.keys(ASSIGN).forEach(u=>{ if(ASSIGN[u]&&ASSIGN[u][k]!=null){ delete ASSIGN[u][k]; if(!Object.keys(ASSIGN[u]).length) delete ASSIGN[u]; } }); saveAssign();
+  if(SEL===k)SEL='AWO'; renderChips(); renderCards(); }
 let ITEMS=[], SEL=CAMP[0].k, TYPE='all', VIEW='cards', SRCH='';
 
 // ---- month dimension: keep each month's promos separate ----
@@ -484,10 +503,14 @@ function campCount(k){ if(k==='AWO') return ITEMS.filter(it=>inMonth(it)&&!GROUP
   return ITEMS.filter(it=>inMonth(it)&&!GROUP[it.uid]&&campsOf(it.uid).includes(k)).length; }
 
 function renderChips(){
-  $('#camps').innerHTML=CAMP.map(cp=>{const on=cp.k===SEL;
+  const chips=allCamps().map(cp=>{const on=cp.k===SEL; const custom=isCustomCamp(cp.k);
     return `<button class="chip ${on?'on':''}" data-k="${esc(cp.k)}" style="${on?`background:${cp.c}`:''}">
-      <span class="cdot" style="background:${cp.c}"></span>${esc(cp.k)}<span class="chint">${esc(cp.hint||'')}</span> <span class="cnt">${campCount(cp.k)}</span></button>`;}).join('');
-  $('#camps').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{SEL=b.dataset.k;PENDING=null;renderChips();renderCards();});
+      <span class="cdot" style="background:${cp.c}"></span>${esc(cp.k)} <span class="cnt">${campCount(cp.k)}</span>${custom?`<span class="cx" data-delcamp="${esc(cp.k)}" title="ลบหัวข้อโปรนี้">✕</span>`:''}</button>`;}).join('');
+  $('#camps').innerHTML=chips+`<button class="chip addcamp" data-addcamp="1" title="เพิ่มหัวข้อโปรใหม่ (เผื่อมีโปรแทรก)">＋ เพิ่มหัวข้อโปร</button>`;
+  $('#camps').querySelectorAll('.chip').forEach(b=>b.onclick=(e)=>{
+    if(e.target.closest('[data-delcamp]')){ e.stopPropagation(); removeCamp(e.target.closest('[data-delcamp]').dataset.delcamp); return; }
+    if(b.dataset.addcamp){ addCamp(); return; }
+    SEL=b.dataset.k;PENDING=null;renderChips();renderCards();});
 }
 
 function renderMonthSel(){ const sel=$('#monthSel'); if(!sel)return;
@@ -564,7 +587,7 @@ function cardHtml(it,cp){
       ${ (PENDING&&PENDING.uid===it.uid)
         ? `<div class="pricebar" draggable="false">
              <div class="pbrow">
-               <span class="pblbl" style="background:${(CAMP.find(c=>c.k===PENDING.camp)||cp).c}" title="${esc(PENDING.camp)}">💰 ราคา ${esc(PENDING.camp)}</span>
+               <span class="pblbl" style="background:${(allCamps().find(c=>c.k===PENDING.camp)||cp).c}" title="${esc(PENDING.camp)}">💰 ราคา ${esc(PENDING.camp)}</span>
                <button class="pbbtn no" data-act="pbcancel" title="ยกเลิก">✕</button>
              </div>
              <div class="pbrow2">
@@ -576,7 +599,7 @@ function cardHtml(it,cp){
         : `<div class="pbar" draggable="false">
              <select class="assignsel" data-assign="${esc(it.uid)}" title="คัดลอกตะกร้านี้ไปแคมเปญ" draggable="false">
                <option value="">➕ เพิ่มไปแคมเปญ…</option>
-               ${CAMP.filter(c=>c.k!=='AWO').map(c=>`<option value="${esc(c.k)}">📍 ${esc(c.k)}${camps.includes(c.k)?' ✓':''}</option>`).join('')}
+               ${allCamps().filter(c=>c.k!=='AWO').map(c=>`<option value="${esc(c.k)}">📍 ${esc(c.k)}${camps.includes(c.k)?' ✓':''}</option>`).join('')}
              </select>
              ${SEL!=='AWO'?`<button class="edit" data-act="editprice" data-k="${esc(it.uid)}" data-camp="${esc(SEL)}" title="แก้ราคาโปรฯ นี้">✎ ฿</button><button class="edit del" data-act="rmcamp" data-k="${esc(it.uid)}" data-camp="${esc(SEL)}" title="เอาออกจากโปรฯ นี้">✕ โปร</button>`:''}
              ${(act.custom&&closed)?`<button class="edit del" data-act="delpromo" data-k="${k}" title="ลบโปรฯ นี้ถาวร">🗑 ลบถาวร</button>`:''}
@@ -595,7 +618,7 @@ function cardHtml(it,cp){
   </div>`;
 }
 function renderCards(){
-  const cp=CAMP.find(c=>c.k===SEL);
+  const cp=allCamps().find(c=>c.k===SEL)||CAMP[0];
   const s=SRCH.trim().toLowerCase();
   const list=filtered().filter(it=>inCampaign(it) && (!s||it.name.toLowerCase().includes(s)||it.sku.toLowerCase().includes(s)));
   if(!list.length){ const monthHas=ITEMS.some(it=>inMonth(it));
@@ -619,7 +642,7 @@ function copyScript(it){
 function renderTable(){
   const list=filtered();
   const head=`<tr><th class="l">สินค้า</th><th>SKU</th><th>ราคาเต็ม</th>`+
-    CAMP.map(c=>`<th style="color:${c.c}">${esc(c.k)}</th>`).join('')+
+    allCamps().map(c=>`<th style="color:${c.c}">${esc(c.k)}</th>`).join('')+
     `<th>GWP</th><th class="l" style="left:auto;position:static">Remark</th></tr>`;
   const rowHtml=(it,child)=>{
     const allP=Object.values(it.prices).filter(v=>v>0); const minP=allP.length?Math.min(...allP):0;
@@ -630,11 +653,11 @@ function renderTable(){
     return `<tr class="${child?'subrow':'mainrow'}"><td class="l" style="text-align:left">${timg?`<img src="${esc(thumbUrl(timg))}" loading="lazy" style="width:${sz}px;height:${sz}px;object-fit:cover;vertical-align:middle;margin-right:9px;border-radius:7px">`:''}${nm}</td>`+
       `<td style="text-align:left">${esc(it.sku)||'—'}</td>`+
       `<td class="muted">${it.full>0?'฿'+fmt(it.full):'—'}</td>`+
-      CAMP.map(c=>{const cust=ASSIGN[it.uid]&&+ASSIGN[it.uid][c.k]; const v=cust>0?cust:(it.prices[c.k]||0); const cz=cust>0?' style="font-weight:800"':''; return `<td class="${v>0&&v===minP&&allP.length>1?'cheap':''}"${cz}>${v>0?'฿'+fmt(v):'—'}</td>`;}).join('')+
+      allCamps().map(c=>{const cust=ASSIGN[it.uid]&&+ASSIGN[it.uid][c.k]; const v=cust>0?cust:(it.prices[c.k]||0); const cz=cust>0?' style="font-weight:800"':''; return `<td class="${v>0&&v===minP&&allP.length>1?'cheap':''}"${cz}>${v>0?'฿'+fmt(v):'—'}</td>`;}).join('')+
       `<td style="text-align:left">${esc(it.gwp)||'—'}</td>`+
       `<td style="text-align:left">${esc(it.remark)||'—'}</td></tr>`;
   };
-  const span=CAMP.length+5;
+  const span=allCamps().length+5;
   const body=list.map(it=>{
     const kids=childrenOf(it);
     let s=rowHtml(it,false);
@@ -800,7 +823,7 @@ $('#viewTog').addEventListener('click',e=>{const b=e.target.closest('button');if
   VIEW=b.dataset.v;[...$('#viewTog').children].forEach(x=>x.classList.toggle('on',x===b));applyView();});
 $('#monthSel').addEventListener('change',e=>{ MONTH=e.target.value; updateHiddenBtn(); renderChips(); VIEW==='cards'?renderCards():renderTable(); });
 
-(async()=>{try{await load(); loadImg(); loadPST(); loadPHID(); loadCustom(); loadGroups(); loadAssign();
+(async()=>{try{await load(); loadImg(); loadPST(); loadPHID(); loadCustom(); loadGroups(); loadAssign(); loadCamps();
   CUSTOM.forEach(c=>{ if(!c.uid) c.uid=c.cid||('c'+Math.random().toString(36).slice(2)); if(!c.month) c.month=SHEET_MONTH; });   // backfill uid+month for older saved promos
   if(CUSTOM.length)ITEMS.push(...CUSTOM);
   if(!ITEMS.length){$('#msg').className='msg err';$('#msg').textContent='ไม่พบรายการโปรโมชันในชีต';return;}
