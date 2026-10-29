@@ -65,7 +65,10 @@
   .pc.dragging{opacity:.4}
   .pc.dragover{outline:2px dashed var(--accent);outline-offset:2px;box-shadow:0 0 0 4px color-mix(in oklab,var(--accent) 18%,transparent)}
   .opts2{margin-top:8px;border-top:1px dashed var(--line);padding-top:9px}
-  .opts2-h{font-size:10.5px;font-weight:800;color:var(--muted);margin-bottom:7px}
+  .opts2-h{display:flex;align-items:center;gap:6px;width:100%;font-size:10.5px;font-weight:800;color:var(--muted);margin:0;border:1px solid var(--line-2);background:var(--surface-2);border-radius:8px;padding:6px 9px;cursor:pointer;text-align:left}
+  .opts2-h:hover{border-color:var(--accent);color:var(--ink)}
+  .opts2-tog{margin-left:auto;color:var(--accent);font-weight:800}
+  .opts2-list{margin-top:8px}
   .opts2-list{display:flex;flex-direction:column;gap:7px}
   .opt2{position:relative;display:flex;align-items:center;gap:9px;border:1.5px solid var(--line);border-radius:11px;padding:7px 9px;cursor:pointer;transition:all .1s}
   .opt2:hover{border-color:var(--line-2);background:var(--surface-2)}
@@ -451,6 +454,7 @@ const inMonth=it=>!MONTH||it.month===MONTH;
 // ---- grouping: drag a basket onto another → it becomes an option (ตัวเลือก) under that main basket ----
 let GROUP={};  // childUid -> parentUid (per device)
 let ACTIVE={}; // mainUid -> currently-shown member uid (session only)
+let OPTOPEN={}; // mainUid -> options strip expanded? (session only; collapsed by default)
 function loadGroups(){ try{GROUP=JSON.parse(localStorage.getItem(LSK('promoGroups'))||'{}')}catch{GROUP={}} if(!GROUP||typeof GROUP!=='object')GROUP={}; }
 function saveGroups(){ try{localStorage.setItem(LSK('promoGroups'),JSON.stringify(GROUP))}catch{} }
 // campaign copy: AWO = home (always shows EVERY basket). Copying a basket to a campaign ADDS it there
@@ -561,8 +565,9 @@ function cardHtml(it,cp){
   const parts = act.isSet && act.parts && act.parts.length
     ? `<div class="parts"><div class="parts-h">🧺 ในตะกร้า · ${act.parts.length} อย่าง</div><div class="parts-list">${act.parts.map(p=>`<div class="part" title="${esc(p.name)} ×${fmt(p.qty)}"><div class="part-img">${p.img?`<img src="${esc(thumbUrl(p.img))}" loading="lazy">`:'<span>📦</span>'}</div><div class="part-nm">${esc(p.name)}</div><div class="part-q">×${fmt(p.qty)}</div></div>`).join('')}</div></div>`
     : '';
+  const optOpen=!!OPTOPEN[it.uid];
   const optStrip = grouped
-    ? `<div class="opts2"><div class="opts2-h">🧩 ตัวเลือกย่อย (${members.length}) · รหัส/ชื่อตะกร้า · กดเพื่อสลับ</div><div class="opts2-list">${members.map(m=>{const mp=m.prices[SEL]||m.prices.AWO, mi=displayImg(m); const lab=m.sku||m.name; return `<div class="opt2 ${m.uid===aUid?'on':''}" data-optsel="${esc(m.uid)}" data-main="${esc(it.uid)}" title="${esc(lab)}"><div class="opt2-img">${mi?imgTag(mi,'',true):'<span>📦</span>'}</div><div class="opt2-nm">${esc(lab)}</div><div class="opt2-pr" style="color:${cp.c}">${mp>0?'฿'+fmt(mp):'—'}</div>${m.uid===it.uid?'<span class="opt2-main">หลัก</span>':(GROUP[m.uid]?`<button class="opt2-x" data-act="ungroup" data-k="${esc(m.uid)}" title="เอาออกจากกลุ่ม">✕</button>`:'')}</div>`;}).join('')}</div></div>`
+    ? `<div class="opts2"><button class="opts2-h" data-optexp="${esc(it.uid)}">🧩 ตัวเลือกย่อย (${members.length}) · รหัส/ชื่อตะกร้า <span class="opts2-tog">${optOpen?'ย่อ ▲':'ขยาย ▼'}</span></button>${optOpen?`<div class="opts2-list">${members.map(m=>{const mp=m.prices[SEL]||m.prices.AWO, mi=displayImg(m); const lab=m.sku||m.name; return `<div class="opt2 ${m.uid===aUid?'on':''}" data-optsel="${esc(m.uid)}" data-main="${esc(it.uid)}" title="${esc(lab)}"><div class="opt2-img">${mi?imgTag(mi,'',true):'<span>📦</span>'}</div><div class="opt2-nm">${esc(lab)}</div><div class="opt2-pr" style="color:${cp.c}">${mp>0?'฿'+fmt(mp):'—'}</div>${m.uid===it.uid?'<span class="opt2-main">หลัก</span>':(GROUP[m.uid]?`<button class="opt2-x" data-act="ungroup" data-k="${esc(m.uid)}" title="เอาออกจากกลุ่ม">✕</button>`:'')}</div>`;}).join('')}</div>`:''}</div>`
     : '';
   return `<div class="pc ${closed?'closed':''} ${grouped?'grouped':''}" draggable="true" data-uid="${esc(it.uid)}">
     <div class="pimg">
@@ -738,6 +743,8 @@ $('#cards').addEventListener('click',e=>{
     else if(act==='copy'){ const it=ITEMS.find(x=>imgKey(x)===key); if(it){ copyScript(it); const t=b.textContent; b.textContent='✓ คัดลอกแล้ว'; b.classList.add('done'); setTimeout(()=>{b.textContent=t;b.classList.remove('done');},1400); } }
     else openPicker(key,b.dataset.label||key);
     return; }
+  const oe=e.target.closest('[data-optexp]');
+  if(oe){ const u=oe.dataset.optexp; OPTOPEN[u]=!OPTOPEN[u]; renderCards(); return; }
   const os=e.target.closest('[data-optsel]');
   if(os){ ACTIVE[os.dataset.main]=os.dataset.optsel; rerender(); }
 });
