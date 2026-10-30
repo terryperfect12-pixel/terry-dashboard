@@ -73,6 +73,9 @@
   @media(max-width:720px){ .kpis{top:112px} .legend{display:none} }
   .leaflet-tooltip.pv{background:var(--surface);color:var(--ink);border:1px solid var(--line-2);border-radius:9px;box-shadow:0 8px 24px -12px rgba(0,0,0,.5);font-family:inherit;font-size:12.5px;padding:7px 10px}
   .leaflet-tooltip.pv b{font-size:13.5px}
+  .leaflet-tooltip.distlbl{background:transparent;border:0;box-shadow:none;color:var(--ink);font-family:inherit;font-size:11px;font-weight:700;padding:0;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 2px #fff}
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .leaflet-tooltip.distlbl{color:#fff;text-shadow:0 0 3px #000,0 0 3px #000}}
+  .leaflet-tooltip.distlbl::before{display:none}
   .leaflet-tooltip.pv .tnum{font-variant-numeric:tabular-nums}
 </style>
 </head>
@@ -118,6 +121,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const SHEET='1uc46n128puQkaUQJ_eiy3ZhRgSUeSRcE50HKB3H5a-Q';
 const GEO_URL='https://cdn.jsdelivr.net/gh/chingchai/OpenGISData-Thailand@master/provinces.geojson';
 const DIST_URL='https://cdn.jsdelivr.net/gh/chingchai/OpenGISData-Thailand@master/districts.geojson';
@@ -147,7 +151,7 @@ const cleanDistrict=s=>String(s||'').replace(/^(อำเภอ|อ\.|เขต|
 
 /* ---- data ---- */
 let TABS=[], RAW={}, GEO=null, AGG=null, METRIC='orders', SELTAB=null;
-let MODE='value', PLAYING=false, GROWTH=null, DISTGEO=null, distLayer=null, FIXEDBREAKS=null;
+let MODE='value', PLAYING=false, GROWTH=null, DISTGEO=null, distLayer=null, FIXEDBREAKS=null, FOCUS=false, FOCUSPROV=null;
 const METRIC_LABEL={orders:'ออเดอร์',sales:'ยอดขาย (บาท)',aov:'AOV (บาท/ออเดอร์)',units:'จำนวนชิ้น'};
 const MINUM={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
 function tabMeta(name){ const b=/benutra/i.test(name)?'Benutra':/gala/i.test(name)?'Gala':/terry/i.test(name)?'Terry':'?';
@@ -169,11 +173,11 @@ async function loadTab(gid){ if(RAW[gid]) return RAW[gid];
   const H=g[0], ci=n=>H.indexOf(n);
   const cOid=ci('Order ID'),cProv=ci('Province'),cDist=ci('District')>=0?ci('District'):ci('Districts'),
         cSub=ci('SKU Subtotal After Discount')>=0?ci('SKU Subtotal After Discount'):ci('Order Amount'),
-        cQty=ci('Quantity'),cStat=ci('Order Status'),cChan=ci('Order Channel');
+        cQty=ci('Quantity'),cStat=ci('Order Status'),cChan=ci('Order Channel'),cProd=ci('Product Name');
   const rows=[];
   for(let i=1;i<g.length;i++){ const r=g[i]; const oid=r[cOid]; if(!oid)continue;
     rows.push({ oid, prov:matchProvince(r[cProv]), dist:cleanDistrict(r[cDist]),
-      sub:num(r[cSub]), qty:num(r[cQty]), cancel:/cancel/i.test(String(r[cStat]||'')), chan:String(r[cChan]||'').trim()||'—' }); }
+      sub:num(r[cSub]), qty:num(r[cQty]), cancel:/cancel/i.test(String(r[cStat]||'')), chan:String(r[cChan]||'').trim()||'—', prod:String(r[cProd]||'').trim() }); }
   RAW[gid]=rows; return rows;
 }
 /* aggregate current tab under filters → per-province + per-district */
@@ -195,6 +199,14 @@ function aggregateRows(rows){ const exCancel=$('#exCancel').checked; const chan=
   return { prov:P, total:{orders:tOrders.size, sales:tSales, units:tUnits, aov:tOrders.size?tSales/tOrders.size:0, provinces:Object.keys(P).length, dropped}, chans:[...chans].sort() };
 }
 const metricVal=(o,m)=>!o?0:(m==='orders'?o.orders:m==='sales'?o.sales:m==='units'?o.units:o.aov);
+/* top products for one district (scans the current tab under filters; PII-free) */
+function districtProducts(prov,distName){ const rows=RAW[SELTAB.gid]||[]; const exCancel=$('#exCancel').checked; const chan=$('#chanSel').value;
+  const key=normD(distName); const prods={}; const ord=new Set(); let sales=0,units=0;
+  for(const r of rows){ if(exCancel&&r.cancel)continue; if(chan&&r.chan!==chan)continue; if(r.prov!==prov)continue;
+    if(normD(r.dist||'(ไม่ระบุอำเภอ)')!==key)continue; ord.add(r.oid); sales+=r.sub; units+=r.qty;
+    const nm=r.prod||'(ไม่ระบุสินค้า)'; const p=prods[nm]=prods[nm]||{qty:0,sales:0}; p.qty+=r.qty; p.sales+=r.sub; }
+  return { orders:ord.size, sales, units, aov:ord.size?sales/ord.size:0,
+    prods:Object.entries(prods).map(([n,p])=>({n,qty:p.qty,sales:p.sales})).sort((a,b)=>b.qty-a.qty) }; }
 /* previous-month tab for the current brand (for growth mode) */
 function prevTab(){ return TABS.find(t=>t.brand===SELTAB.brand && t.mi===SELTAB.mi-1) || null; }
 function brandMonths(){ return TABS.filter(t=>t.brand===SELTAB.brand && t.mi>0).sort((a,b)=>a.mi-b.mi); }
@@ -272,26 +284,44 @@ function renderLegend(){
 
 /* ---- district polygons (lazy-loaded once, filtered per province) ---- */
 async function ensureDistGeo(){ if(DISTGEO)return DISTGEO; try{ DISTGEO=await (await fetch(DIST_URL)).json(); }catch{ DISTGEO={features:[]}; } return DISTGEO; }
-function clearDistricts(){ if(distLayer){ map.removeLayer(distLayer); distLayer=null; } }
+function clearDistricts(){ if(distLayer){ map.removeLayer(distLayer); distLayer=null; }
+  if(FOCUS){ if(!map.hasLayer(geoLayer)) geoLayer.addTo(map); FOCUS=false; } }
 const normD=s=>stripTone(cleanDistrict(s));
-async function showDistricts(th){ await ensureDistGeo(); if($('#pName').textContent!==th) return; clearDistricts();
+async function showDistricts(th){ await ensureDistGeo(); if(FOCUSPROV!==th) return; clearDistricts();
   const o=AGG.prov[th]; const dmap={}; if(o) o.dist.forEach(d=>{ dmap[normD(d.n)]=d; });
   const feats=DISTGEO.features.filter(f=>f.properties.pro_th===th); if(!feats.length) return;
   const vals=feats.map(f=>{ const d=dmap[normD(f.properties.amp_th)]; return d?metricVal(d,METRIC):0; });
   const db=quantileBreaks(vals,RAMP);
+  if(map.hasLayer(geoLayer)) map.removeLayer(geoLayer);   // FOCUS: show only this province
+  FOCUS=true;
   distLayer=L.geoJSON({type:'FeatureCollection',features:feats},{
-    style:f=>{ const d=dmap[normD(f.properties.amp_th)]; const v=d?metricVal(d,METRIC):0; return {fillColor:rampColor(v,db,RAMP),weight:1,color:'#fff',fillOpacity:v?0.9:0.35,opacity:0.95}; },
+    style:f=>{ const d=dmap[normD(f.properties.amp_th)]; const v=d?metricVal(d,METRIC):0; return {fillColor:rampColor(v,db,RAMP),weight:1.2,color:'#fff',fillOpacity:v?0.92:0.5,opacity:1}; },
     onEachFeature:(f,l)=>{ const am=f.properties.amp_th, d=dmap[normD(am)];
-      l.on('mouseover',()=>l.setStyle({weight:2.5,color:'#111'})); l.on('mouseout',()=>l.setStyle({weight:1,color:'#fff'}));
-      l.bindTooltip(`<b>${am}</b><br>`+(d?`<span class="tnum">${METRIC_LABEL[METRIC].split(' ')[0]}: <b>${fmt(metricVal(d,METRIC))}</b> · ออเดอร์ ${fmt(d.orders)} · AOV ${fmt(d.aov)}</span>`:`<span style="color:var(--muted)">ไม่มีออเดอร์</span>`),{className:'pv',sticky:true}); }
+      l.on('mouseover',()=>l.setStyle({weight:3,color:'#111'})); l.on('mouseout',()=>l.setStyle({weight:1.2,color:'#fff'}));
+      l.on('click',()=>selectDistrict(th,am));
+      if(d){ l.bindTooltip(`${esc(am)} · <b>${fmt(metricVal(d,METRIC))}</b>`,{permanent:true,direction:'center',className:'distlbl'}); }
+      else { l.bindTooltip(`<b>${esc(am)}</b><br><span style="color:var(--muted)">ไม่มีออเดอร์</span>`,{className:'pv',sticky:true}); } }
   }).addTo(map);
-  try{ map.fitBounds(distLayer.getBounds(),{padding:[40,40]}); }catch{}
+  try{ map.fitBounds(distLayer.getBounds(),{padding:[50,50]}); }catch{}
+}
+/* อำเภอ detail — top products of that district */
+function selectDistrict(prov,name){ FOCUSPROV=prov; const r=districtProducts(prov,name);
+  $('#pName').innerHTML=`<span id="backProv" style="cursor:pointer;color:var(--accent)">‹ ${esc(prov)}</span> › ${esc(name)}`;
+  const kpi=[['ออเดอร์',fmt(r.orders)],['ยอดขาย',fmt(r.sales)],['AOV',fmt(r.aov)],['ชิ้น',fmt(r.units)]]
+    .map(([k,v])=>`<div class="c"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+  const maxq=Math.max(...r.prods.map(p=>p.qty),1);
+  const bars=r.prods.slice(0,20).map(p=>`<div class="drow"><div class="t"><span class="nm">${esc(p.n)}</span><span class="vv">${fmt(p.qty)} ชิ้น</span></div>
+    <div class="bar2"><i style="width:${Math.max(2,p.qty/maxq*100)}%"></i></div><div class="sub">ยอดขาย ${kOf(p.sales)}</div></div>`).join('')
+    || '<div style="color:var(--muted)">ไม่มีข้อมูลสินค้าในอำเภอนี้</div>';
+  $('#pBody').innerHTML=`<div class="pkpi">${kpi}</div><div class="dh">🛍️ สินค้าขายดีใน ${esc(name)} <span style="color:var(--muted);font-weight:400">(${r.prods.length})</span></div>${bars}`;
+  $('#panel').classList.add('open');
+  const bp=$('#backProv'); if(bp) bp.onclick=()=>selectProvince(prov);
 }
 
 /* ---- province drill-down panel ---- */
-function selectProvince(th){ const o=AGG.prov[th]; const layer=layerByProv[th];
+function selectProvince(th){ FOCUSPROV=th; const o=AGG.prov[th]; const layer=layerByProv[th];
   if(layer){ try{ map.fitBounds(layer.getBounds(),{padding:[40,40],maxZoom:9}); }catch{} }
-  showDistricts(th);   // draw real อำเภอ polygons on the map
+  showDistricts(th);   // focus: hide other provinces, draw this one's อำเภอ polygons + labels
   $('#pName').textContent=th;
   if(!o){ $('#pBody').innerHTML='<div style="color:var(--muted);padding:20px 0">ยังไม่มีออเดอร์ในจังหวัดนี้</div>'; $('#panel').classList.add('open'); return; }
   const maxv=Math.max(...o.dist.map(d=>metricVal(d,METRIC)),1);
@@ -306,8 +336,9 @@ function selectProvince(th){ const o=AGG.prov[th]; const layer=layerByProv[th];
   $('#pBody').innerHTML=`<div class="pkpi">${kpi}</div><div class="dh">📍 แยกตามอำเภอ · เรียงตาม${mlab} <span style="color:var(--muted);font-weight:400">(${o.dist.length})</span></div>${bars}`;
   $('#panel').classList.add('open');
 }
-$('#pClose').addEventListener('click',()=>{ $('#panel').classList.remove('open'); clearDistricts(); try{map.fitBounds(geoLayer.getBounds(),{padding:[20,20]});}catch{} });
-$('#resetBtn').addEventListener('click',()=>{ $('#panel').classList.remove('open'); clearDistricts(); try{map.fitBounds(geoLayer.getBounds(),{padding:[20,20]});}catch{} });
+function unfocus(){ FOCUSPROV=null; $('#panel').classList.remove('open'); clearDistricts(); try{map.fitBounds(geoLayer.getBounds(),{padding:[20,20]});}catch{} }
+$('#pClose').addEventListener('click',unfocus);
+$('#resetBtn').addEventListener('click',unfocus);
 
 /* ---- controls ---- */
 async function recompute(){ AGG=aggregate();
@@ -316,7 +347,7 @@ async function recompute(){ AGG=aggregate();
   if(MODE==='growth'){ await computeGrowth(); } else GROWTH=null;
   refreshMap();
 }
-const reselect=()=>{ if($('#panel').classList.contains('open')) selectProvince($('#pName').textContent); };
+const reselect=()=>{ if($('#panel').classList.contains('open')&&FOCUSPROV) selectProvince(FOCUSPROV); };
 $('#metricSeg').addEventListener('click',async e=>{ const b=e.target.closest('button[data-m]'); if(!b)return; METRIC=b.dataset.m;
   [...$('#metricSeg').children].forEach(x=>x.classList.toggle('on',x===b)); await recompute(); reselect(); });
 $('#modeSeg').addEventListener('click',async e=>{ const b=e.target.closest('button[data-mode]'); if(!b)return; MODE=b.dataset.mode;
@@ -324,14 +355,14 @@ $('#modeSeg').addEventListener('click',async e=>{ const b=e.target.closest('butt
   if(MODE==='growth'&&!prevTab()){ /* no prior month */ } await recompute(); });
 $('#chanSel').addEventListener('change',async()=>{ await recompute(); reselect(); });
 $('#exCancel').addEventListener('change',async()=>{ await recompute(); reselect(); });
-$('#tabSel').addEventListener('change',async e=>{ PLAYING=false; SELTAB=TABS.find(t=>t.gid===e.target.value); $('#panel').classList.remove('open'); clearDistricts();
+$('#tabSel').addEventListener('change',async e=>{ PLAYING=false; FOCUSPROV=null; SELTAB=TABS.find(t=>t.gid===e.target.value); $('#panel').classList.remove('open'); clearDistricts();
   $('#msgT').textContent='กำลังโหลด '+SELTAB.label+'…'; $('#msg').style.display='flex'; await loadTab(SELTAB.gid); $('#msg').style.display='none'; await recompute(); });
 
 /* ---- time-lapse across the brand's months ---- */
 async function playLapse(){ if(PLAYING){ PLAYING=false; return; }
   const months=brandMonths(); if(months.length<2){ alert('ชุดข้อมูลนี้มีเดือนเดียว — ยังเล่นไล่เดือนไม่ได้ (ต้องมี ≥ 2 เดือนของแบรนด์เดียวกัน)'); return; }
   PLAYING=true; const savedMode=MODE; MODE='value'; [...$('#modeSeg').children].forEach(x=>x.classList.toggle('on',x.dataset.mode==='value'));
-  $('#playBtn').classList.add('on'); $('#playBtn').textContent='⏸ หยุด'; $('#panel').classList.remove('open'); clearDistricts();
+  FOCUSPROV=null; $('#playBtn').classList.add('on'); $('#playBtn').textContent='⏸ หยุด'; $('#panel').classList.remove('open'); clearDistricts();
   $('#msgT').textContent='กำลังเตรียมไล่เดือน…'; $('#msg').style.display='flex';
   await Promise.all(months.map(t=>loadTab(t.gid))); $('#msg').style.display='none';
   const allVals=[]; months.forEach(t=>{ const a=aggregateRows(RAW[t.gid]||[]); Object.values(a.prov).forEach(o=>allVals.push(metricVal(o,METRIC))); });
