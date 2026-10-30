@@ -17,27 +17,30 @@
   }}
   :root[data-theme="dark"]{ --bg:#0b1220; --surface:#131c2e; --surface-2:#1b273c; --ink:#e8edf6; --muted:#94a3b8; --line:#243149; --line-2:#334155; --accent:#60a5fa; }
   *{box-sizing:border-box}
-  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:"Sarabun","Segoe UI",system-ui,sans-serif}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:"Sarabun","Segoe UI",system-ui,sans-serif}
   #map{position:absolute;inset:0;background:var(--bg);z-index:1}
   .leaflet-container{background:var(--bg);font-family:inherit}
-  /* top control bar */
-  .bar{position:absolute;top:12px;left:12px;right:12px;z-index:1000;display:flex;flex-wrap:wrap;align-items:center;gap:8px;
-       background:color-mix(in oklab,var(--surface) 92%,transparent);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:14px;padding:9px 12px;box-shadow:0 8px 28px -14px rgba(0,0,0,.4)}
-  .bar .back{text-decoration:none;color:var(--muted);font-weight:700;font-size:13px;border:1px solid var(--line-2);border-radius:9px;padding:6px 10px;background:var(--surface)}
-  .bar .ttl{font-size:15px;font-weight:800;display:flex;align-items:center;gap:7px}
-  .bar .ttl .dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
-  .seg{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:3px}
-  .seg button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:12.5px;font-weight:700;padding:5px 10px;border-radius:7px;cursor:pointer;white-space:nowrap}
-  .seg button.on{background:var(--accent);color:#fff}
-  select,.chk{border:1px solid var(--line-2);background:var(--surface);color:var(--ink);border-radius:9px;padding:6px 9px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+  /* top control panel — unified glass card: controls row + KPI row */
+  .bar{position:absolute;top:12px;left:12px;right:12px;z-index:1000;display:flex;flex-direction:column;gap:9px;
+       background:color-mix(in oklab,var(--surface) 90%,transparent);backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:16px;padding:10px 14px;box-shadow:0 10px 34px -16px rgba(0,0,0,.45)}
+  .bar-main{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .bar .back{text-decoration:none;color:var(--muted);font-weight:700;font-size:13px;border:1px solid var(--line-2);border-radius:10px;padding:7px 11px;background:var(--surface);cursor:pointer;transition:.12s}
+  .bar .back:hover{border-color:var(--accent);color:var(--ink)}
+  .bar .ttl{font-size:15px;font-weight:800;display:flex;align-items:center;gap:7px;margin-right:4px}
+  .bar .ttl .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px color-mix(in oklab,var(--accent) 22%,transparent)}
+  .bar .ttl .muted2{color:var(--muted);font-weight:600;font-size:12.5px}
+  .seg{display:flex;gap:3px;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:3px}
+  .seg button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:12.5px;font-weight:700;padding:6px 11px;border-radius:8px;cursor:pointer;white-space:nowrap;transition:.1s}
+  .seg button.on{background:var(--accent);color:#fff;box-shadow:0 2px 8px -3px var(--accent)}
+  select,.chk{border:1px solid var(--line-2);background:var(--surface);color:var(--ink);border-radius:10px;padding:7px 10px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
   .chk{display:inline-flex;align-items:center;gap:6px;user-select:none}
   .sp{flex:1}
-  .lbl{font-size:11px;font-weight:700;color:var(--muted);margin-right:2px}
-  /* KPI strip */
-  .kpis{position:absolute;top:64px;left:12px;z-index:900;display:flex;flex-wrap:wrap;gap:8px;max-width:calc(100% - 24px)}
-  .kpi{background:color-mix(in oklab,var(--surface) 92%,transparent);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:12px;padding:8px 13px;box-shadow:0 6px 20px -12px rgba(0,0,0,.35)}
-  .kpi .k{font-size:10.5px;color:var(--muted);font-weight:700}
-  .kpi .v{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+  /* KPI row — sleek inline stats inside the panel */
+  .kpis{display:flex;flex-wrap:wrap;align-items:stretch;gap:0;border-top:1px solid var(--line);padding-top:9px;margin-top:1px}
+  .kpi{display:flex;flex-direction:column;justify-content:center;padding:0 18px 0 0;margin-right:18px;border-right:1px solid var(--line)}
+  .kpi:last-child{border-right:0;margin-right:0;padding-right:0}
+  .kpi .k{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.2px}
+  .kpi .v{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.15}
   /* legend */
   .legend{position:absolute;left:12px;bottom:16px;z-index:900;background:color-mix(in oklab,var(--surface) 92%,transparent);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 20px -12px rgba(0,0,0,.35);font-size:11px}
   .legend .lh{font-weight:800;margin-bottom:6px;font-size:11.5px}
@@ -83,29 +86,28 @@
 <div id="map"></div>
 
 <div class="bar">
-  <a class="back" href="./">‹ หน้าหลัก</a>
-  <div class="ttl"><span class="dot"></span>แผนที่ยอดขาย 🇹🇭</div>
-  <span class="lbl">ชุดข้อมูล</span>
-  <select id="tabSel" title="เลือกแบรนด์ / เดือน"></select>
-  <span class="lbl">ช่องทาง</span>
-  <select id="chanSel"><option value="">ทุกช่องทาง</option></select>
-  <div class="seg" id="metricSeg">
-    <button data-m="orders" class="on">ออเดอร์</button>
-    <button data-m="sales">ยอดขาย</button>
-    <button data-m="aov">AOV</button>
-    <button data-m="units">ชิ้น</button>
+  <div class="bar-main">
+    <button class="back" id="homeBtn" title="กลับหน้าหลัก">‹ หน้าหลัก</button>
+    <div class="ttl"><span class="dot"></span>แผนที่ยอดขาย <span class="muted2">ประเทศไทย</span></div>
+    <select id="tabSel" title="แบรนด์ / เดือน"></select>
+    <select id="chanSel" title="ช่องทาง"><option value="">ทุกช่องทาง</option></select>
+    <div class="seg" id="metricSeg">
+      <button data-m="orders" class="on">ออเดอร์</button>
+      <button data-m="sales">ยอดขาย</button>
+      <button data-m="aov">AOV</button>
+      <button data-m="units">ชิ้น</button>
+    </div>
+    <div class="seg" id="modeSeg" title="มุมมองสี">
+      <button data-mode="value" class="on">ยอด</button>
+      <button data-mode="growth">📈 การเติบโต</button>
+    </div>
+    <label class="chk"><input type="checkbox" id="exCancel" checked> ไม่นับยกเลิก</label>
+    <span class="sp"></span>
+    <button class="back" id="playBtn" title="เล่นไล่เดือน (time-lapse)">▶ ไล่เดือน</button>
+    <button class="back" id="resetBtn" title="ดูทั้งประเทศ">⤢ ทั้งประเทศ</button>
   </div>
-  <div class="seg" id="modeSeg" title="มุมมองสี">
-    <button data-mode="value" class="on">ยอด</button>
-    <button data-mode="growth">📈 การเติบโต</button>
-  </div>
-  <label class="chk"><input type="checkbox" id="exCancel" checked> ไม่นับยกเลิก</label>
-  <span class="sp"></span>
-  <button class="back" id="playBtn" title="เล่นไล่เดือน (time-lapse)">▶ ไล่เดือน</button>
-  <button class="back" id="resetBtn" title="ดูทั้งประเทศ">⤢ ทั้งประเทศ</button>
+  <div class="kpis" id="kpis"></div>
 </div>
-
-<div class="kpis" id="kpis"></div>
 
 <div class="legend" id="legend"></div>
 <div class="hint">แตะจังหวัดเพื่อซูม + ดูอำเภอบนแผนที่</div>
@@ -339,6 +341,7 @@ function selectProvince(th){ FOCUSPROV=th; const o=AGG.prov[th]; const layer=lay
 function unfocus(){ FOCUSPROV=null; $('#panel').classList.remove('open'); clearDistricts(); try{map.fitBounds(geoLayer.getBounds(),{padding:[20,20]});}catch{} }
 $('#pClose').addEventListener('click',unfocus);
 $('#resetBtn').addEventListener('click',unfocus);
+$('#homeBtn').addEventListener('click',()=>{ try{ (window.top||window).location.href='./'; }catch{ location.href='./'; } });
 
 /* ---- controls ---- */
 async function recompute(){ AGG=aggregate();
