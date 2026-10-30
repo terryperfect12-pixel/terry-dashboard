@@ -130,6 +130,8 @@ const DIST_URL='https://cdn.jsdelivr.net/gh/chingchai/OpenGISData-Thailand@maste
 const num=v=>{const n=parseFloat(String(v==null?'':v).replace(/[^0-9.\-]/g,''));return isNaN(n)?0:n;};
 const fmt=n=>Math.round(n).toLocaleString('en-US');
 const kOf=n=>n>=1e6?(n/1e6).toFixed(2)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':fmt(n);
+const parseTs=s=>{ const m=String(s||'').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/); return m?new Date(+m[3],+m[2]-1,+m[1],+(m[4]||0),+(m[5]||0),+(m[6]||0)).getTime():0; };
+const DAY=864e5;
 function parseCSV(t){const R=[];let r=[],c="",q=false;for(let i=0;i<t.length;i++){const h=t[i];if(q){if(h==='"'){if(t[i+1]==='"'){c+='"';i++}else q=false}else c+=h}else{if(h==='"')q=true;else if(h===','){r.push(c);c=""}else if(h==='\n'){r.push(c);R.push(r);r=[];c=""}else if(h==='\r'){}else c+=h}}if(c!==""||r.length){r.push(c);R.push(r)}return R}
 async function csv(gid){const t=await (await fetch(`https://docs.google.com/spreadsheets/d/${SHEET}/export?format=csv&gid=${gid}&cb=${Date.now()}`)).text();return t.trim().startsWith('<')?[]:parseCSV(t);}
 
@@ -154,6 +156,7 @@ const cleanDistrict=s=>String(s||'').replace(/^(อำเภอ|อ\.|เขต|
 /* ---- data ---- */
 let TABS=[], RAW={}, GEO=null, AGG=null, METRIC='orders', SELTAB=null;
 let MODE='value', PLAYING=false, GROWTH=null, DISTGEO=null, distLayer=null, FIXEDBREAKS=null, FOCUS=false, FOCUSPROV=null;
+let CUST={};   // brand -> pooled order-level customer data (buyer identity used only to COUNT, never shown)
 const METRIC_LABEL={orders:'ออเดอร์',sales:'ยอดขาย (บาท)',aov:'AOV (บาท/ออเดอร์)',units:'จำนวนชิ้น'};
 const MINUM={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
 function tabMeta(name){ const b=/benutra/i.test(name)?'Benutra':/gala/i.test(name)?'Gala':/terry/i.test(name)?'Terry':'?';
@@ -175,11 +178,13 @@ async function loadTab(gid){ if(RAW[gid]) return RAW[gid];
   const H=g[0], ci=n=>H.indexOf(n);
   const cOid=ci('Order ID'),cProv=ci('Province'),cDist=ci('District')>=0?ci('District'):ci('Districts'),
         cSub=ci('SKU Subtotal After Discount')>=0?ci('SKU Subtotal After Discount'):ci('Order Amount'),
-        cQty=ci('Quantity'),cStat=ci('Order Status'),cChan=ci('Order Channel'),cProd=ci('Product Name');
+        cQty=ci('Quantity'),cStat=ci('Order Status'),cChan=ci('Order Channel'),cProd=ci('Product Name'),
+        cBuyer=ci('Buyer Username'),cCreated=ci('Created Time');
   const rows=[];
   for(let i=1;i<g.length;i++){ const r=g[i]; const oid=r[cOid]; if(!oid)continue;
     rows.push({ oid, prov:matchProvince(r[cProv]), dist:cleanDistrict(r[cDist]),
-      sub:num(r[cSub]), qty:num(r[cQty]), cancel:/cancel/i.test(String(r[cStat]||'')), chan:String(r[cChan]||'').trim()||'—', prod:String(r[cProd]||'').trim() }); }
+      sub:num(r[cSub]), qty:num(r[cQty]), cancel:/cancel/i.test(String(r[cStat]||'')), chan:String(r[cChan]||'').trim()||'—', prod:String(r[cProd]||'').trim(),
+      buyer:String(r[cBuyer]||'').trim(), ts:parseTs(r[cCreated]) }); }
   RAW[gid]=rows; return rows;
 }
 /* aggregate current tab under filters → per-province + per-district */
@@ -209,6 +214,43 @@ function districtProducts(prov,distName){ const rows=RAW[SELTAB.gid]||[]; const 
     const nm=r.prod||'(ไม่ระบุสินค้า)'; const p=prods[nm]=prods[nm]||{qty:0,sales:0}; p.qty+=r.qty; p.sales+=r.sub; }
   return { orders:ord.size, sales, units, aov:ord.size?sales/ord.size:0,
     prods:Object.entries(prods).map(([n,p])=>({n,qty:p.qty,sales:p.sales})).sort((a,b)=>b.qty-a.qty) }; }
+
+/* ===== customer new/returning + repeat analysis (pools ALL months of the brand) =====
+   Buyer Username is used ONLY as a grouping key to COUNT customers — never displayed or stored. */
+async function ensureCust(brand){ if(CUST[brand]) return CUST[brand];
+  const months=TABS.filter(t=>t.brand===brand); await Promise.all(months.map(t=>loadTab(t.gid)));
+  const orders=new Map(), firstByBuyer=new Map(); let maxTs=0;
+  for(const t of months){ for(const r of (RAW[t.gid]||[])){ if(!r.buyer)continue;
+    if(!orders.has(r.oid)) orders.set(r.oid,{buyer:r.buyer,ts:r.ts,prov:r.prov,dist:r.dist,cancel:r.cancel,chan:r.chan});
+    if(r.ts>maxTs)maxTs=r.ts; const f=firstByBuyer.get(r.buyer); if(f==null||(r.ts&&r.ts<f)) firstByBuyer.set(r.buyer,r.ts); } }
+  return CUST[brand]={orders,firstByBuyer,maxTs};
+}
+function customerStats(prov,dist){ const c=CUST[SELTAB.brand]; if(!c) return null;
+  const exCancel=$('#exCancel').checked, chan=$('#chanSel').value, dkey=dist?normD(dist):null;
+  const byBuyer=new Map();
+  c.orders.forEach(o=>{ if(exCancel&&o.cancel)return; if(chan&&o.chan!==chan)return; if(o.prov!==prov)return; if(dkey&&normD(o.dist||'')!==dkey)return;
+    let a=byBuyer.get(o.buyer); if(!a){a=[];byBuyer.set(o.buyer,a);} if(o.ts)a.push(o.ts); });
+  const d30=c.maxTs-30*DAY; const monStart=new Date(2026,SELTAB.mi-1,1).getTime(), monEnd=new Date(2026,SELTAB.mi,1).getTime();
+  let total=0,repeat=0,rep3=0,active30=0,rep60=0,newM=0,retM=0;
+  byBuyer.forEach((ts,buyer)=>{ total++; const n=ts.length; if(n>=2)repeat++; if(n>=3)rep3++;
+    if(ts.some(t=>t>=d30))active30++;
+    ts.sort((a,b)=>a-b); for(let i=1;i<n;i++){ if(ts[i]-ts[i-1]<=60*DAY){rep60++;break;} }
+    if(ts.some(t=>t>=monStart&&t<monEnd)){ const first=c.firstByBuyer.get(buyer); if(first>=monStart)newM++; else retM++; } });
+  return { total, repeat, rep3, active30, rep60, newM, retM, repeatPct: total?repeat/total*100:0 };
+}
+function custBlock(prov,dist){ const s=customerStats(prov,dist); if(!s||!s.total) return '<div style="color:var(--muted);font-size:12px">— ไม่มีข้อมูลลูกค้า</div>';
+  const bar=(lab,v,color)=>{ const pct=s.total?v/s.total*100:0; return `<div class="drow"><div class="t"><span class="nm">${lab}</span><span class="vv">${fmt(v)} <span style="color:var(--muted);font-weight:600">${pct.toFixed(0)}%</span></span></div><div class="bar2"><i style="width:${Math.max(2,pct)}%;background:${color}"></i></div></div>`; };
+  const tot=s.newM+s.retM, nw=tot?s.newM/tot*100:0, rt=tot?s.retM/tot*100:0;
+  return `<div class="pkpi"><div class="c"><div class="k">ลูกค้าทั้งหมด</div><div class="v">${fmt(s.total)}</div></div>
+      <div class="c"><div class="k">ซื้อซ้ำ (≥2 ครั้ง)</div><div class="v">${fmt(s.repeat)} <span style="font-size:12px;color:var(--good)">${s.repeatPct.toFixed(0)}%</span></div></div></div>
+    ${bar('🔵 ซื้อ 30 วันล่าสุด',s.active30,'#0ea5e9')}
+    ${bar('🟣 ซื้อซ้ำภายใน 60 วัน',s.rep60,'#8b5cf6')}
+    ${bar('🟢 ลูกค้าประจำ (≥3 ครั้ง)',s.rep3,'#16a34a')}
+    <div class="drow"><div class="t"><span class="nm">เดือนนี้: ใหม่ vs กลับมาซื้อ</span><span class="vv">${fmt(s.newM)} / ${fmt(s.retM)}</span></div>
+      <div class="bar2" style="display:flex;background:transparent">${nw?`<i style="width:${nw}%;background:#f59e0b;border-radius:5px 0 0 5px"></i>`:''}${rt?`<i style="width:${rt}%;background:#16a34a;border-radius:0 5px 5px 0"></i>`:''}</div>
+      <div class="sub"><span style="color:#f59e0b">■</span> ใหม่ ${fmt(s.newM)} (${nw.toFixed(0)}%) · <span style="color:#16a34a">■</span> กลับมาซื้อ ${fmt(s.retM)} (${rt.toFixed(0)}%)</div></div>`;
+}
+async function fillCust(prov,dist){ await ensureCust(SELTAB.brand); if(FOCUSPROV!==prov) return; const slot=$('#custSlot'); if(slot) slot.innerHTML=custBlock(prov,dist); }
 /* previous-month tab for the current brand (for growth mode) */
 function prevTab(){ return TABS.find(t=>t.brand===SELTAB.brand && t.mi===SELTAB.mi-1) || null; }
 function brandMonths(){ return TABS.filter(t=>t.brand===SELTAB.brand && t.mi>0).sort((a,b)=>a.mi-b.mi); }
@@ -315,8 +357,11 @@ function selectDistrict(prov,name){ FOCUSPROV=prov; const r=districtProducts(pro
   const bars=r.prods.slice(0,20).map(p=>`<div class="drow"><div class="t"><span class="nm">${esc(p.n)}</span><span class="vv">${fmt(p.qty)} ชิ้น</span></div>
     <div class="bar2"><i style="width:${Math.max(2,p.qty/maxq*100)}%"></i></div><div class="sub">ยอดขาย ${kOf(p.sales)}</div></div>`).join('')
     || '<div style="color:var(--muted)">ไม่มีข้อมูลสินค้าในอำเภอนี้</div>';
-  $('#pBody').innerHTML=`<div class="pkpi">${kpi}</div><div class="dh">🛍️ สินค้าขายดีใน ${esc(name)} <span style="color:var(--muted);font-weight:400">(${r.prods.length})</span></div>${bars}`;
-  $('#panel').classList.add('open');
+  $('#pBody').innerHTML=`<div class="pkpi">${kpi}</div>
+    <div class="dh" style="margin-top:14px">👥 ลูกค้า <span style="color:var(--muted);font-weight:400">· รวมทุกเดือนของแบรนด์</span></div>
+    <div id="custSlot" style="color:var(--muted);font-size:12px">กำลังโหลดลูกค้า…</div>
+    <div class="dh" style="margin-top:14px">🛍️ สินค้าขายดีใน ${esc(name)} <span style="color:var(--muted);font-weight:400">(${r.prods.length})</span></div>${bars}`;
+  $('#panel').classList.add('open'); fillCust(prov,name);
   const bp=$('#backProv'); if(bp) bp.onclick=()=>selectProvince(prov);
 }
 
@@ -335,8 +380,11 @@ function selectProvince(th){ FOCUSPROV=th; const o=AGG.prov[th]; const layer=lay
       <div class="bar2"><i style="width:${w}%"></i></div>
       <div class="sub">ออเดอร์ ${fmt(d.orders)} · ยอดขาย ${kOf(d.sales)} · AOV ${fmt(d.aov)}</div></div>`; }).join('')
     || '<div style="color:var(--muted)">ไม่มีข้อมูลอำเภอ</div>';
-  $('#pBody').innerHTML=`<div class="pkpi">${kpi}</div><div class="dh">📍 แยกตามอำเภอ · เรียงตาม${mlab} <span style="color:var(--muted);font-weight:400">(${o.dist.length})</span></div>${bars}`;
-  $('#panel').classList.add('open');
+  $('#pBody').innerHTML=`<div class="pkpi">${kpi}</div>
+    <div class="dh" style="margin-top:14px">👥 ลูกค้า <span style="color:var(--muted);font-weight:400">· รวมทุกเดือนของแบรนด์</span></div>
+    <div id="custSlot" style="color:var(--muted);font-size:12px">กำลังโหลดลูกค้า…</div>
+    <div class="dh" style="margin-top:14px">📍 แยกตามอำเภอ · เรียงตาม${mlab} <span style="color:var(--muted);font-weight:400">(${o.dist.length})</span></div>${bars}`;
+  $('#panel').classList.add('open'); fillCust(th,null);
 }
 function unfocus(){ FOCUSPROV=null; $('#panel').classList.remove('open'); clearDistricts(); try{map.fitBounds(geoLayer.getBounds(),{padding:[20,20]});}catch{} }
 $('#pClose').addEventListener('click',unfocus);
