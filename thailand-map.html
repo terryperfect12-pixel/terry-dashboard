@@ -9,7 +9,7 @@
   :root{
     --bg:#f1f5f9; --surface:#ffffff; --surface-2:#f8fafc; --ink:#0f172a; --muted:#64748b;
     --line:#e2e8f0; --line-2:#cbd5e1; --accent:#2563eb; --good:#16a34a; --bad:#ef4444;
-    --panel-w:360px;
+    --panel-w:430px;
   }
   @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
     --bg:#0b1220; --surface:#131c2e; --surface-2:#1b273c; --ink:#e8edf6; --muted:#94a3b8;
@@ -106,7 +106,6 @@
     <button class="back" id="playBtn" title="เล่นไล่เดือน (time-lapse)">▶ ไล่เดือน</button>
     <button class="back" id="resetBtn" title="ดูทั้งประเทศ">⤢ ทั้งประเทศ</button>
   </div>
-  <div class="kpis" id="kpis"></div>
 </div>
 
 <div class="legend" id="legend"></div>
@@ -276,7 +275,7 @@ function growthColor(g){ if(!g||(g.cur<=0&&g.prev<=0)) return EMPTY; if(g.isNew)
 
 /* ---- map ---- */
 let map, geoLayer, layerByProv={};
-function initMap(){ map=L.map('map',{zoomControl:true,attributionControl:false,minZoom:5,maxZoom:10}).setView([13.0,101.0],6);
+function initMap(){ map=L.map('map',{zoomControl:true,attributionControl:false,minZoom:4,maxZoom:14,zoomSnap:0.25,wheelPxPerZoomLevel:80,scrollWheelZoom:true}).setView([13.0,101.0],6);
   geoLayer=L.geoJSON(GEO,{ style:styleFeat, onEachFeature:(f,layer)=>{ const th=f.properties.pro_th; layerByProv[th]=layer;
       layer.on('mouseover',()=>layer.setStyle({weight:2.5,color:'#111'}));
       layer.on('mouseout',()=>geoLayer.resetStyle(layer));
@@ -304,7 +303,7 @@ function refreshMap(){ computeBreaks();
     }
     layer.bindTooltip(tip,{className:'pv',sticky:true});
   });
-  renderKpis(); renderLegend();
+  renderLegend();
 }
 function renderKpis(){ const t=AGG.total; $('#kpis').innerHTML=
   [['ออเดอร์',fmt(t.orders)],['ยอดขายรวม',fmt(t.sales)],['AOV',fmt(t.aov)],['จังหวัดที่มีผู้ซื้อ',fmt(t.provinces)+' / 77']]
