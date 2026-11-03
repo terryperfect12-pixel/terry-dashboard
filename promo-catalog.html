@@ -502,7 +502,7 @@ async function load(){
     const variant=String(r[cVar]||'').trim(); const sku=String(r[cSku]||'').trim(); const price=num(r[cPr]);
     const skuDisp=sku+(variant&&!/^default$/i.test(variant)?' · '+variant:'');
     const autoImg=imgByName.get(normNm(name))||'';
-    ALLVARIANTS.push({ name, sku:skuDisp, full:price, awo:price, img:autoImg });
+    ALLVARIANTS.push({ name, variant, sku:skuDisp, full:price, awo:price, img:autoImg });
     const bk=name+'|'+skuDisp; const n=occ.get(bk)||0; occ.set(bk,n+1); const uid=bk+'|'+n;
     const prices={}; CAMP.forEach(cp=>prices[cp.k]= cp.k==='AWO'?price:0);        // AWO=ราคาปลีก; ราคาแคมเปญอื่นตั้งเองภายหลัง
     ITEMS.push({ uid, name, sku:skuDisp, variant, full:price, prices, tiktok:0, gwp:'', remark:'', isSet:false, pid:'', autoImg, month:SHEET_MONTH, parts:[] });
@@ -665,7 +665,7 @@ function cardHtml(it,cp){
       <div class="prices"><span class="pnow" style="color:${cp.c}">฿${fmt(now)}</span>${act.full>0&&act.full>now?`<span class="pfull">฿${fmt(act.full)}</span>`:''}${save>0?`<span class="save">-${pct}%</span>`:''}</div>
       ${!act.isSet?platTags(act.name,act.pid):''}
       ${parts}
-      ${(act.gwp||liveRm||act.giftImg)?`<div class="meta">${act.giftImg?`<img src="${act.giftImg}" class="gwpimg" title="รูปของแถม">`:''}${act.gwp?`<span class="tag gwp">🎁 ${esc(act.gwp)}</span>`:''}${liveRm?'<span class="tag live">LIVE</span>':''}</div>`:''}
+      ${(act.gwp||liveRm||act.giftImg||act.start)?`<div class="meta">${act.giftImg?`<img src="${act.giftImg}" class="gwpimg" title="รูปของแถม">`:''}${act.start?`<span class="tag rm">📅 ${dRange(act.start,act.end)}</span>`:''}${act.gwp?`<span class="tag gwp">🎁 ${esc(act.gwp)}</span>`:''}${liveRm?'<span class="tag live">LIVE</span>':''}</div>`:''}
       ${optStrip}
     </div>
   </div>`;
@@ -833,9 +833,10 @@ $('#exportBtn').addEventListener('click',()=>{ const ls={}; for(const k in IMG){
 
 /* ---- create-promo composer ---- */
 // base products = the brand's catalog items (name · SKU/variant · retail price · image)
-function baseList(){ return ALLVARIANTS.map(v=>({ family:v.name, variant:v.sku||'', name: v.sku?`${v.name} · ${v.sku}`:v.name, full: v.full||0, awo: v.awo||0, img: v.img||'' })); }
+function baseList(){ return ALLVARIANTS.map(v=>({ family:v.name, variant:(v.variant&&!/^default$/i.test(v.variant))?v.variant:'', name: v.sku?`${v.name} · ${v.sku}`:v.name, full: v.full||0, awo: v.awo||0, img: v.img||'' })); }
 // ── create-promo composer (2-col, modern image picker) ──
 let WZ=null;
+function dRange(s,e){ const f=x=>{ if(!x)return''; const p=x.split('-'); return p.length===3?(+p[2]+'/'+ +p[1]):x; }; if(!s)return''; return (e&&e!==s)?f(s)+'–'+f(e):f(s); }
 function closeComposer(){ const ov=document.getElementById('pkov'); if(ov)ov.remove(); $('#composer').classList.add('hidden'); }
 function compItems(){ return WZ.items.filter(it=> it.manual ? (it.name||'').trim() : true).map(it=>({name:(it.name||'').trim(),full:it.full||0,awo:it.awo||0,img:it.img||'',qty:Math.max(1,it.qty||1),manual:it.manual})); }
 const compName=items=>items.map(p=>`${p.name} x${p.qty}`).join(' + ');
@@ -849,10 +850,13 @@ function openComposer(){
     <label class="wf"><span>ของแถม (GWP) — ไม่บังคับ</span><input id="cGwp" type="text" placeholder="เช่น ซื้อครบ 499 แถม sticker 1 ชิ้น"></label>
     <div class="wf"><span>รูปของแถม — ไม่บังคับ</span><div class="wgift" id="giftWrap"></div></div>
     <label class="wf"><span>หมายเหตุ — ไม่บังคับ</span><input id="cRemark" type="text" placeholder="เช่น only live"></label>
-    <label class="wf"><span>เดือนของโปรฯ</span><select id="cMonth"></select></label>
+    <div class="complbl">3. ช่วงเวลาโปรโมชัน</div>
+    <label class="wf"><span>เดือนที่แสดงบนบอร์ด</span><select id="cMonth"></select></label>
+    <div class="cgrid2"><label class="wf" style="margin:0"><span>วันเริ่ม — ไม่บังคับ</span><input id="cStart" type="date"></label><label class="wf" style="margin:0"><span>วันสิ้นสุด — ไม่บังคับ</span><input id="cEnd" type="date"></label></div>
     <div class="complbl">ตัวอย่างโปรฯ</div><div id="cpv"></div>`;
   $('#cMonth').innerHTML=cMonthOptions().map(k=>`<option value="${k}" ${k===(MONTH||SHEET_MONTH)?'selected':''}>${esc(monthLabel(k))}</option>`).join('');
   $('#cFull').addEventListener('input',renderPrev); $('#cPromo').addEventListener('input',renderPrev); $('#cGwp').addEventListener('input',renderPrev);
+  $('#cStart').addEventListener('input',renderPrev); $('#cEnd').addEventListener('input',renderPrev);
   renderLeft(); renderGift(); renderPrev();
   $('#composer').classList.remove('hidden');
 }
@@ -878,7 +882,6 @@ function openPicker(){
   renderPkGrid(); $('#pkSearch').focus();
 }
 function closePicker(){ const ov=$('#pkov'); if(ov)ov.remove(); renderLeft(); renderPrev(); }
-// group the base products by family name; variants of the same product become "ตัวเลือก" chips
 function pkGroups(){ const sb=$('#pkSearch'); const q=((sb&&sb.value)||'').trim().toLowerCase();
   const map=new Map();
   WZ.base.forEach(p=>{ if(q && !((p.name||'').toLowerCase().includes(q) || (p.family||'').toLowerCase().includes(q))) return;
@@ -894,7 +897,7 @@ function renderPkGrid(){ const groups=pkGroups(); const shown=groups.slice(0,120
     if(g.variants.length===1){ const v=g.variants[0], on=sel.has(v.name);
       return `<div class="pkcard ${on?'on':''}" data-name="${esc(v.name)}"><div class="pkimg">${imgTag}</div><div class="pknm">${esc(g.family)}</div>${on?'<div class="pkchk">✓</div>':''}</div>`; }
     const anySel=g.variants.some(v=>sel.has(v.name));
-    return `<div class="pkcard ${anySel?'on':''}"><div class="pkimg">${imgTag}</div><div class="pknm">${esc(g.family)}</div><div class="pklbl">ตัวเลือก (${g.variants.length})</div><div class="pkopts">${g.variants.map(v=>{const on=sel.has(v.name); const lab=(v.variant||'เลือก').split(/\s*[·+]\s*/)[0].trim()||'เลือก'; return `<button class="pkopt ${on?'on':''}" data-name="${esc(v.name)}" title="${esc(v.variant||v.name)}">${on?'✓ ':''}${esc(lab)}</button>`;}).join('')}</div></div>`;
+    return `<div class="pkcard ${anySel?'on':''}"><div class="pkimg">${imgTag}</div><div class="pknm">${esc(g.family)}</div><div class="pklbl">ตัวเลือก (${g.variants.length})</div><div class="pkopts">${g.variants.map(v=>{const on=sel.has(v.name); const lab=v.variant||'เลือก'; return `<button class="pkopt ${on?'on':''}" data-name="${esc(v.name)}" title="${esc(v.variant||v.name)}">${on?'✓ ':''}${esc(lab)}</button>`;}).join('')}</div></div>`;
   }).join('') + (!groups.length?'<div class="muted" style="flex-basis:100%;width:100%;padding:12px">ไม่พบสินค้า</div>':(groups.length>shown.length?`<div class="muted" style="flex-basis:100%;width:100%;font-size:11px;padding:4px">แสดง 120 จาก ${groups.length} กลุ่ม — พิมพ์ค้นหาเพื่อแคบลง</div>`:''));
   $('#pkGrid').querySelectorAll('.pkcard[data-name]').forEach(c=>c.addEventListener('click',()=>togglePick(c.dataset.name)));
   $('#pkGrid').querySelectorAll('.pkopt[data-name]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();togglePick(b.dataset.name);}));
@@ -906,13 +909,14 @@ function giftUpload(e){ const f=e.target.files&&e.target.files[0]; e.target.valu
   img.onerror=()=>{URL.revokeObjectURL(url);alert('อัปโหลดรูปไม่สำเร็จ ลองไฟล์อื่น');}; img.src=url; }
 function renderPrev(){ const items=compItems(); const {full:sF,awo:sA}=compSums(items); const fIn=$('#cFull'),pIn=$('#cPromo'); if(fIn)fIn.placeholder=sF||0; if(pIn)pIn.placeholder=sA||0;
   const full=num(fIn?fIn.value:0)||sF, promo=num(pIn?pIn.value:0)||sA, sv=full>promo?full-promo:0, pct=full>0?Math.round(sv/full*100):0, img=items[0]&&items[0].img, gwp=(($('#cGwp')||{}).value||'').trim();
+  const rg=dRange(($('#cStart')||{}).value,($('#cEnd')||{}).value);
   $('#cpv').innerHTML = items.length
-    ? `<div class="cprevcard" style="border:1px solid var(--line);border-radius:12px;background:var(--surface-2)">${img?`<img src="${esc(thumbUrl(img))}">`:'<div class="cph">📷</div>'}<div style="flex:1;min-width:0"><div class="cpn">${esc(compName(items))}</div><div class="cpp" style="color:var(--accent)">฿${fmt(promo)} ${full>promo?`<s class="muted">฿${fmt(full)}</s> <span class="save">-${pct}%</span>`:''}</div>${gwp?`<div class="muted" style="font-size:12px;margin-top:3px">🎁 ${esc(gwp)}</div>`:''}</div>${WZ.giftImg?`<img src="${WZ.giftImg}" style="width:48px;height:48px;border-radius:9px;object-fit:cover">`:''}</div>`
+    ? `<div class="cprevcard" style="border:1px solid var(--line);border-radius:12px;background:var(--surface-2)">${img?`<img src="${esc(thumbUrl(img))}">`:'<div class="cph">📷</div>'}<div style="flex:1;min-width:0"><div class="cpn">${esc(compName(items))}</div><div class="cpp" style="color:var(--accent)">฿${fmt(promo)} ${full>promo?`<s class="muted">฿${fmt(full)}</s> <span class="save">-${pct}%</span>`:''}</div>${rg?`<div class="muted" style="font-size:12px;margin-top:3px">📅 ${esc(rg)}</div>`:''}${gwp?`<div class="muted" style="font-size:12px;margin-top:3px">🎁 ${esc(gwp)}</div>`:''}</div>${WZ.giftImg?`<img src="${WZ.giftImg}" style="width:48px;height:48px;border-radius:9px;object-fit:cover">`:''}</div>`
     : '<div class="muted" style="padding:14px">เลือก/กรอกสินค้าอย่างน้อย 1 รายการ</div>'; }
 function addComposer(){ const items=compItems(); if(!items.length){ alert('เลือก/กรอกสินค้าอย่างน้อย 1 รายการ'); return; }
   const {full:sF,awo:sA}=compSums(items); const full=num($('#cFull').value)||sF, promo=num($('#cPromo').value)||sA;
   const prices={}; CAMP.forEach(c=>prices[c.k]=promo); const cid='c'+Date.now(), mon=$('#cMonth').value||MONTH||SHEET_MONTH;
-  const item={ uid:cid, name:compName(items), sku:'', full, prices, gwp:$('#cGwp').value.trim(), remark:$('#cRemark').value.trim(), giftImg:WZ.giftImg||'',
+  const item={ uid:cid, name:compName(items), sku:'', full, prices, gwp:$('#cGwp').value.trim(), remark:$('#cRemark').value.trim(), giftImg:WZ.giftImg||'', start:$('#cStart').value||'', end:$('#cEnd').value||'',
     isSet:items.length>1||items[0].qty>1, pid:'', autoImg:items[0].img||'', custom:true, cid, month:mon,
     parts:items.map(p=>({name:p.name,qty:p.qty,img:p.img||''})) };
   CUSTOM.push(item); saveCustom(); ITEMS.push(item); MONTH=mon; closeComposer(); renderMonthSel(); renderChips(); renderCards(); }
