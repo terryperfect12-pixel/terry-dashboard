@@ -237,6 +237,24 @@
   .crow2 .cq{width:54px;text-align:center;border:1.5px solid var(--line-2);border-radius:9px;padding:9px 3px;font:inherit;font-size:14px;background:var(--surface);color:var(--ink)}
   .crow2 .rx{border:0;background:var(--surface-2);color:var(--muted);border-radius:8px;width:30px;height:36px;cursor:pointer;flex:none;font-size:13px}
   .caddbtns{display:flex;gap:8px;margin-top:4px}
+  #composer .sheet{position:relative}
+  .selrow2{display:flex;align-items:center;gap:9px;border:1.5px solid var(--line-2);border-radius:11px;padding:6px 8px;margin-bottom:8px}
+  .selrow2 .wimg{width:42px;height:42px;border-radius:8px;overflow:hidden;background:var(--surface-2);flex:none;display:flex;align-items:center;justify-content:center;font-size:16px}
+  .selrow2 .wimg img{width:100%;height:100%;object-fit:cover}
+  .selrow2 .snm{flex:1;min-width:0;font-size:12.5px;font-weight:700;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .selrow2 .cq{width:48px;text-align:center;border:1.5px solid var(--line-2);border-radius:8px;padding:7px 3px;font:inherit;font-size:13px;background:var(--surface);color:var(--ink)}
+  .selrow2 .rx{border:0;background:var(--surface-2);color:var(--muted);border-radius:8px;width:28px;height:32px;cursor:pointer;flex:none}
+  .pkov{position:absolute;inset:0;background:var(--surface);z-index:5;display:flex;flex-direction:column;border-radius:16px}
+  .pkhead{display:flex;gap:10px;align-items:center;padding:13px 16px;border-bottom:1px solid var(--line)}
+  .pkgrid{flex:1;overflow-y:auto;padding:14px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;align-content:start}
+  .pkcard{border:1.5px solid var(--line-2);border-radius:12px;overflow:hidden;cursor:pointer;background:var(--surface);transition:.1s;position:relative}
+  .pkcard:hover{border-color:var(--accent)}
+  .pkcard.on{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in oklab,var(--accent) 35%,transparent)}
+  .pkimg{width:100%;aspect-ratio:1/1;object-fit:cover;background:var(--surface-2);display:block}
+  .pkph{width:100%;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;font-size:26px;color:var(--muted);background:var(--surface-2)}
+  .pknm{font-size:11px;font-weight:700;line-height:1.25;padding:6px 7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:33px}
+  .pkchk{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}
+  .pkfoot{padding:12px 16px;border-top:1px solid var(--line)}
   @media(max-width:640px){ .compbody{grid-template-columns:1fr} .compleft{border-right:0;border-bottom:1px solid var(--line)} }
   .modal{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:12px}
   .sheet{background:var(--surface);border:1px solid var(--line);border-radius:16px;width:100%;max-width:1480px;height:94vh;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
@@ -828,15 +846,14 @@ const BASE_NAMES=['กันแดดหนมปัง 20ML','กันแด�
 function baseList(){ return BASE_NAMES.map(bn=>{ const nb=normNm(bn);
   const it=ITEMS.find(x=>!x.custom&&normNm(x.name)===nb)||ITEMS.find(x=>!x.custom&&normNm(x.name).includes(nb));
   return { name: it?it.name:bn, full: it?(it.full||0):0, awo: it?(it.prices.AWO||0):0, img: it?displayImg(it):'' }; }); }
-// ── create-promo composer (single screen, 2-col: dropdown/manual rows | price/gift) ──
+// ── create-promo composer (2-col, modern image picker) ──
 let WZ=null;
-function closeComposer(){ $('#composer').classList.add('hidden'); }
-function baseOpts(sel){ return '<option value="">— เลือกสินค้า —</option>'+WZ.base.map((p,i)=>`<option value="${i}" ${String(i)===String(sel)?'selected':''}>${esc(p.name)}</option>`).join(''); }
-function compItems(){ const out=[]; WZ.rows.forEach(r=>{ if(r.manual){ const nm=(r.name||'').trim(); if(nm)out.push({name:nm,full:0,awo:0,img:'',qty:Math.max(1,r.qty||1),manual:true}); } else if(r.sel!==''&&r.sel!=null){ const p=WZ.base[+r.sel]; if(p)out.push({name:p.name,full:p.full,awo:p.awo,img:p.img,qty:Math.max(1,r.qty||1)}); } }); return out; }
+function closeComposer(){ const ov=document.getElementById('pkov'); if(ov)ov.remove(); $('#composer').classList.add('hidden'); }
+function compItems(){ return WZ.items.filter(it=> it.manual ? (it.name||'').trim() : true).map(it=>({name:(it.name||'').trim(),full:it.full||0,awo:it.awo||0,img:it.img||'',qty:Math.max(1,it.qty||1),manual:it.manual})); }
 const compName=items=>items.map(p=>`${p.name} x${p.qty}`).join(' + ');
 const compSums=items=>({ full:items.reduce((s,p)=>s+(p.full||0)*p.qty,0), awo:items.reduce((s,p)=>s+(p.awo||0)*p.qty,0) });
 function openComposer(){
-  WZ={ base:baseList(), rows:[{sel:'',manual:false,name:'',qty:1}], giftImg:'' };
+  WZ={ base:baseList(), items:[], giftImg:'' };
   $('#ccolR').innerHTML=`
     <div class="complbl">2. ราคา</div>
     <div class="cgrid2"><label class="wf" style="margin:0"><span>ราคาเต็มรวม (บาท)</span><input id="cFull" type="number" min="0"></label><label class="wf" style="margin:0"><span>ราคาโปร (บาท)</span><input id="cPromo" type="number" min="0"></label></div>
@@ -853,17 +870,32 @@ function openComposer(){
 }
 function renderLeft(){ const el=$('#ccolL');
   el.innerHTML=`<div class="complbl">1. เลือกสินค้า (สูงสุด 5)</div>`+
-    WZ.rows.map((r,i)=>r.manual
-      ? `<div class="crow2"><input class="mtext" data-mi="${i}" value="${esc(r.name)}" placeholder="พิมพ์ชื่อสินค้าเอง..."><input class="cq" type="number" min="1" data-q="${i}" value="${r.qty}"><button class="rx" data-rm="${i}">✕</button></div>`
-      : `<div class="crow2"><select data-si="${i}">${baseOpts(r.sel)}</select><input class="cq" type="number" min="1" data-q="${i}" value="${r.qty}"><button class="rx" data-rm="${i}">✕</button></div>`
-    ).join('')+
-    `<div class="caddbtns">${WZ.rows.length<5?'<button class="btnghost" id="addRow">➕ เพิ่มสินค้า</button><button class="btnghost" id="addManualRow">✏️ กรอกเอง</button>':'<span class="muted" style="font-size:11.5px">ครบ 5 รายการแล้ว</span>'}</div>`;
-  el.querySelectorAll('[data-si]').forEach(s=>s.addEventListener('change',()=>{ WZ.rows[+s.dataset.si].sel=s.value; renderPrev(); }));
-  el.querySelectorAll('[data-mi]').forEach(t=>t.addEventListener('input',()=>{ WZ.rows[+t.dataset.mi].name=t.value; renderPrev(); }));
-  el.querySelectorAll('[data-q]').forEach(q=>q.addEventListener('input',()=>{ WZ.rows[+q.dataset.q].qty=Math.max(1,+q.value||1); renderPrev(); }));
-  el.querySelectorAll('[data-rm]').forEach(b=>b.addEventListener('click',()=>{ WZ.rows.splice(+b.dataset.rm,1); if(!WZ.rows.length)WZ.rows.push({sel:'',manual:false,name:'',qty:1}); renderLeft(); renderPrev(); }));
-  const ar=$('#addRow'); if(ar)ar.addEventListener('click',()=>{ WZ.rows.push({sel:'',manual:false,name:'',qty:1}); renderLeft(); });
-  const am=$('#addManualRow'); if(am)am.addEventListener('click',()=>{ WZ.rows.push({sel:'',manual:true,name:'',qty:1}); renderLeft(); const ms=$('#ccolL').querySelectorAll('.mtext'); if(ms.length)ms[ms.length-1].focus(); });
+    (WZ.items.length ? WZ.items.map((it,i)=> it.manual
+      ? `<div class="crow2"><input class="mtext" data-mi="${i}" value="${esc(it.name)}" placeholder="พิมพ์ชื่อสินค้าเอง..."><input class="cq" type="number" min="1" data-q="${i}" value="${it.qty}"><button class="rx" data-rm="${i}">✕</button></div>`
+      : `<div class="selrow2"><div class="wimg">${it.img?`<img src="${esc(thumbUrl(it.img))}">`:'📷'}</div><div class="snm">${esc(it.name)}</div><input class="cq" type="number" min="1" data-q="${i}" value="${it.qty}"><button class="rx" data-rm="${i}">✕</button></div>`
+    ).join('') : '<div class="muted" style="font-size:12px;margin-bottom:10px">ยังไม่ได้เลือกสินค้า — กด “🖼️ เลือกสินค้า” เพื่อเลือกจากรูป</div>')+
+    `<div class="caddbtns">${WZ.items.length<5?'<button class="btnghost" id="addPick">🖼️ เลือกสินค้า</button><button class="btnghost" id="addManualRow">✏️ กรอกเอง</button>':'<span class="muted" style="font-size:11.5px">ครบ 5 รายการแล้ว</span>'}</div>`;
+  el.querySelectorAll('[data-q]').forEach(q=>q.addEventListener('input',()=>{ WZ.items[+q.dataset.q].qty=Math.max(1,+q.value||1); renderPrev(); }));
+  el.querySelectorAll('[data-mi]').forEach(t=>t.addEventListener('input',()=>{ WZ.items[+t.dataset.mi].name=t.value; renderPrev(); }));
+  el.querySelectorAll('[data-rm]').forEach(b=>b.addEventListener('click',()=>{ WZ.items.splice(+b.dataset.rm,1); renderLeft(); renderPrev(); }));
+  const ap=$('#addPick'); if(ap)ap.addEventListener('click',openPicker);
+  const am=$('#addManualRow'); if(am)am.addEventListener('click',()=>{ WZ.items.push({name:'',qty:1,manual:true}); renderLeft(); const ms=$('#ccolL').querySelectorAll('.mtext'); if(ms.length)ms[ms.length-1].focus(); });
+}
+function openPicker(){
+  const ov=document.createElement('div'); ov.className='pkov'; ov.id='pkov';
+  ov.innerHTML=`<div class="pkhead"><b style="font-size:14px;white-space:nowrap">เลือกสินค้า</b><input id="pkSearch" class="srch" style="flex:1" placeholder="🔍 ค้นหาสินค้า..."><button class="xbtn" id="pkX">✕</button></div><div class="pkgrid" id="pkGrid"></div><div class="pkfoot"><button class="cadd" id="pkDone" style="width:100%">เสร็จ (เลือกแล้ว <span id="pkCnt">0</span>)</button></div>`;
+  $('#composer .sheet').appendChild(ov);
+  $('#pkSearch').addEventListener('input',renderPkGrid);
+  $('#pkX').addEventListener('click',closePicker); $('#pkDone').addEventListener('click',closePicker);
+  renderPkGrid(); $('#pkSearch').focus();
+}
+function closePicker(){ const ov=$('#pkov'); if(ov)ov.remove(); renderLeft(); renderPrev(); }
+function renderPkGrid(){ const sb=$('#pkSearch'); const q=((sb&&sb.value)||'').trim().toLowerCase(); let arr=WZ.base.map((p,i)=>({p,i})); if(q)arr=arr.filter(o=>o.p.name.toLowerCase().includes(q)); const shown=arr.slice(0,120);
+  const sel=new Set(WZ.items.filter(it=>!it.manual).map(it=>it.name)); const cnt=$('#pkCnt'); if(cnt)cnt.textContent=WZ.items.length;
+  $('#pkGrid').innerHTML=shown.map(({p,i})=>{ const on=sel.has(p.name); return `<div class="pkcard ${on?'on':''}" data-bi="${i}">${p.img?`<img class="pkimg" src="${esc(thumbUrl(p.img))}" loading="lazy">`:'<div class="pkph">📷</div>'}<div class="pknm">${esc(p.name)}</div>${on?'<div class="pkchk">✓</div>':''}</div>`; }).join('') + (!arr.length?'<div class="muted" style="grid-column:1/-1;padding:12px">ไม่พบสินค้า</div>':(arr.length>shown.length?`<div class="muted" style="grid-column:1/-1;font-size:11px;padding:4px">แสดง 120 จาก ${arr.length} — พิมพ์ค้นหาเพื่อแคบลง</div>`:''));
+  $('#pkGrid').querySelectorAll('.pkcard').forEach(c=>c.addEventListener('click',()=>{ const p=WZ.base[+c.dataset.bi]; const ex=WZ.items.find(it=>!it.manual&&it.name===p.name);
+    if(ex){ WZ.items=WZ.items.filter(x=>x!==ex); } else { if(WZ.items.length>=5){alert('เลือกได้สูงสุด 5 รายการ');return;} WZ.items.push({name:p.name,full:p.full,awo:p.awo,img:p.img,qty:1}); }
+    renderPkGrid(); }));
 }
 function renderGift(){ const el=$('#giftWrap'); el.innerHTML=`${WZ.giftImg?`<img src="${WZ.giftImg}">`:'<div class="ph">🎁</div>'}<label class="btnghost" style="cursor:pointer">${WZ.giftImg?'เปลี่ยนรูป':'อัปโหลดรูป'}<input id="cGiftFile" type="file" accept="image/*" style="display:none"></label>${WZ.giftImg?'<button class="btnghost" id="cGiftDel">ลบรูป</button>':''}`;
   $('#cGiftFile').addEventListener('change',giftUpload); const d=$('#cGiftDel'); if(d)d.addEventListener('click',()=>{WZ.giftImg='';renderGift();renderPrev();}); }
