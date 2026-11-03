@@ -837,6 +837,26 @@ function baseList(){ return ALLVARIANTS.map(v=>({ family:v.name, variant:(v.vari
 // ── create-promo composer (2-col, modern image picker) ──
 let WZ=null;
 function dRange(s,e){ const f=x=>{ if(!x)return''; const p=x.split('-'); return p.length===3?(+p[2]+'/'+ +p[1]):x; }; if(!s)return''; return (e&&e!==s)?f(s)+'–'+f(e):f(s); }
+function injectDateStyle(){ if(document.getElementById('cdateStyle'))return; const s=document.createElement('style'); s.id='cdateStyle'; s.textContent=`
+.cdwrap{position:relative;width:100%}
+.cdwrap input[type=date]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2;margin:0;border:0;padding:0}
+.cdwrap input[type=date]::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;cursor:pointer;opacity:0}
+.cdface{display:flex;align-items:center;min-height:46px;border:1.5px solid var(--line-2);border-radius:12px;padding:0 42px 0 14px;background:var(--surface);color:var(--ink);font-size:14.5px;font-weight:700;transition:border-color .15s,box-shadow .15s}
+.cdwrap:hover .cdface{border-color:var(--accent)}
+.cdwrap input[type=date]:focus + .cdface{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
+.cdface.ph{color:var(--muted);font-weight:500}
+.cdico{position:absolute;right:13px;top:50%;transform:translateY(-50%);font-size:17px;pointer-events:none;z-index:1;opacity:.9}
+`; document.head.appendChild(s); }
+function faceText(id){ const inp=document.getElementById(id), face=document.getElementById(id+'Face'); if(!inp||!face)return; const v=inp.value;
+  if(!v){ face.textContent='เลือกวันที่'; face.classList.add('ph'); return; } face.classList.remove('ph');
+  const p=v.split('-'), mm=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  face.textContent = p.length===3 ? (+p[2]+' '+mm[+p[1]-1]+' '+p[0]) : v; }
+function wireDate(id){ const inp=document.getElementById(id); if(!inp)return; const open=()=>{ try{ inp.showPicker&&inp.showPicker(); }catch(e){} };
+  inp.addEventListener('click',open);
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(); } });
+  inp.addEventListener('change',()=>{ faceText(id); renderPrev(); });
+  inp.addEventListener('input',()=>{ faceText(id); renderPrev(); });
+  faceText(id); }
 function closeComposer(){ const ov=document.getElementById('pkov'); if(ov)ov.remove(); $('#composer').classList.add('hidden'); }
 function compItems(){ return WZ.items.filter(it=> it.manual ? (it.name||'').trim() : true).map(it=>({name:(it.name||'').trim(),full:it.full||0,awo:it.awo||0,img:it.img||'',qty:Math.max(1,it.qty||1),manual:it.manual})); }
 const compName=items=>items.map(p=>`${p.name} x${p.qty}`).join(' + ');
@@ -852,11 +872,12 @@ function openComposer(){
     <label class="wf"><span>หมายเหตุ — ไม่บังคับ</span><input id="cRemark" type="text" placeholder="เช่น only live"></label>
     <div class="complbl">3. ช่วงเวลาโปรโมชัน</div>
     <label class="wf"><span>เดือนที่แสดงบนบอร์ด</span><select id="cMonth"></select></label>
-    <div class="cgrid2"><label class="wf" style="margin:0"><span>วันเริ่ม — ไม่บังคับ</span><input id="cStart" type="date"></label><label class="wf" style="margin:0"><span>วันสิ้นสุด — ไม่บังคับ</span><input id="cEnd" type="date"></label></div>
+    <div class="cgrid2"><label class="wf" style="margin:0"><span>วันเริ่ม — ไม่บังคับ</span><div class="cdwrap" id="cStartWrap"><input id="cStart" type="date"><span class="cdface" id="cStartFace"></span><span class="cdico">📅</span></div></label><label class="wf" style="margin:0"><span>วันสิ้นสุด — ไม่บังคับ</span><div class="cdwrap" id="cEndWrap"><input id="cEnd" type="date"><span class="cdface" id="cEndFace"></span><span class="cdico">📅</span></div></label></div>
     <div class="complbl">ตัวอย่างโปรฯ</div><div id="cpv"></div>`;
+  injectDateStyle();
   $('#cMonth').innerHTML=cMonthOptions().map(k=>`<option value="${k}" ${k===(MONTH||SHEET_MONTH)?'selected':''}>${esc(monthLabel(k))}</option>`).join('');
   $('#cFull').addEventListener('input',renderPrev); $('#cPromo').addEventListener('input',renderPrev); $('#cGwp').addEventListener('input',renderPrev);
-  $('#cStart').addEventListener('input',renderPrev); $('#cEnd').addEventListener('input',renderPrev);
+  wireDate('cStart'); wireDate('cEnd');
   renderLeft(); renderGift(); renderPrev();
   $('#composer').classList.remove('hidden');
 }
