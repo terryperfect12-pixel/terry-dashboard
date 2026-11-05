@@ -336,7 +336,8 @@
           <button data-t="set">เซ็ต/ตะกร้า</button>
         </div>
         <button class="btnghost" id="hiddenBtn" title="แสดง/ซ่อนตะกร้าที่ปิดไว้">👁 ที่ปิดไว้ <span id="hiddenCount"></span></button>
-        <button class="btnghost" id="newBtn" style="border-color:var(--accent);color:var(--accent)">➕ สร้างโปรฯ ใหม่</button>
+        <button class="btnghost" id="newBasket" style="border-color:var(--accent);color:var(--accent)">🧺 สร้างตะกร้า</button>
+        <button class="btnghost" id="newPromo" style="border-color:var(--accent);color:var(--accent)">🏷️ สร้างโปรโมชัน</button>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btnghost" id="exportBtn" title="คัดลอกรูปที่เลือกไปฝังถาวร">💾 รูปที่เลือก <span id="imgCount"></span></button>
@@ -355,7 +356,7 @@
 <!-- create-promo modal (single page) -->
 <div class="modal hidden" id="composer">
   <div class="sheet" style="max-width:1000px;height:auto;max-height:92vh">
-    <div class="sh-top"><b>สร้างโปรโมชันใหม่</b><span class="who">เลือก/กรอกสินค้า → ตั้งราคา → เพิ่มลงบอร์ด</span><button class="xbtn" id="compX">✕</button></div>
+    <div class="sh-top"><b id="compTitle">สร้างโปรโมชัน</b><span class="who" id="compSub">เลือก/กรอกสินค้า → ตั้งราคา → เพิ่มลงบอร์ด</span><button class="xbtn" id="compX">✕</button></div>
     <div class="cbody2"><div class="ccol" id="ccolL"></div><div class="ccol" id="ccolR"></div></div>
     <div class="wizfoot"><button class="cadd wizbtn-next" id="cAdd">➕ เพิ่มลงบอร์ด</button></div>
   </div>
@@ -679,7 +680,7 @@ function cardHtml(it,cp){
       <div class="prices"><span class="pnow" style="color:${cp.c}">฿${fmt(now)}</span>${act.full>0&&act.full>now?`<span class="pfull">฿${fmt(act.full)}</span>`:''}${save>0?`<span class="save">-${pct}%</span>`:''}</div>
       ${!act.isSet?platTags(act.name,act.pid):''}
       ${parts}
-      ${(act.gwp||liveRm||act.giftImg||act.start)?`<div class="meta">${act.giftImg?`<img src="${act.giftImg}" class="gwpimg" title="รูปของแถม">`:''}${act.start?`<span class="tag rm">📅 ${dRange(act.start,act.end)}</span>`:''}${act.gwp?`<span class="tag gwp">🎁 ${esc(act.gwp)}</span>`:''}${liveRm?'<span class="tag live">LIVE</span>':''}</div>`:''}
+      ${(act.gwp||liveRm||act.giftImg||act.start||act.topic)?`<div class="meta">${act.topic?`<span class="tag" style="background:color-mix(in oklab, var(--accent) 16%, var(--surface));color:var(--accent);font-weight:800">🏷️ ${esc(act.topic)}</span>`:''}${act.giftImg?`<img src="${act.giftImg}" class="gwpimg" title="รูปของแถม">`:''}${act.start?`<span class="tag rm">📅 ${dRange(act.start,act.end)}</span>`:''}${act.gwp?`<span class="tag gwp">🎁 ${esc(act.gwp)}</span>`:''}${liveRm?'<span class="tag live">LIVE</span>':''}</div>`:''}
       ${optStrip}
     </div>
   </div>`;
@@ -689,7 +690,7 @@ function renderCards(){
   const s=SRCH.trim().toLowerCase();
   const list=filtered().filter(it=>inCampaign(it) && (!s||it.name.toLowerCase().includes(s)||it.sku.toLowerCase().includes(s)));
   if(!list.length){ const monthHas=ITEMS.some(it=>inMonth(it));
-    $('#cards').innerHTML=`<div class="empty">${!monthHas?('ยังไม่มีโปรโมชันสำหรับ'+esc(monthLabel(MONTH))+' — กด “➕ สร้างโปรฯ ใหม่” เพื่อเพิ่ม'):(s?'ไม่พบรายการที่ค้นหา':(SEL==='AWO'?'ยังไม่มีตะกร้า':'ยังไม่มีสินค้าในโปรฯ นี้ — ไปที่ AWO แล้วกด “➕ เพิ่มไปแคมเปญ” ที่การ์ด เพื่อคัดลอกสินค้ามาที่นี่'))}</div>`; return; }
+    $('#cards').innerHTML=`<div class="empty">${!monthHas?('ยังไม่มีโปรโมชันสำหรับ'+esc(monthLabel(MONTH))+' — กด “🧺 สร้างตะกร้า” หรือ “🏷️ สร้างโปรโมชัน” เพื่อเพิ่ม'):(s?'ไม่พบรายการที่ค้นหา':(SEL==='AWO'?'ยังไม่มีตะกร้า':'ยังไม่มีสินค้าในโปรฯ นี้ — ไปที่ AWO แล้วกด “➕ เพิ่มไปแคมเปญ” ที่การ์ด เพื่อคัดลอกสินค้ามาที่นี่'))}</div>`; return; }
   const srt=(a,b)=>saveOf(b)-saveOf(a) || a.prices[SEL]-b.prices[SEL];
   const singles=list.filter(it=>!it.isSet).sort(srt), sets=list.filter(it=>it.isSet).sort(srt);
   let html='';
@@ -878,9 +879,13 @@ function closeComposer(){ const ov=document.getElementById('pkov'); if(ov)ov.rem
 function compItems(){ return WZ.items.filter(it=> it.manual ? (it.name||'').trim() : true).map(it=>({name:(it.name||'').trim(),full:it.full||0,awo:it.awo||0,img:it.img||'',qty:Math.max(1,it.qty||1),manual:it.manual})); }
 const compName=items=>items.map(p=>`${p.name} x${p.qty}`).join(' + ');
 const compSums=items=>({ full:items.reduce((s,p)=>s+(p.full||0)*p.qty,0), awo:items.reduce((s,p)=>s+(p.awo||0)*p.qty,0) });
-function openComposer(){
-  WZ={ base:baseList(), items:[], giftImg:'', scope:'items' };
+function openComposer(mode){
+  mode = mode || 'promo';
+  WZ={ base:baseList(), items:[], giftImg:'', scope:'items', mode };
+  const T=$('#compTitle'); if(T)T.textContent = mode==='basket' ? 'สร้างตะกร้า / เซ็ต' : 'สร้างโปรโมชัน';
+  const S=$('#compSub'); if(S)S.textContent = mode==='basket' ? 'เลือกสินค้า → ตั้งราคา → เพิ่มลงบอร์ด (ตะกร้า/เซ็ต)' : 'เลือกหัวข้อโปร → เลือก/กรอกสินค้า → ตั้งราคา → เพิ่มลงบอร์ด';
   $('#ccolR').innerHTML=`
+    ${mode==='promo'?`<div class="complbl">หัวข้อโปร (แคมเปญ)</div><label class="wf"><span>โปรนี้อยู่ในแคมเปญไหน</span><select id="cTopic"></select></label>`:''}
     <div class="complbl">2. ราคา</div>
     <div class="cgrid2"><label class="wf" style="margin:0"><span>ราคาเต็มรวม (บาท)</span><input id="cFull" type="number" min="0"></label><label class="wf" style="margin:0"><span>ราคาโปร (บาท)</span><input id="cPromo" type="number" min="0"></label></div>
     <div class="muted" style="font-size:11px;margin:5px 0 13px">เว้นว่างได้ ระบบใช้ราคารวมจากสินค้าที่เลือกให้</div>
@@ -895,6 +900,11 @@ function openComposer(){
   $('#cMonth').innerHTML=cMonthOptions().map(k=>`<option value="${k}" ${k===(MONTH||SHEET_MONTH)?'selected':''}>${esc(monthLabel(k))}</option>`).join('');
   $('#cFull').addEventListener('input',renderPrev); $('#cPromo').addEventListener('input',renderPrev); $('#cGwp').addEventListener('input',renderPrev);
   wireDate('cStart'); wireDate('cEnd');
+  if(mode==='promo'){ const sel=$('#cTopic'); const fill=()=>{ sel.innerHTML=allCamps().map(c=>`<option value="${esc(c.k)}">${esc(c.k)}</option>`).join('')+`<option value="__new__">＋ เพิ่มหัวข้อใหม่…</option>`; };
+    fill(); sel.value=(SEL&&SEL!=='AWO')?SEL:((allCamps().find(c=>c.k!=='AWO')||{}).k||'AWO');
+    sel.addEventListener('change',()=>{ if(sel.value==='__new__'){ const name=(prompt('ชื่อหัวข้อโปรใหม่ (เช่น 11.11, Flash เสริม)')||'').trim();
+      if(name&&!allCamps().some(c=>c.k===name)){ const used=new Set(allCamps().map(c=>c.c)); const col=CAMP_PALETTE.find(c=>!used.has(c))||CAMP_PALETTE[CUSTOM_CAMP.length%CAMP_PALETTE.length]; CUSTOM_CAMP.push({k:name,c:col}); saveCamps(); fill(); sel.value=name; }
+      else { fill(); sel.value=name&&allCamps().some(c=>c.k===name)?name:((allCamps().find(c=>c.k!=='AWO')||{}).k||'AWO'); } } }); }
   renderLeft(); renderGift(); renderPrev();
   $('#composer').classList.remove('hidden');
 }
@@ -973,11 +983,16 @@ function addComposer(){ const store=WZ.scope==='store'; const items=compItems();
   if(store && promo<=0 && full<=0 && !gwp && !remark){ alert('ใส่ราคา/ส่วนลด หรือของแถม/หมายเหตุ สำหรับโปรทั้งร้าน'); return; }
   const prices={}; CAMP.forEach(c=>prices[c.k]=promo); const cid='c'+Date.now(), mon=$('#cMonth').value||MONTH||SHEET_MONTH;
   const nm = store ? ('🛍️ '+(remark||'โปรทั้งร้าน')) : compName(items);
-  const item={ uid:cid, name:nm, storeWide:store, scope: store?'store':'items', sku:'', full, prices, gwp, remark, giftImg:WZ.giftImg||'', start:$('#cStart').value||'', end:$('#cEnd').value||'',
+  const topic = (WZ.mode==='promo' && $('#cTopic')) ? $('#cTopic').value : '';
+  const tTag = (topic && topic!=='__new__' && topic!=='AWO') ? topic : '';
+  const item={ uid:cid, name:nm, storeWide:store, scope: store?'store':'items', kind: WZ.mode==='promo'?'promo':'basket', topic:tTag, sku:'', full, prices, gwp, remark, giftImg:WZ.giftImg||'', start:$('#cStart').value||'', end:$('#cEnd').value||'',
     isSet: store?true:(items.length>1||items[0].qty>1), pid:'', autoImg: store?'':(items[0].img||''), custom:true, cid, month:mon,
     parts: store?[]:items.map(p=>({name:p.name,qty:p.qty,img:p.img||''})) };
-  CUSTOM.push(item); saveCustom(); ITEMS.push(item); MONTH=mon; closeComposer(); renderMonthSel(); renderChips(); renderCards(); }
-$('#newBtn').addEventListener('click',openComposer);
+  CUSTOM.push(item); saveCustom(); ITEMS.push(item);
+  if(tTag){ ASSIGN[item.uid]=Object.assign({}, ASSIGN[item.uid], {[tTag]: promo||0}); saveAssign(); SEL=tTag; }
+  MONTH=mon; closeComposer(); renderMonthSel(); renderChips(); renderCards(); }
+$('#newBasket').addEventListener('click',()=>openComposer('basket'));
+$('#newPromo').addEventListener('click',()=>openComposer('promo'));
 $('#compX').addEventListener('click',closeComposer);
 $('#composer').addEventListener('click',e=>{ if(e.target.id==='composer')closeComposer(); });
 $('#cAdd').addEventListener('click',addComposer);
