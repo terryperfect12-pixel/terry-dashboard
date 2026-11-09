@@ -48,7 +48,7 @@
 
   /* product cards — symmetric, image on top */
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(223px,1fr));grid-auto-rows:1fr;align-items:stretch;gap:13px;margin-top:12px}
-  .grid.sets{grid-template-columns:repeat(auto-fill,minmax(325px,1fr))}
+  .grid.sets{grid-template-columns:repeat(auto-fill,minmax(223px,1fr))}
   /* set components (what's inside the basket) */
   .parts{margin-top:4px;border-top:1px dashed var(--line);padding-top:9px}
   .parts-h{font-size:10.5px;font-weight:800;color:var(--muted);margin-bottom:7px;letter-spacing:.02em}
@@ -473,7 +473,25 @@ function savePST(){ try{localStorage.setItem('promoPickStatus',JSON.stringify(PS
 const pstKey=p=>String(p.code||p.image);
 const isOn=p=>PST[pstKey(p)]!=='off';
 const imgKey=it=>it.uid||it.name;   // unique per row (duplicate names must not share state)
-const displayImg=it=>IMG[imgKey(it)]||it.autoImg||'';   // manual override wins, else auto image from the sheet mapping
+// fallback image resolver — when the cover sheet has no image for a product, reuse that product's OWN
+// image from the local catalog (catalog-terry.json) matched by TikTok Product ID or by name (via
+// catalog-links.json); and for a set with no image of its own, show its lead component's image.
+// Every image here is a real product image from the sheet/catalog — nothing invented.
+const _catImgCache=new Map();
+function catalogImg(name,pid){
+  const ck=(pid||'')+'|'+(name||''); if(_catImgCache.has(ck))return _catImgCache.get(ck);
+  let out=''; const CL=CAT||[];
+  if(CL.length){
+    const L=(LINKS&&LINKS[LINKS_BRAND])||null;
+    const byCode=o=>{ if(!o)return''; const s=String(o); for(const c of CL){ if(String(c.code)===s&&c.image) return c.image; } return''; };
+    out=byCode(pid);                                                       // 1) pid used directly as a catalog code
+    if(!out&&L){ const n=normL(name); for(const plat of ['shopee','lazada','tiktok']){ const im=byCode(L[plat]&&L[plat][n]); if(im){out=im;break;} } }   // 2) name → code → image
+    if(!out&&L&&pid){ let nm=''; for(const[k,v]of Object.entries(L.tiktok||{})){ if(String(v)===String(pid)){nm=k;break;} } if(nm){ for(const plat of ['shopee','lazada']){ const im=byCode(L[plat]&&L[plat][nm]); if(im){out=im;break;} } } }   // 3) pid → tiktok name → other-platform code → image
+  }
+  _catImgCache.set(ck,out); return out;
+}
+const firstPartImg=it=>{ if(!it.parts)return''; for(const p of it.parts){ if(p.img)return p.img; } for(const p of it.parts){ const im=catalogImg(p.name,''); if(im)return im; } return ''; };
+const displayImg=it=>IMG[imgKey(it)]||it.autoImg||catalogImg(it.name,it.pid)||(it.isSet?firstPartImg(it):'')||'';   // manual override → sheet cover → catalog fallback → set's lead-item image
 // hidden promo baskets (ปิดตะกร้าโปร) — per device
 let PHID={}, showHidden=false;
 function loadPHID(){ try{PHID=JSON.parse(localStorage.getItem('promoHidden')||'{}')}catch{PHID={}} }
@@ -1015,6 +1033,8 @@ $('#monthSel').addEventListener('change',e=>{ MONTH=e.target.value; updateHidden
   $('#sub').textContent=`สรุปราคาโปรสำหรับไลฟ์ · เลือกช่วงแคมเปญด้านล่างเพื่อดูราคาของช่วงนั้น · กด "คัดลอกคำพูด" ไว้ใช้พูดตอนไลฟ์`;
   renderMonthSel();renderChips();renderCards();updateCount();updateHiddenBtn();
   $('#msg').style.display='none';$('#result').hidden=false;
+  // load the product catalog in the background, then repaint so catalog-fallback images fill in
+  ensureCat().then(()=>{ _catImgCache.clear(); rerender(); }).catch(()=>{});
 }catch(e){$('#msg').className='msg err';$('#msg').textContent='ผิดพลาด: '+((e&&e.message)||e);}})();
 </script>
 </body>
