@@ -33,6 +33,35 @@
   .msg{margin:12px 0;font-size:13px;padding:10px 13px;border-radius:10px;background:var(--surface-2);color:var(--ink-2)}
   .msg.err{background:color-mix(in oklab,var(--bad) 13%,var(--surface));color:var(--bad)}
 
+  /* ---- seller-center left sidebar ---- */
+  .app{display:flex;align-items:flex-start;max-width:1800px;margin:0 auto}
+  .app .wrap{max-width:none;margin:0;flex:1;min-width:0;padding:16px 24px 64px}
+  .side{position:sticky;top:0;align-self:stretch;min-height:100dvh;width:238px;flex:none;background:var(--surface);border-right:1px solid var(--line);padding:16px 12px;display:flex;flex-direction:column;gap:2px;z-index:5}
+  .sbrand{display:flex;align-items:center;gap:10px;padding:4px 8px 14px}
+  .sbrand .slogo{width:36px;height:36px;border-radius:11px;background:var(--ink);color:var(--surface);display:flex;align-items:center;justify-content:center;font-size:19px;flex:none}
+  .sbrand .stt{font-size:14.5px;font-weight:800;line-height:1.15}
+  .sbrand .sss{font-size:11px;color:var(--muted);line-height:1.15}
+  .sidesec{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:13px 8px 4px}
+  .sitem{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;color:var(--ink-2);font:inherit;font-size:13.5px;font-weight:600;text-align:left;border-radius:10px;padding:9px 10px;cursor:pointer;transition:background .12s,transform .12s,color .12s}
+  .sitem:hover{background:var(--surface-2);transform:translateX(2px);color:var(--ink)}
+  .sitem.on{background:var(--surface-2);color:var(--ink);font-weight:800;box-shadow:inset 3px 0 0 var(--accent)}
+  .sitem .sic{width:11px;height:11px;border-radius:50%;flex:none}
+  .sitem .semoji{width:20px;text-align:center;flex:none;font-size:15px}
+  .sidefoot{margin-top:auto;padding-top:12px}
+  .side .back{margin:0;width:100%;justify-content:center}
+  #newBasket,#newPromo{display:none}  /* moved into the sidebar */
+  @media(max-width:860px){
+    .app{flex-direction:column}
+    .side{position:static;min-height:0;width:100%;flex-direction:row;flex-wrap:wrap;align-items:center;border-right:0;border-bottom:1px solid var(--line);gap:6px;padding:10px 14px}
+    .sbrand{width:100%;padding:0 2px 6px}
+    .sidesec{display:none}
+    .sitem{width:auto;padding:7px 12px;border:1.5px solid var(--line-2);border-radius:999px}
+    .sitem:hover{transform:none}
+    .sitem.on{box-shadow:none;border-color:var(--accent);color:var(--accent)}
+    .sidefoot{margin:0 0 0 auto;padding:0}
+    .side .back{width:auto}
+  }
+
   /* campaign chips */
   .seclbl{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
   .chips{display:flex;flex-wrap:wrap;gap:8px}
@@ -313,8 +342,22 @@
 </style>
 </head>
 <body>
+<div class="app">
+<aside class="side">
+  <div class="sbrand"><span class="slogo">▦</span><div><div class="stt">โปรโมชัน</div><div class="sss" id="sideBrandName">—</div></div></div>
+  <div class="sidesec">แบรนด์</div>
+  <a class="sitem" data-brand="terry" href="promo-board.html"><span class="sic" style="background:#2563eb"></span>Terry</a>
+  <a class="sitem" data-brand="benutra" href="promo-catalog.html?brand=benutra"><span class="sic" style="background:#16a34a"></span>Benutra</a>
+  <a class="sitem" data-brand="gala" href="promo-catalog.html?brand=gala"><span class="sic" style="background:#e11d48"></span>Gala</a>
+  <div class="sidesec">โปรโมชัน</div>
+  <a class="sitem on" href="#"><span class="semoji">🏷️</span>บอร์ดราคาโปรฯ</a>
+  <a class="sitem" href="index.html?tool=promos"><span class="semoji">🗓️</span>บันทึกโปรโมชัน</a>
+  <div class="sidesec">สร้าง</div>
+  <button class="sitem" type="button" onclick="document.getElementById('newPromo').click()"><span class="semoji">➕</span>สร้างโปรโมชัน</button>
+  <button class="sitem" type="button" onclick="document.getElementById('newBasket').click()"><span class="semoji">🧺</span>สร้างตะกร้า</button>
+  <div class="sidefoot"><a class="back" href="./">‹ หน้าหลัก</a></div>
+</aside>
 <div class="wrap">
-  <a class="back" href="./">‹ หน้าหลัก</a>
   <div class="head">
     <h1><span class="dot"></span>โปรโมชัน Terry</h1>
     <span class="muted" style="font-size:12px">ราคาโปรแต่ละแคมเปญ · อ่านสดจาก Master Promotion Plan + Promotion TT (รูปสินค้าแมพอัตโนมัติ)</span>
@@ -352,6 +395,7 @@
     <div id="cards"></div>
     <div id="table" class="hidden"></div>
   </div>
+</div>
 </div>
 
 <!-- create-promo modal (single page) -->
@@ -990,6 +1034,9 @@ $('#monthSel').addEventListener('change',e=>{ MONTH=e.target.value; updateHidden
 // brand the page (title, header, accent color)
 document.title='โปรโมชัน '+CFG.name;
 try{ document.documentElement.style.setProperty('--accent',CFG.color); }catch{}
+// mark the active brand in the left sidebar + set its name
+try{ const sn=document.getElementById('sideBrandName'); if(sn)sn.textContent=CFG.name;
+  const si=document.querySelector('.side .sitem[data-brand="'+BRAND+'"]'); if(si)si.classList.add('on'); }catch{}
 { const h1=document.querySelector('.head h1'); if(h1)h1.innerHTML='<span class="dot" style="background:'+CFG.color+'"></span>โปรโมชัน '+esc(CFG.name);
   const sm=document.querySelector('.head .muted'); if(sm)sm.textContent='แคตตาล็อกสินค้า + ราคาปลีก · รูปแมพอัตโนมัติจากชื่อสินค้า · สร้างโปร/แคมเปญเองได้'; }
 (async()=>{try{ try{LINKS=await (await fetch('catalog-links.json?cb='+Date.now())).json();}catch{LINKS={};}
