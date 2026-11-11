@@ -985,21 +985,21 @@ function renderLeft(){ const el=$('#ccolL'); const store=WZ.scope==='store';
     el.querySelectorAll('[data-q]').forEach(q=>q.addEventListener('input',()=>{ WZ.items[+q.dataset.q].qty=Math.max(1,+q.value||1); renderPrev(); }));
     el.querySelectorAll('[data-mi]').forEach(t=>t.addEventListener('input',()=>{ WZ.items[+t.dataset.mi].name=t.value; renderPrev(); }));
     el.querySelectorAll('[data-rm]').forEach(b=>b.addEventListener('click',()=>{ WZ.items.splice(+b.dataset.rm,1); renderLeft(); renderPrev(); }));
-    const ap=$('#addPick'); if(ap)ap.addEventListener('click',openPicker);
+    const ap=$('#addPick'); if(ap)ap.addEventListener('click',openCompPick);
     const am=$('#addManualRow'); if(am)am.addEventListener('click',()=>{ WZ.items.push({name:'',qty:1,manual:true}); renderLeft(); const ms=$('#ccolL').querySelectorAll('.mtext'); if(ms.length)ms[ms.length-1].focus(); });
   }
   const ss=$('#scStore'); if(ss)ss.addEventListener('click',()=>{ WZ.scope='store'; renderLeft(); renderPrev(); });
   const si=$('#scItems'); if(si)si.addEventListener('click',()=>{ WZ.scope='items'; renderLeft(); renderPrev(); });
 }
-function openPicker(){
+function openCompPick(){
   const ov=document.createElement('div'); ov.className='pkov'; ov.id='pkov';
   ov.innerHTML=`<div class="pkhead"><b style="font-size:14px;white-space:nowrap">เลือกสินค้า</b><input id="pkSearch" class="srch" style="flex:1" placeholder="🔍 ค้นหาสินค้า..."><button class="xbtn" id="pkX">✕</button></div><div class="pkgrid" id="pkGrid"></div><div class="pkfoot"><button class="cadd" id="pkDone" style="width:100%">เสร็จ (เลือกแล้ว <span id="pkCnt">0</span>)</button></div>`;
   $('#composer .sheet').appendChild(ov);
   $('#pkSearch').addEventListener('input',renderPkGrid);
-  $('#pkX').addEventListener('click',closePicker); $('#pkDone').addEventListener('click',closePicker);
+  $('#pkX').addEventListener('click',closeCompPick); $('#pkDone').addEventListener('click',closeCompPick);
   renderPkGrid(); $('#pkSearch').focus();
 }
-function closePicker(){ const ov=$('#pkov'); if(ov)ov.remove(); renderLeft(); renderPrev(); }
+function closeCompPick(){ const ov=$('#pkov'); if(ov)ov.remove(); renderLeft(); renderPrev(); }
 function pkGroups(){ const sb=$('#pkSearch'); const q=((sb&&sb.value)||'').trim().toLowerCase();
   const map=new Map();
   WZ.base.forEach(p=>{ if(q && !((p.name||'').toLowerCase().includes(q) || (p.family||'').toLowerCase().includes(q))) return;
