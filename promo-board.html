@@ -157,6 +157,10 @@
   .pnow{font-size:21px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
   .pfull{font-size:13.5px;color:var(--muted);text-decoration:line-through;font-variant-numeric:tabular-nums}
   .save{display:inline-block;font-size:11px;font-weight:800;color:var(--good);background:color-mix(in oklab,var(--good) 14%,var(--surface));border-radius:6px;padding:2px 7px}
+  .campstrip{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+  .campchip{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;color:var(--cc);background:color-mix(in oklab,var(--cc) 14%,var(--surface));border:1px solid color-mix(in oklab,var(--cc) 40%,transparent);border-radius:999px;padding:2px 4px 2px 9px;line-height:1.5}
+  .campx{border:0;background:color-mix(in oklab,var(--cc) 22%,transparent);color:var(--cc);width:15px;height:15px;border-radius:50%;font-size:10px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+  .campx:hover{background:var(--cc);color:#fff}
   .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:2px}
   .tag{font-size:10.5px;font-weight:700;border-radius:6px;padding:2px 7px;display:inline-flex;align-items:center;gap:4px}
   .tag.gwp{background:color-mix(in oklab,var(--warn) 15%,var(--surface));color:var(--warn)}
@@ -517,6 +521,18 @@ function savePST(){ try{localStorage.setItem('promoPickStatus',JSON.stringify(PS
 const pstKey=p=>String(p.code||p.image);
 const isOn=p=>PST[pstKey(p)]!=='off';
 const imgKey=it=>it.uid||it.name;   // unique per row (duplicate names must not share state)
+// ── live cover maps (straight from the TikTok/Shopee cover tabs) — Product ID & image come from the sheet,
+// so no Product IDs are hard-coded: a product's image/ID stay correct even when the team edits the sheet. ──
+let COVER_PID=new Map();   // Product ID → image URL
+let COVER_NAME=[];         // [{k, pid, img}] — name-keyed, for products whose SKU→ID link is missing/stale
+const IMG_ALIAS=[['serum','เซรั่ม'],['moist','มอยส'],['sleeping','มาส'],['mask','มาส'],['sunscreen','กันแดด']];
+const nkImg=s=>String(s||'').toLowerCase().replace(/\([^)]*\)|\[[^\]]*\]/g,'').replace(/terry|เทอร์รี่|official|store/g,'').replace(/[^a-z0-9ก-๙]/g,'');
+function coverMatchByName(name){ if(!COVER_NAME.length)return null; const k=nkImg(name); if(!k)return null;
+  const keys=[k]; for(const[en,th]of IMG_ALIAS){ if(k.includes(en)&&!keys.includes(k.replace(en,th))) keys.push(k.replace(en,th)); }
+  for(const kk of keys){ const ex=COVER_NAME.find(r=>r.k===kk&&r.img); if(ex)return ex; }               // exact
+  let best=null; for(const kk of keys){ for(const r of COVER_NAME){ if(r.img&&r.k&&(r.k.includes(kk)||kk.includes(r.k))){ if(!best||r.k.length>best.k.length)best=r; } } }  // longest overlap
+  return best; }
+const coverImgByName=name=>{ const m=coverMatchByName(name); return m?m.img:''; };
 // fallback image resolver — when the cover sheet has no image for a product, reuse that product's OWN
 // image from the local catalog (catalog-terry.json) matched by TikTok Product ID or by name (via
 // catalog-links.json); and for a set with no image of its own, show its lead component's image.
@@ -535,7 +551,7 @@ function catalogImg(name,pid){
   _catImgCache.set(ck,out); return out;
 }
 const firstPartImg=it=>{ if(!it.parts)return''; for(const p of it.parts){ if(p.img)return p.img; } for(const p of it.parts){ const im=catalogImg(p.name,''); if(im)return im; } return ''; };
-const displayImg=it=>IMG[imgKey(it)]||it.autoImg||catalogImg(it.name,it.pid)||(it.isSet?firstPartImg(it):'')||'';   // manual override → sheet cover → catalog fallback → set's lead-item image
+const displayImg=it=>IMG[imgKey(it)]||it.autoImg||(it.isSet?'':coverImgByName(it.name))||catalogImg(it.name,it.pid)||(it.isSet?firstPartImg(it):'')||'';   // manual override → sheet cover(ID) → sheet cover(name) → catalog fallback → set's lead-item image
 // hidden promo baskets (ปิดตะกร้าโปร) — per device
 let PHID={}, showHidden=false;
 function loadPHID(){ try{PHID=JSON.parse(localStorage.getItem('promoHidden')||'{}')}catch{PHID={}} }
@@ -555,8 +571,11 @@ async function load(){
   const [gM,gTT,...covG]=await Promise.all([ csvTab(PROMO_SHEET,GID_MASTER), csvTab(PROMO_SHEET,GID_TT), ...COVER_TABS.map(gid=>csvTab(COVER_SHEET,gid)) ]);
   if(!gM.length) throw new Error('อ่านชีตไม่ได้ (ตรวจการแชร์)');
   // cover map: product code → image URL (image = first http cell; layout differs per tab)
-  const cover=new Map();
-  for(const g of covG){ for(let i=1;i<g.length;i++){ const code=String(g[i][0]||'').trim(); const img=firstHttp(g[i]); if(code&&img&&!cover.has(code)) cover.set(code,img); } }
+  const cover=new Map(); COVER_NAME=[];
+  for(const g of covG){ for(let i=1;i<g.length;i++){ const code=String(g[i][0]||'').trim(); const nm=String(g[i][1]||'').trim(); const img=firstHttp(g[i]); if(!img)continue;
+    if(code&&!cover.has(code)) cover.set(code,img);
+    COVER_NAME.push({ k:nkImg(nm), pid:/^\d{10,}$/.test(code)?code:'', img }); } }
+  COVER_PID=cover;
   // Promotion TT: internal SKU / Name → Product ID
   const ttBySku=new Map(), ttByName=new Map();
   { const hr=gTT.findIndex(r=>r.includes('Product ID')&&r.includes('Name'));
@@ -579,10 +598,10 @@ async function load(){
     const full=num(r[base+2]); const sku=String(r[base+1]||'').trim();
     const typRaw=String(r[10]||'').trim().toLowerCase();
     const isSet = typRaw==='set' || (/\+|x\s*\d|x\d/i.test(name) && typRaw!=='single');
-    let pid = ttBySku.get(normSku(sku)) || ttByName.get(normNm(name)) || '';     // map via Promotion TT
-    let autoImg = pid ? (cover.get(pid)||'') : '';                               // image via cover sheet
-    // single Terry products: use the curated image from the "Terry" image tab (resolved live via cover)
-    if(!isSet){ const tpid=TERRY_SINGLE_PID[normNm(name)]; if(tpid){ pid=tpid; autoImg=cover.get(tpid)||autoImg; } }
+    // Product ID + image straight from the sheet: Promotion TT (SKU/Name→ID) → cover tab by name → (last) baked map
+    const cm = !isSet ? coverMatchByName(name) : null;
+    let pid = ttBySku.get(normSku(sku)) || ttByName.get(normNm(name)) || (cm&&cm.pid) || (!isSet?(TERRY_SINGLE_PID[normNm(name)]||''):'') || '';
+    let autoImg = (pid && cover.get(pid)) || (cm&&cm.img) || '';                 // image via Product ID, else by name
     const bk=name+'|'+sku; const n=occ.get(bk)||0; occ.set(bk,n+1); const uid=bk+'|'+n;
     // set components: columns SKU1,QTY,SKU2,QTY,...,SKU5,QTY (0..9) → each with its own image via TT→cover
     const parts=[];
@@ -726,9 +745,9 @@ function cardHtml(it,cp){
              </div>
            </div>`
         : `<div class="pbar" draggable="false">
-             <select class="assignsel" data-assign="${esc(it.uid)}" title="คัดลอกตะกร้านี้ไปแคมเปญ" draggable="false">
-               <option value="">➕ เพิ่มไปแคมเปญ…</option>
-               ${allCamps().filter(c=>c.k!=='AWO').map(c=>`<option value="${esc(c.k)}">📍 ${esc(c.k)}${camps.includes(c.k)?' ✓':''}</option>`).join('')}
+             <select class="assignsel" data-assign="${esc(it.uid)}" title="ใส่สินค้านี้เข้าแคมเปญโปรฯ (ตั้งราคาต่อแคมเปญ)" draggable="false">
+               <option value="">➕ ใส่ในแคมเปญ…</option>
+               ${allCamps().filter(c=>c.k!=='AWO').map(c=>`<option value="${esc(c.k)}">${camps.includes(c.k)?'✅ ':'➕ '}${esc(c.k)}${camps.includes(c.k)?' · อยู่แล้ว (แก้ราคา)':''}</option>`).join('')}
              </select>
              ${SEL!=='AWO'?`<button class="edit" data-act="editprice" data-k="${esc(it.uid)}" data-camp="${esc(SEL)}" title="แก้ราคาโปรฯ นี้">✎ ฿</button><button class="edit del" data-act="rmcamp" data-k="${esc(it.uid)}" data-camp="${esc(SEL)}" title="เอาออกจากโปรฯ นี้">✕ โปร</button>`:''}
              ${(act.custom&&closed)?`<button class="edit del" data-act="delpromo" data-k="${k}" title="ลบโปรฯ นี้ถาวร">🗑 ลบถาวร</button>`:''}
@@ -740,6 +759,7 @@ function cardHtml(it,cp){
       <div class="nm" title="${lbl}">${esc(act.name)}</div>
       <div class="row1">${act.sku?`<span class="sku">${esc(act.sku)}</span>`:''}<span class="typ ${act.isSet?'set':'single'}">${act.isSet?'เซ็ต/ตะกร้า':'ชิ้นเดียว'}</span>${best?'<span class="tag best">ถูกสุด</span>':''}</div>
       <div class="prices"><span class="pnow" style="color:${cp.c}">฿${fmt(now)}</span>${act.full>0&&act.full>now?`<span class="pfull">฿${fmt(act.full)}</span>`:''}${save>0?`<span class="save">-${pct}%</span>`:''}</div>
+      ${camps.filter(c=>c!=='AWO').length?`<div class="campstrip" title="แคมเปญที่สินค้านี้อยู่">${camps.filter(c=>c!=='AWO').map(ck=>{const c=allCamps().find(x=>x.k===ck)||cp;return `<span class="campchip" style="--cc:${c.c}">${esc(ck)}<button class="campx" data-act="rmcamp" data-k="${esc(it.uid)}" data-camp="${esc(ck)}" title="เอาออกจากแคมเปญ ${esc(ck)}">✕</button></span>`;}).join('')}</div>`:''}
       ${!act.isSet?platTags(act.name,act.pid):''}
       ${parts}
       ${(act.gwp||liveRm||act.giftImg||act.start||act.topic)?`<div class="meta">${act.topic?`<span class="tag" style="background:color-mix(in oklab, var(--accent) 16%, var(--surface));color:var(--accent);font-weight:800">🏷️ ${esc(act.topic)}</span>`:''}${act.giftImg?`<img src="${act.giftImg}" class="gwpimg" title="รูปของแถม">`:''}${act.start?`<span class="tag rm">📅 ${dRange(act.start,act.end)}</span>`:''}${act.gwp?`<span class="tag gwp">🎁 ${esc(act.gwp)}</span>`:''}${liveRm?'<span class="tag live">LIVE</span>':''}</div>`:''}

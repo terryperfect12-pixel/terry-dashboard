@@ -158,6 +158,10 @@
   .pnow{font-size:21px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
   .pfull{font-size:13.5px;color:var(--muted);text-decoration:line-through;font-variant-numeric:tabular-nums}
   .save{display:inline-block;font-size:11px;font-weight:800;color:var(--good);background:color-mix(in oklab,var(--good) 14%,var(--surface));border-radius:6px;padding:2px 7px}
+  .campstrip{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+  .campchip{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;color:var(--cc);background:color-mix(in oklab,var(--cc) 14%,var(--surface));border:1px solid color-mix(in oklab,var(--cc) 40%,transparent);border-radius:999px;padding:2px 4px 2px 9px;line-height:1.5}
+  .campx{border:0;background:color-mix(in oklab,var(--cc) 22%,transparent);color:var(--cc);width:15px;height:15px;border-radius:50%;font-size:10px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+  .campx:hover{background:var(--cc);color:#fff}
   .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:2px}
   .tag{font-size:10.5px;font-weight:700;border-radius:6px;padding:2px 7px;display:inline-flex;align-items:center;gap:4px}
   .tag.gwp{background:color-mix(in oklab,var(--warn) 15%,var(--surface));color:var(--warn)}
@@ -513,7 +517,16 @@ function savePST(){ try{localStorage.setItem(LSK('promoPickStatus'),JSON.stringi
 const pstKey=p=>String(p.code||p.image);
 const isOn=p=>PST[pstKey(p)]!=='off';
 const imgKey=it=>it.uid||it.name;   // unique per row (duplicate names must not share state)
-const displayImg=it=>IMG[imgKey(it)]||it.autoImg||'';   // manual override wins, else auto image from the sheet mapping
+// ── name-based cover fallback: fills images even when the catalog name doesn't match the cover name exactly ──
+let COVER_NAME=[];   // [{k, img}] from the brand's TikTok/Shopee cover tabs (TikTok first)
+const IMG_ALIAS=[['serum','เซรั่ม'],['moist','มอยส'],['sleeping','มาส'],['mask','มาส'],['sunscreen','กันแดด']];
+const nkImg=s=>String(s||'').toLowerCase().replace(/\([^)]*\)|\[[^\]]*\]/g,'').replace(/terry|benutra|gala|เทอร์รี่|บีนูทร่า|official|store/g,'').replace(/[^a-z0-9ก-๙]/g,'');
+function coverImgByName(name){ if(!COVER_NAME.length)return ''; const k=nkImg(name); if(!k)return '';
+  const keys=[k]; for(const[en,th]of IMG_ALIAS){ if(k.includes(en)&&!keys.includes(k.replace(en,th))) keys.push(k.replace(en,th)); }
+  for(const kk of keys){ const ex=COVER_NAME.find(r=>r.k===kk&&r.img); if(ex)return ex.img; }               // exact
+  let best=null; for(const kk of keys){ for(const r of COVER_NAME){ if(r.img&&r.k&&(r.k.includes(kk)||kk.includes(r.k))){ if(!best||r.k.length>best.k.length)best=r; } } }  // longest overlap
+  return best?best.img:''; }
+const displayImg=it=>IMG[imgKey(it)]||it.autoImg||coverImgByName(it.name)||'';   // manual override → sheet cover(name exact) → sheet cover(name fuzzy)
 // hidden promo baskets (ปิดตะกร้าโปร) — per device
 let PHID={}, showHidden=false;
 function loadPHID(){ try{PHID=JSON.parse(localStorage.getItem(LSK('promoHidden'))||'{}')}catch{PHID={}} }
@@ -533,9 +546,9 @@ async function load(){
   const [cat,...covG]=await Promise.all([ csvTab(CATALOG_SHEET,CFG.catGid), ...COVER_TABS.map(gid=>csvTab(COVER_SHEET,gid)) ]);
   if(!cat.length) throw new Error('อ่านชีตแคตตาล็อกไม่ได้ (ตรวจการแชร์)');
   // cover tabs vary in layout → find the "ชื่อสินค้า" column by header; map product NAME → image
-  const imgByName=new Map();
+  const imgByName=new Map(); COVER_NAME=[];
   for(const g of covG){ if(!g.length)continue; const nmCol=(g[0]||[]).findIndex(c=>/ชื่อสินค้า/.test(c)); if(nmCol<0)continue;
-    for(let i=1;i<g.length;i++){ const nm=normNm(g[i][nmCol]); const img=firstHttp(g[i]); if(nm&&img&&!imgByName.has(nm)) imgByName.set(nm,img); } }
+    for(let i=1;i<g.length;i++){ const raw=g[i][nmCol]; const nm=normNm(raw); const img=firstHttp(g[i]); if(!img)continue; if(nm&&!imgByName.has(nm)) imgByName.set(nm,img); COVER_NAME.push({k:nkImg(raw),img}); } }
   // catalog header: ชื่อสินค้า · ตัวเลือกสินค้า · SKU ของผู้ขาย · ราคาขายปลีก
   let hr=cat.findIndex(r=>r.some(c=>/ชื่อสินค้า/.test(c))); if(hr<0)hr=0;
   const H=cat[hr]; const cNm=H.findIndex(c=>/ชื่อสินค้า/.test(c)), cVar=H.findIndex(c=>/ตัวเลือก/.test(c)), cSku=H.findIndex(c=>/SKU/i.test(c)), cPr=H.findIndex(c=>/ราคา/.test(c));
@@ -546,7 +559,7 @@ async function load(){
   for(let i=hr+1;i<cat.length;i++){ const r=cat[i]; const name=String(r[cNm]||'').trim(); if(!name)continue;
     const variant=String(r[cVar]||'').trim(); const sku=String(r[cSku]||'').trim(); const price=num(r[cPr]);
     const skuDisp=sku+(variant&&!/^default$/i.test(variant)?' · '+variant:'');
-    const autoImg=imgByName.get(normNm(name))||'';
+    const autoImg=imgByName.get(normNm(name))||coverImgByName(name)||'';
     ALLVARIANTS.push({ name, variant, sku:skuDisp, full:price, awo:price, img:autoImg });
     const bk=name+'|'+skuDisp; const n=occ.get(bk)||0; occ.set(bk,n+1); const uid=bk+'|'+n;
     const prices={}; CAMP.forEach(cp=>prices[cp.k]= cp.k==='AWO'?price:0);        // AWO=ราคาปลีก; ราคาแคมเปญอื่นตั้งเองภายหลัง
@@ -694,9 +707,9 @@ function cardHtml(it,cp){
              </div>
            </div>`
         : `<div class="pbar" draggable="false">
-             <select class="assignsel" data-assign="${esc(it.uid)}" title="คัดลอกตะกร้านี้ไปแคมเปญ" draggable="false">
-               <option value="">➕ เพิ่มไปแคมเปญ…</option>
-               ${allCamps().filter(c=>c.k!=='AWO').map(c=>`<option value="${esc(c.k)}">📍 ${esc(c.k)}${camps.includes(c.k)?' ✓':''}</option>`).join('')}
+             <select class="assignsel" data-assign="${esc(it.uid)}" title="ใส่สินค้านี้เข้าแคมเปญโปรฯ (ตั้งราคาต่อแคมเปญ)" draggable="false">
+               <option value="">➕ ใส่ในแคมเปญ…</option>
+               ${allCamps().filter(c=>c.k!=='AWO').map(c=>`<option value="${esc(c.k)}">${camps.includes(c.k)?'✅ ':'➕ '}${esc(c.k)}${camps.includes(c.k)?' · อยู่แล้ว (แก้ราคา)':''}</option>`).join('')}
              </select>
              ${SEL!=='AWO'?`<button class="edit" data-act="editprice" data-k="${esc(it.uid)}" data-camp="${esc(SEL)}" title="แก้ราคาโปรฯ นี้">✎ ฿</button><button class="edit del" data-act="rmcamp" data-k="${esc(it.uid)}" data-camp="${esc(SEL)}" title="เอาออกจากโปรฯ นี้">✕ โปร</button>`:''}
              ${(act.custom&&closed)?`<button class="edit del" data-act="delpromo" data-k="${k}" title="ลบโปรฯ นี้ถาวร">🗑 ลบถาวร</button>`:''}
@@ -708,6 +721,7 @@ function cardHtml(it,cp){
       <div class="nm" title="${lbl}">${esc(act.name)}</div>
       <div class="row1">${act.sku?`<span class="sku">${esc(act.sku)}</span>`:''}<span class="typ ${act.isSet?'set':'single'}">${act.isSet?'เซ็ต/ตะกร้า':'ชิ้นเดียว'}</span>${best?'<span class="tag best">ถูกสุด</span>':''}</div>
       <div class="prices"><span class="pnow" style="color:${cp.c}">฿${fmt(now)}</span>${act.full>0&&act.full>now?`<span class="pfull">฿${fmt(act.full)}</span>`:''}${save>0?`<span class="save">-${pct}%</span>`:''}</div>
+      ${camps.filter(c=>c!=='AWO').length?`<div class="campstrip" title="แคมเปญที่สินค้านี้อยู่">${camps.filter(c=>c!=='AWO').map(ck=>{const c=allCamps().find(x=>x.k===ck)||cp;return `<span class="campchip" style="--cc:${c.c}">${esc(ck)}<button class="campx" data-act="rmcamp" data-k="${esc(it.uid)}" data-camp="${esc(ck)}" title="เอาออกจากแคมเปญ ${esc(ck)}">✕</button></span>`;}).join('')}</div>`:''}
       ${!act.isSet?platTags(act.name,act.pid):''}
       ${parts}
       ${(act.gwp||liveRm||act.giftImg||act.start||act.topic)?`<div class="meta">${act.topic?`<span class="tag" style="background:color-mix(in oklab, var(--accent) 16%, var(--surface));color:var(--accent);font-weight:800">🏷️ ${esc(act.topic)}</span>`:''}${act.giftImg?`<img src="${act.giftImg}" class="gwpimg" title="รูปของแถม">`:''}${act.start?`<span class="tag rm">📅 ${dRange(act.start,act.end)}</span>`:''}${act.gwp?`<span class="tag gwp">🎁 ${esc(act.gwp)}</span>`:''}${liveRm?'<span class="tag live">LIVE</span>':''}</div>`:''}
