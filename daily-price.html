@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ยอดขายรายวัน & ราคาที่ขายดี</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --surface:#ffffff; --surface-2:#f1f3f6; --line:#e5e8ec; --line-2:#d3d8df;
+    --ink:#121619; --ink-2:#3b434c; --muted:#8a929c; --accent:#2563eb; --accent-soft:#e8effe;
+    --good:#16a34a; --bad:#e11d48; --warn:#d97706;
+    --f:"Segoe UI",system-ui,-apple-system,"Sarabun",sans-serif; --f-mono:ui-monospace,"Cascadia Mono",Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#0f1317; --surface:#171c22; --surface-2:#1e242c; --line:#2a313a; --line-2:#394250;
+    --ink:#eef1f4; --ink-2:#c3cad2; --muted:#8893a0; --accent:#5b9bff; --accent-soft:#1b2740;
+  }}
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1500px;margin:0 auto;padding:16px 18px 70px}
+  .muted{color:var(--muted)}
+  code{font-family:var(--f-mono);font-size:12px}
+  a{color:inherit}
+  .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);border-radius:9px;padding:8px 13px;font:inherit;font-weight:600;cursor:pointer}
+  .btn:hover{background:var(--surface-2)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.small{padding:6px 10px;font-size:12.5px}
+  .btn:disabled{opacity:.45;cursor:default}
+  h1{font-size:21px;margin:0 0 2px;font-weight:800;letter-spacing:-.2px}
+  .sub{color:var(--muted);font-size:13px}
+  .topbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px;justify-content:space-between;margin-bottom:14px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:16px}
+  .ctl-row{display:flex;flex-wrap:wrap;gap:16px;align-items:center}
+  .ctl{display:flex;flex-direction:column;gap:5px}
+  .ctl-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{border:1px solid var(--line-2);background:var(--surface);color:var(--ink-2);border-radius:999px;padding:5px 12px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+  .chip .dot{width:9px;height:9px;border-radius:50%}
+  .chip.on{color:#fff;border-color:transparent}
+  select.sel{border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink);border-radius:10px;padding:8px 12px;font:inherit;font-weight:700;font-size:14px;cursor:pointer}
+  .msg{border-radius:10px;padding:10px 13px;font-size:13px;margin:10px 0;display:none}
+  .msg.info{background:var(--accent-soft);color:var(--accent);display:block}
+  .msg.ok{background:color-mix(in oklab,var(--good) 14%,var(--surface));color:var(--good);display:block}
+  .msg.error{background:color-mix(in oklab,var(--bad) 13%,var(--surface));color:var(--bad);display:block}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:4px}
+  .kpi{background:var(--surface-2);border-radius:12px;padding:12px 14px}
+  .kpi .k{font-size:11.5px;color:var(--muted);font-weight:700}
+  .kpi .v{font-size:20px;font-weight:800;margin-top:3px;letter-spacing:-.3px}
+  .kpi .s{font-size:11.5px;color:var(--muted);margin-top:1px}
+  .sec-h{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  .sec-t{font-size:16px;font-weight:800}
+  .sec-d{font-size:12px;color:var(--muted);margin-top:1px}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11.5px;color:var(--muted);margin-top:8px}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .legend i{width:13px;height:10px;border-radius:3px;display:inline-block}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{padding:9px 10px;text-align:right;white-space:nowrap}
+  th:first-child,td:first-child,.l{text-align:left}
+  thead th{font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);border-bottom:2px solid var(--line);font-weight:700}
+  tbody tr{border-bottom:1px solid var(--line)}
+  tbody tr.clk{cursor:pointer}
+  tbody tr.clk:hover{background:var(--surface-2)}
+  tbody tr.on{background:var(--accent-soft)}
+  .tblwrap{overflow-x:auto}
+  .pos{color:var(--good);font-weight:700}
+  .neg{color:var(--bad);font-weight:700}
+  .tag{display:inline-block;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:800}
+  .empty{padding:48px 16px;text-align:center;color:var(--muted)}
+  .drop{border:2px dashed var(--line-2);border-radius:12px;padding:10px 14px;font-size:12.5px;color:var(--muted);cursor:pointer}
+  .drop.hot{border-color:var(--accent);background:var(--accent-soft)}
+  .barwrap .bartip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:600;z-index:50;opacity:0;transition:opacity .08s;white-space:nowrap;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+  .pricegrid{display:grid;grid-template-columns:1fr;gap:0}
+  .homelink{color:var(--muted);font-size:13px;text-decoration:none;font-weight:600}
+  .homelink:hover{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div>
+      <a class="homelink" href="index.html">‹ หน้าหลัก</a>
+      <h1>📅 ยอดขายรายวัน &amp; ราคาที่ขายดี</h1>
+      <div class="sub">อ่านไฟล์ออเดอร์ TikTok + Shopee · ดูยอดรายวัน 1–31 · วันแคมเปญปังไหม · สินค้าตัวไหน/ราคาไหนขายดี</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn primary" id="loadSheet">⟳ โหลดจาก Google Sheet</button>
+      <label class="drop" id="drop">⬆ หรือวาง/เลือกไฟล์ .xlsx .csv<input id="file" type="file" accept=".xlsx,.xls,.csv" multiple hidden></label>
+    </div>
+  </div>
+
+  <div class="msg info" id="msg">กด“⟳ โหลดจาก Google Sheet” เพื่อดึงออเดอร์ล่าสุด หรืออัปโหลดไฟล์ที่ export จาก Seller Centre</div>
+
+  <div class="card" id="controls" style="display:none">
+    <div class="ctl-row">
+      <div class="ctl"><span class="ctl-lbl">เดือน</span><select class="sel" id="monthSel"></select></div>
+      <div class="ctl"><span class="ctl-lbl">แพลตฟอร์ม</span><div class="chips" id="platChips"></div></div>
+      <div class="ctl"><span class="ctl-lbl">แบรนด์</span><div class="chips" id="brandChips"></div></div>
+      <div class="ctl"><span class="ctl-lbl">แสดงเป็น</span><div class="chips" id="metricChips">
+        <button class="chip on" data-m="sales">฿ ยอดขาย</button>
+        <button class="chip" data-m="units">ชิ้น</button></div></div>
+    </div>
+  </div>
+
+  <div id="result" style="display:none">
+    <div class="card"><div class="kpis" id="kpis"></div></div>
+
+    <div class="card">
+      <div class="sec-h">
+        <div><div class="sec-t">ยอดขายรายวัน 1–<span id="dimLbl">31</span></div><div class="sec-d" id="dayDesc">แถบสีจาง = ช่วงแคมเปญประจำเดือน · ดูว่าวันแคมเปญยอดเด้งไหม</div></div>
+      </div>
+      <div class="barwrap" id="dayChart"></div>
+      <div class="legend" id="dayLegend"></div>
+      <div id="campCompare" style="margin-top:12px"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-h">
+        <div><div class="sec-t">สินค้าขายดี — เดือนนี้</div><div class="sec-d">กดสินค้าเพื่อดูกราฟรายวัน + ราคาที่ลูกค้าซื้อว่าราคาไหนขายดี</div></div>
+      </div>
+      <div class="tblwrap"><table id="prodTbl"></table></div>
+    </div>
+
+    <div class="card" id="drillCard" style="display:none"></div>
+  </div>
+</div>
+
+<div class="bartip" id="bartip"></div>
+
+<script>
+/* ---------- helpers (shared with the ยอดขายรายวัน tool) ---------- */
+const $ = s => document.querySelector(s);
+const nf = new Intl.NumberFormat('th-TH');
+const mf = new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 });
+const money = v => '฿' + mf.format(Math.round(v || 0));
+const kShort = n => { const a = Math.abs(n); return a >= 1e6 ? (n/1e6).toFixed(a>=1e7?0:1)+'M' : a >= 1e3 ? Math.round(n/1e3)+'K' : String(Math.round(n)); };
+const bShort = n => '฿' + kShort(n);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+const str = v => (v == null ? '' : String(v)).trim();
+const num = v => { if (typeof v === 'number') return v; const n = parseFloat(String(v ?? '').replace(/[,฿\s]/g, '')); return isFinite(n) ? n : 0; };
+const TH_DOW = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'], TH_MO = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const monthLabel = mk => { const [y,m] = mk.split('-').map(Number); return TH_MO[m-1] + ' ' + (y+543); };
+
+/* ---------- column detection (same maps as the order tool) ---------- */
+const COL = {
+  id:['หมายเลขคำสั่งซื้อ','Order ID','Order SN'],
+  status:['สถานะการสั่งซื้อ','Order Status'],
+  product:['ชื่อสินค้า','Product Name'],
+  sku:['Seller SKU','SKU ผู้ขาย','เลขอ้างอิง SKU (SKU Reference No.)','SKU Reference No.'],
+  variation:['ชื่อตัวเลือก','Variation Name','Variation'],
+  qty:['จำนวน','Quantity'],
+  lineVal:['ราคาขายสุทธิ','SKU Subtotal After Discount','ราคาสินค้าที่ชำระโดยผู้ซื้อ (THB)','Product Subtotal','SKU Subtotal after discount'],
+  orderAt:['เวลาที่ทำการสั่งซื้อ','วันที่ทำการสั่งซื้อ','Order Creation Date','Created Time','เวลาที่สร้างคำสั่งซื้อ']
+};
+const normH = s => String(s ?? '').replace(/[\s*]/g, '').toLowerCase();
+const COLN = Object.fromEntries(Object.entries(COL).map(([k, a]) => [k, a.map(normH)]));
+function mapHeaders(row){ const n = (row || []).map(normH), idx = {}; for (const k in COLN) for (const a of COLN[k]) { const i = n.indexOf(a); if (i >= 0) { idx[k] = i; break; } } return idx; }
+function findHeader(aoa){ for (let i = 0; i < Math.min(12, aoa.length); i++) { const m = mapHeaders(aoa[i]); if (m.id != null && m.product != null) return {row:i, idx:m}; } return null; }
+function parseDate(v){
+  if (v == null || v === '' || v === '-') return null;
+  if (typeof v === 'number' && isFinite(v)) { const d = new Date(Math.round((v - 25569) * 864e5)); return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes()); }
+  const s = String(v).trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/); if (m) return new Date(+m[1], m[2]-1, +m[3], +(m[4]||0), +(m[5]||0));
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/); if (m) return new Date(+m[3], m[2]-1, +m[1], +(m[4]||0), +(m[5]||0));
+  return null;
+}
+const isCancel = raw => /ยกเลิก|cancel/i.test(String(raw || ''));
+const brandOf = s => { const n = String(s || '').toLowerCase(); if (/benutra|บีนูทร่า/.test(n)) return 'Benutra'; if (/terry|เธอร์รี่|เทอร์รี่/.test(n)) return 'Terry'; if (/gala|camille|กาล่า/.test(n)) return 'Gala'; return 'อื่นๆ'; };
+function buildOrders(aoa, fileName, platform, brand){
+  const h = findHeader(aoa); if (!h) return null;
+  const {row, idx} = h, map = new Map();
+  for (let r = row + 1; r < aoa.length; r++) {
+    const R = aoa[r]; if (!R) continue;
+    const g = k => idx[k] == null ? '' : R[idx[k]];
+    const id = str(g('id')); if (!id) continue;
+    let o = map.get(id);
+    if (!o) { o = { id, statusRaw:str(g('status')), orderAt:parseDate(g('orderAt')), items:[], platform:platform || '', brand:brand || 'อื่นๆ' }; o.cancel = isCancel(o.statusRaw); map.set(id, o); }
+    o.items.push({ name:str(g('product')), sku:str(g('sku')), variation:str(g('variation')), qty:num(g('qty')), val:num(g('lineVal')) });
+  }
+  return { orders:[...map.values()] };
+}
+
+/* ---------- fast CSV parser (order tabs are huge — ~20MB each — so skip SheetJS for CSV) ---------- */
+function parseCSV(t){ const R=[]; let r=[], c="", q=false; for(let i=0;i<t.length;i++){ const h=t[i];
+  if(q){ if(h==='"'){ if(t[i+1]==='"'){ c+='"'; i++; } else q=false; } else c+=h; }
+  else { if(h==='"')q=true; else if(h===','){ r.push(c); c=""; } else if(h==='\n'){ r.push(c); R.push(r); r=[]; c=""; } else if(h==='\r'){} else c+=h; } }
+  if(c!==""||r.length){ r.push(c); R.push(r); } return R; }
+
+/* ---------- XLSX loader (only for uploaded .xlsx files) ---------- */
+let xlsxP = null;
+function loadXLSX(){ if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (!xlsxP) xlsxP = new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; sc.onload = () => res(window.XLSX); sc.onerror = () => { xlsxP = null; rej(new Error('โหลดตัวอ่านไฟล์ไม่สำเร็จ')); }; document.head.appendChild(sc); });
+  return xlsxP; }
+function fixRange(XLSX, ws){ let mr=-1, mc=-1; for (const k in ws){ if (k[0]==='!') continue; const c = XLSX.utils.decode_cell(k); if (c.r>mr) mr=c.r; if (c.c>mc) mc=c.c; } if (mr>=0) ws['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:mr,c:mc}}); }
+
+/* ---------- live load from the shared order sheets (same as ยอดขายรายวัน) ---------- */
+const ORDER_SHEETS = [
+  { platform:'TikTok', id:'1uc46n128puQkaUQJ_eiy3ZhRgSUeSRcE50HKB3H5a-Q' },
+  { platform:'Shopee', id:'1xWW-u1ebmnpmlde4k7GsXUCJLgecfOqWOkEyWbouAHY' },
+];
+async function sheetTabs(id){
+  try { const html = await (await fetch('https://docs.google.com/spreadsheets/d/' + id + '/htmlview')).text();
+    const re = /\{name:\s*"([^"]+)"[^}]*?gid:\s*"?(\d+)"?/g; const out = []; let m;
+    while ((m = re.exec(html))) out.push({ name:m[1], gid:m[2] });
+    return out.length ? out : [{ name:'', gid:'0' }];
+  } catch { return [{ name:'', gid:'0' }]; }
+}
+function showMsg(kind, text){ const m = $('#msg'); m.className = 'msg ' + kind; m.innerHTML = text || ''; m.style.display = text ? 'block' : 'none'; }
+
+async function loadFromSheet(){
+  showMsg('info', 'กำลังโหลดออเดอร์จาก Google Sheet …');
+  try {
+    const merged = new Map(); const byPlat = {}; let done = 0, total = 0;
+    const jobs = [];
+    for (const S of ORDER_SHEETS){ const tabs = await sheetTabs(S.id); for (const tab of tabs) jobs.push({ S, tab }); }
+    total = jobs.length;
+    for (const { S, tab } of jobs){
+      done++; showMsg('info', 'กำลังโหลดออเดอร์ … (' + done + '/' + total + ' แท็บ · ' + S.platform + ' ' + tab.name + ')');
+      const url = 'https://docs.google.com/spreadsheets/d/' + S.id + '/export?format=csv&gid=' + tab.gid;
+      let txt = ''; try { txt = await (await fetch(url)).text(); } catch { continue; }
+      if (!txt || txt.trim().startsWith('<')) continue;
+      const brand = brandOf(tab.name);
+      const res = buildOrders(parseCSV(txt), S.platform, S.platform, brand);
+      if (res){ for (const o of res.orders) merged.set(S.platform + '|' + o.id, o); byPlat[S.platform] = (byPlat[S.platform]||0) + res.orders.length; }
+      await new Promise(r => setTimeout(r, 0));   // yield so the progress text paints
+    }
+    if (!merged.size) throw new Error('ไม่พบออเดอร์ในชีต — ตรวจว่าแชร์ “ทุกคนที่มีลิงก์ดูได้”');
+    ORDERS = [...merged.values()];
+    const platTxt = Object.entries(byPlat).map(([k,v]) => k + ' ' + nf.format(v)).join(' · ');
+    showMsg('ok', 'โหลดแล้ว ' + nf.format(merged.size) + ' ออเดอร์ (' + platTxt + ')');
+    boot();
+  } catch (e){ showMsg('error', 'โหลดไม่สำเร็จ: ' + ((e && e.message) ? e.message : String(e))); }
+}
+async function handleFiles(list){
+  const files = [...list].filter(f => /\.(xlsx|xls|csv)$/i.test(f.name));
+  if (!files.length){ showMsg('error', 'รองรับเฉพาะ .xlsx .xls .csv'); return; }
+  showMsg('info', 'กำลังอ่าน ' + files.map(f=>f.name).join(', ') + ' …');
+  try {
+    const XLSX = await loadXLSX();
+    const merged = new Map();
+    for (const f of files){
+      const plat = /shopee/i.test(f.name) ? 'Shopee' : /tiktok|tik/i.test(f.name) ? 'TikTok' : '';
+      const brand = brandOf(f.name);
+      const wb = /\.csv$/i.test(f.name) ? XLSX.read(await f.text(), {type:'string', raw:true}) : XLSX.read(await f.arrayBuffer(), {type:'array'});
+      for (const name of wb.SheetNames){ const ws = wb.Sheets[name]; fixRange(XLSX, ws); const res = buildOrders(XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''}), f.name, plat, brand); if (res){ for (const o of res.orders) merged.set((plat||f.name) + '|' + o.id, o); break; } }
+    }
+    if (!merged.size) throw new Error('ไม่พบคอลัมน์ Order ID / Product Name ในไฟล์');
+    ORDERS = [...merged.values()];
+    showMsg('ok', 'อ่านแล้ว ' + nf.format(merged.size) + ' ออเดอร์ จาก ' + files.length + ' ไฟล์');
+    boot();
+  } catch (e){ showMsg('error', (e && e.message) || String(e)); }
+}
+
+/* ---------- campaign windows (same as the promo board) ---------- */
+const CAMPAIGNS = [
+  { k:'Double Day', s:5,  e:10, c:'#0ea5e9' },
+  { k:'Mid Month',  s:14, e:16, c:'#f59e0b' },
+  { k:'Pay Day',    s:25, e:31, c:'#10b981' },
+];
+const campOf = d => CAMPAIGNS.find(c => d >= c.s && d <= c.e) || null;
+
+/* ---------- state ---------- */
+let ORDERS = [];
+const state = { month:'', plat:'all', brand:'all', metric:'sales', sel:null };
+
+function monthsAvail(){ const set = new Set(); for (const o of ORDERS){ if (o.orderAt) set.add(o.orderAt.getFullYear() + '-' + pad(o.orderAt.getMonth()+1)); } return [...set].sort(); }
+function platsAvail(){ const m = {}; for (const o of ORDERS){ if (!o.cancel) m[o.platform||'อื่นๆ'] = (m[o.platform||'อื่นๆ']||0)+1; } return m; }
+function brandsAvail(){ const m = {}; for (const o of ORDERS){ if (!o.cancel) m[o.brand||'อื่นๆ'] = (m[o.brand||'อื่นๆ']||0)+1; } return m; }
+
+/* ---------- aggregate the selected month ---------- */
+function build(){
+  const [y,m] = state.month.split('-').map(Number);
+  const dim = new Date(y, m, 0).getDate();
+  const days = Array.from({length:dim}, (_,i) => ({ d:i+1, sales:0, units:0, orders:new Set(), prod:new Map() }));
+  const prods = new Map();   // key -> {sku,name,plat,brand,units,sales,days:Map(d->{u,s}), prices:Map(price->{u,s,days:Set})}
+  let totSales=0, totUnits=0; const totOrders = new Set();
+  for (const o of ORDERS){
+    if (o.cancel) continue;
+    if (!o.orderAt) continue;
+    if (o.orderAt.getFullYear() !== y || (o.orderAt.getMonth()+1) !== m) continue;
+    if (state.plat !== 'all' && o.platform !== state.plat) continue;
+    if (state.brand !== 'all' && o.brand !== state.brand) continue;
+    const d = o.orderAt.getDate(); const day = days[d-1]; if (!day) continue;
+    for (const it of o.items){
+      const u = it.qty || 0, v = it.val || 0; if (u <= 0 && v <= 0) continue;
+      day.sales += v; day.units += u; day.orders.add(o.id); totSales += v; totUnits += u; totOrders.add(o.platform+'|'+o.id);
+      const key = (it.sku || it.name || '(ไม่ระบุ)') + '|' + o.platform;
+      let p = prods.get(key); if (!p){ p = { sku:it.sku||'', name:it.name||key, plat:o.platform, brand:o.brand, units:0, sales:0, days:new Map(), prices:new Map() }; prods.set(key,p); }
+      p.units += u; p.sales += v; if (it.name) p.name = it.name;
+      let pd = p.days.get(d); if (!pd){ pd = {u:0,s:0}; p.days.set(d,pd); } pd.u += u; pd.s += v;
+      // day-level top product
+      let dp = day.prod.get(key); if (!dp){ dp = {name:it.name||key, sku:it.sku||'', u:0, s:0}; day.prod.set(key,dp); } dp.u += u; dp.s += v;
+      // unit price the customer actually paid (rounded to baht)
+      if (u > 0 && v > 0){ const up = Math.round(v / u); let pr = p.prices.get(up); if (!pr){ pr = {u:0,s:0,days:new Set()}; p.prices.set(up,pr); } pr.u += u; pr.s += v; pr.days.add(d); }
+    }
+  }
+  return { y, m, dim, days, prods, totSales, totUnits, totOrders:totOrders.size };
+}
+
+/* ---------- daily bar chart (SVG) ---------- */
+function dayChartSVG(days, dim, metric, color, opts){
+  opts = opts || {};
+  const W = 1180, H = 300, padT = 24, padB = 42, padL = 54, padR = 10;
+  const iw = W - padL - padR, ih = H - padT - padB;
+  const vals = days.map(d => metric === 'units' ? d.units : d.sales);
+  const mx = Math.max(1, ...vals);
+  const slot = iw / dim, bw = Math.max(4, slot * 0.62);
+  const x = i => padL + slot * i + slot/2;
+  const yOf = v => padT + ih - (v / mx) * ih;
+  const fmtV = v => metric === 'units' ? nf.format(v) : bShort(v);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;max-height:${opts.compact?240:320}px" preserveAspectRatio="xMidYMid meet">`;
+  // campaign window shading
+  for (const c of CAMPAIGNS){ const s = Math.max(1,c.s), e = Math.min(dim,c.e); if (s>dim) continue;
+    const xl = padL + slot*(s-1), xr = padL + slot*e;
+    svg += `<rect x="${xl.toFixed(1)}" y="${padT}" width="${(xr-xl).toFixed(1)}" height="${ih}" fill="${c.c}" opacity="0.08"/>`;
+    svg += `<text x="${((xl+xr)/2).toFixed(1)}" y="${padT-8}" text-anchor="middle" font-size="10.5" font-weight="700" fill="${c.c}">${c.k}</text>`;
+  }
+  // gridlines (4)
+  for (let g=1; g<=4; g++){ const gy = padT + ih - (g/4)*ih; svg += `<line x1="${padL}" y1="${gy.toFixed(1)}" x2="${W-padR}" y2="${gy.toFixed(1)}" stroke="var(--line)" stroke-width="1"/>`;
+    svg += `<text x="${padL-7}" y="${(gy+3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--muted)">${fmtV(mx*g/4)}</text>`; }
+  // bars
+  const topVal = Math.max(...vals);
+  days.forEach((d,i) => { const v = vals[i]; const bh = Math.max(0, ih - (yOf(v)-padT)); const bx = x(i)-bw/2; const by = yOf(v);
+    const camp = campOf(d.d); const isTop = v>0 && v===topVal;
+    const fill = isTop ? 'var(--warn)' : camp ? camp.c : (color||'var(--accent)');
+    svg += `<rect class="daybar" data-d="${d.d}" x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="2.5" fill="${fill}" opacity="${v>0?(camp||isTop?0.95:0.82):0.15}"/>`;
+  });
+  // x labels (every day if dim<=16 else every 2-3)
+  const step = dim <= 16 ? 1 : dim <= 24 ? 2 : 3;
+  for (let i=0;i<dim;i++){ if (i%step!==0 && i!==dim-1) continue; svg += `<text x="${x(i).toFixed(1)}" y="${H-padB+16}" text-anchor="middle" font-size="10" fill="var(--muted)">${i+1}</text>`; }
+  svg += `</svg>`;
+  return svg;
+}
+
+function attachBarTips(container, days, metric){
+  const tip = $('#bartip');
+  container.querySelectorAll('.daybar').forEach(bar => {
+    bar.addEventListener('mousemove', e => {
+      const d = +bar.dataset.d; const day = days[d-1]; if (!day) return;
+      const camp = campOf(d);
+      const top = [...day.prod.values()].sort((a,b)=>b.s-a.s)[0];
+      tip.innerHTML = `<b>วันที่ ${d}${camp?` · <span style="color:${camp.c}">${camp.k}</span>`:''}</b><br>ยอดขาย ${money(day.sales)} · ${nf.format(day.units)} ชิ้น · ${day.orders.size} ออเดอร์${top?`<br>ขายดี: ${esc(top.name).slice(0,40)}`:''}`;
+      tip.style.opacity = 1; tip.style.left = Math.min(window.innerWidth-220, e.clientX+14) + 'px'; tip.style.top = (e.clientY+14) + 'px';
+    });
+    bar.addEventListener('mouseleave', () => { tip.style.opacity = 0; });
+  });
+}
+
+/* ---------- render ---------- */
+function renderControls(){
+  const months = monthsAvail();
+  if (!state.month || !months.includes(state.month)) state.month = months[months.length-1] || '';
+  $('#monthSel').innerHTML = months.map(mk => `<option value="${mk}" ${mk===state.month?'selected':''}>${monthLabel(mk)}</option>`).join('');
+  const plats = platsAvail(), brands = brandsAvail();
+  const PC = { TikTok:'#0ea5e9', Shopee:'#ee4d2d', Lazada:'#8b5cf6' };
+  const BC = { Benutra:'#16a34a', Terry:'#2563eb', Gala:'#e11d48' };
+  const chip = (kind,val,on,label,color) => `<button class="chip${on?' on':''}" data-kind="${kind}" data-val="${esc(val)}" ${on&&color?`style="background:${color}"`:''}>${color?`<span class="dot" style="background:${on?'#fff':color}"></span>`:''}${esc(label)}</button>`;
+  const totP = Object.values(plats).reduce((a,b)=>a+b,0);
+  $('#platChips').innerHTML = chip('plat','all',state.plat==='all','ทั้งหมด','var(--accent)') + Object.keys(plats).map(p => chip('plat',p,state.plat===p,p,PC[p])).join('');
+  const bk = Object.keys(brands);
+  $('#brandChips').innerHTML = chip('brand','all',state.brand==='all','ทั้งหมด','var(--accent)') + bk.map(b => chip('brand',b,state.brand===b,b,BC[b])).join('');
+  $('#brandChips').parentElement.style.display = bk.length>1 ? '' : 'none';
+  [...$('#metricChips').children].forEach(b => b.classList.toggle('on', b.dataset.m===state.metric));
+}
+
+function render(){
+  const A = build();
+  // KPIs
+  const topDay = [...A.days].sort((a,b)=>b.sales-a.sales)[0];
+  const topProd = [...A.prods.values()].sort((a,b)=>b.sales-a.sales)[0];
+  const avgAll = A.dim ? A.totSales/A.dim : 0;
+  $('#kpis').innerHTML = [
+    ['ยอดขายทั้งเดือน', money(A.totSales), nf.format(A.totOrders)+' ออเดอร์ · '+nf.format(A.totUnits)+' ชิ้น'],
+    ['เฉลี่ย/วัน', money(avgAll), A.dim+' วัน'],
+    ['วันขายดีสุด', topDay&&topDay.sales>0 ? ('วันที่ '+topDay.d) : '—', topDay&&topDay.sales>0 ? money(topDay.sales)+(campOf(topDay.d)?' · '+campOf(topDay.d).k:'') : ''],
+    ['สินค้าขายดีสุด', topProd ? money(topProd.sales) : '—', topProd ? esc(topProd.name).slice(0,34) : ''],
+  ].map(([k,v,s]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join('');
+
+  // daily chart
+  $('#dimLbl').textContent = A.dim;
+  const chart = $('#dayChart'); chart.innerHTML = dayChartSVG(A.days, A.dim, state.metric, 'var(--accent)');
+  attachBarTips(chart, A.days, state.metric);
+  $('#dayLegend').innerHTML = CAMPAIGNS.map(c => `<span><i style="background:${c.c};opacity:.5"></i>${c.k} (วันที่ ${c.s}–${c.e})</span>`).join('') + `<span><i style="background:var(--warn)"></i>วันขายดีสุด</span>`;
+
+  // campaign vs normal comparison
+  let cS=0, cN=0, nS=0, nN=0;
+  A.days.forEach(d => { if (campOf(d.d)){ cS+=d.sales; cN++; } else { nS+=d.sales; nN++; } });
+  const cAvg = cN?cS/cN:0, nAvg = nN?nS/nN:0; const diff = nAvg>0 ? (cAvg-nAvg)/nAvg*100 : 0;
+  $('#campCompare').innerHTML = (cN&&nN) ? `<div style="background:var(--surface-2);border-radius:12px;padding:12px 14px;font-size:13.5px">
+    📊 <b>วันแคมเปญปังไหม?</b> เฉลี่ยวันแคมเปญ <b>${money(cAvg)}/วัน</b> เทียบวันปกติ <b>${money(nAvg)}/วัน</b> —
+    <span class="${diff>=0?'pos':'neg'}">${diff>=0?'▲ สูงกว่า':'▼ ต่ำกว่า'} ${Math.abs(diff).toFixed(0)}%</span>
+    <div class="muted" style="font-size:11.5px;margin-top:3px">* วันแคมเปญ = ช่วง Double Day / Mid Month / Pay Day ตามปฏิทินโปรฯ (${A.days.filter(d=>campOf(d.d)).length} วัน) · วันปกติ ${nN} วัน</div></div>` : '';
+
+  // product table
+  const prods = [...A.prods.values()].sort((a,b)=>b.sales-a.sales || b.units-a.units);
+  const PC = { TikTok:'#0ea5e9', Shopee:'#ee4d2d', Lazada:'#8b5cf6' };
+  const rowsHtml = prods.length ? prods.map(p => {
+    const bestD = [...p.days.entries()].sort((a,b)=>b[1].s-a[1].s)[0];
+    const priceArr = [...p.prices.keys()]; const avg = p.units? p.sales/p.units : 0;
+    const key = (p.sku||p.name)+'|'+p.plat;
+    return `<tr class="clk ${state.sel===key?'on':''}" data-key="${esc(key)}">
+      <td class="l"><span class="tag" style="background:color-mix(in oklab,${PC[p.plat]||'var(--accent)'} 16%,var(--surface));color:${PC[p.plat]||'var(--accent)'}">${esc(p.plat)}</span></td>
+      <td class="l">${p.sku?`<code>${esc(p.sku)}</code>`:'<span class="muted">—</span>'}</td>
+      <td class="l" style="max-width:360px;white-space:normal">${esc(p.name)}</td>
+      <td>${nf.format(p.units)}</td>
+      <td><b>${money(p.sales)}</b></td>
+      <td>${money(avg)}</td>
+      <td>${priceArr.length?money(Math.min(...priceArr))+(priceArr.length>1?'–'+money(Math.max(...priceArr)):''):'—'}</td>
+      <td>${bestD?('วันที่ '+bestD[0]+(campOf(bestD[0])?' ·'+campOf(bestD[0]).k:'')):'—'}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="8"><div class="empty">ไม่มีออเดอร์ในเดือนนี้สำหรับตัวกรองที่เลือก</div></td></tr>`;
+  $('#prodTbl').innerHTML = `<thead><tr><th class="l">ช่อง</th><th class="l">รหัสสินค้า</th><th class="l">สินค้า</th><th>ชิ้น</th><th>ยอดขาย</th><th>ราคาเฉลี่ย</th><th>ช่วงราคาที่ซื้อ</th><th>วันขายดีสุด</th></tr></thead><tbody>${rowsHtml}</tbody>`;
+  $('#prodTbl').querySelectorAll('tr.clk').forEach(tr => tr.addEventListener('click', () => { state.sel = state.sel===tr.dataset.key ? null : tr.dataset.key; render(); if (state.sel) $('#drillCard').scrollIntoView({behavior:'smooth',block:'nearest'}); }));
+
+  // drill
+  renderDrill(A, prods);
+}
+
+function renderDrill(A, prods){
+  const card = $('#drillCard');
+  const p = state.sel ? prods.find(x => ((x.sku||x.name)+'|'+x.plat)===state.sel) : null;
+  if (!p){ card.style.display='none'; return; }
+  card.style.display='';
+  // product's daily series (reuse the day shape)
+  const pd = Array.from({length:A.dim}, (_,i) => { const e = p.days.get(i+1); return { d:i+1, sales:e?e.s:0, units:e?e.u:0, orders:new Set(), prod:new Map() }; });
+  const allPrices = [...p.prices.entries()].map(([price,v]) => ({ price, units:v.u, sales:v.s, days:[...v.days].sort((a,b)=>a-b) })).sort((a,b)=>b.sales-a.sales);
+  const bestPrice = allPrices[0];
+  const TOPN = 12; const prices = allPrices.slice(0, TOPN); const rest = allPrices.slice(TOPN);
+  const priceRows = prices.map((pr,i) => {
+    const bestDay = pr.days.map(d => ({d, s:(p.days.get(d)||{s:0}).s})).sort((a,b)=>b.s-a.s)[0];
+    const campDays = pr.days.filter(d => campOf(d)).length;
+    return `<tr${i===0?' class="on"':''}>
+      <td class="l"><b>${money(pr.price)}</b>${i===0?' <span class="tag" style="background:color-mix(in oklab,var(--good) 16%,var(--surface));color:var(--good)">ขายดีสุด</span>':''}</td>
+      <td>${nf.format(pr.units)}</td>
+      <td><b>${money(pr.sales)}</b></td>
+      <td>${pr.days.length} วัน${campDays?` <span class="muted">(แคมเปญ ${campDays})</span>`:''}</td>
+      <td>${bestDay?('วันที่ '+bestDay.d+(campOf(bestDay.d)?' ·'+campOf(bestDay.d).k:'')):'—'}</td>
+    </tr>`;
+  }).join('') + (rest.length ? `<tr><td class="l muted">อื่น ๆ (${rest.length} ราคา)</td><td class="muted">${nf.format(rest.reduce((a,b)=>a+b.units,0))}</td><td class="muted">${money(rest.reduce((a,b)=>a+b.sales,0))}</td><td class="muted">—</td><td class="muted">—</td></tr>` : '');
+  const chartId = 'drillChart';
+  card.innerHTML = `
+    <div class="sec-h"><div><div class="sec-t">📦 ${esc(p.name)}</div>
+      <div class="sec-d">${p.sku?`รหัส <code>${esc(p.sku)}</code> · `:''}${esc(p.plat)} · เดือน ${monthLabel(state.month)} · รวม ${money(p.sales)} (${nf.format(p.units)} ชิ้น)</div></div>
+      <button class="btn small" id="closeDrill">✕ ปิด</button></div>
+    <div class="sec-d" style="margin-bottom:6px;font-weight:700;color:var(--ink)">กราฟยอดขายรายวันของสินค้านี้</div>
+    <div class="barwrap" id="${chartId}"></div>
+    <div class="legend">${CAMPAIGNS.map(c=>`<span><i style="background:${c.c};opacity:.5"></i>${c.k}</span>`).join('')}<span><i style="background:var(--warn)"></i>วันขายดีสุด</span></div>
+    <div class="sec-d" style="margin:16px 0 6px;font-weight:700;color:var(--ink)">ราคาที่ลูกค้าซื้อ — ราคาไหนขายดี</div>
+    ${bestPrice?`<div style="background:var(--surface-2);border-radius:10px;padding:10px 13px;font-size:13.5px;margin-bottom:10px">💡 ราคาที่ขายดีสุดคือ <b>${money(bestPrice.price)}</b> — ขายได้ ${nf.format(bestPrice.units)} ชิ้น (${money(bestPrice.sales)}) ใน ${bestPrice.days.length} วัน</div>`:''}
+    <div class="tblwrap"><table><thead><tr><th class="l">ราคา/ชิ้น (ที่ซื้อจริง)</th><th>ชิ้น</th><th>ยอดขาย</th><th>จำนวนวันที่ขาย</th><th>วันขายดีสุด</th></tr></thead><tbody>${priceRows || '<tr><td colspan="5"><div class="empty">—</div></td></tr>'}</tbody></table></div>`;
+  const dc = $('#'+chartId); dc.innerHTML = dayChartSVG(pd, A.dim, state.metric, 'var(--accent)', {compact:true}); attachBarTips(dc, pd, state.metric);
+  $('#closeDrill').addEventListener('click', () => { state.sel=null; render(); });
+}
+
+function boot(){
+  if (!ORDERS.length){ showMsg('error','ไม่มีข้อมูลออเดอร์'); return; }
+  $('#controls').style.display=''; $('#result').style.display='';
+  renderControls(); render();
+}
+
+/* ---------- events ---------- */
+$('#loadSheet').addEventListener('click', loadFromSheet);
+$('#file').addEventListener('change', e => { handleFiles(e.target.files); e.target.value=''; });
+const drop = $('#drop');
+drop.addEventListener('click', () => $('#file').click());
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('hot'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('hot'); }));
+drop.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
+$('#monthSel').addEventListener('change', e => { state.month = e.target.value; state.sel=null; render(); });
+$('#platChips').addEventListener('click', e => { const b = e.target.closest('[data-kind]'); if (!b) return; state.plat = b.dataset.val; state.sel=null; renderControls(); render(); });
+$('#brandChips').addEventListener('click', e => { const b = e.target.closest('[data-kind]'); if (!b) return; state.brand = b.dataset.val; state.sel=null; renderControls(); render(); });
+$('#metricChips').addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; state.metric = b.dataset.m; renderControls(); render(); });
+
+// auto-load on open
+loadFromSheet();
+</script>
+</body>
+</html>
