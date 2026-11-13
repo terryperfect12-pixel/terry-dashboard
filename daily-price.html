@@ -84,8 +84,8 @@
       <div class="sub">อ่านไฟล์ออเดอร์ TikTok + Shopee · ดูยอดรายวัน 1–31 · วันแคมเปญปังไหม · สินค้าตัวไหน/ราคาไหนขายดี</div>
     </div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-      <button class="btn primary" id="loadSheet">⟳ โหลดจาก Google Sheet</button>
-      <label class="drop" id="drop">⬆ หรือวาง/เลือกไฟล์ .xlsx .csv<input id="file" type="file" accept=".xlsx,.xls,.csv" multiple hidden></label>
+      <button class="btn primary" id="loadSheet">⟳ โหลดใหม่จาก Drive</button>
+      <label class="drop" id="drop">⬆ หรือวาง/เลือกไฟล์ .xlsx .csv เอง<input id="file" type="file" accept=".xlsx,.xls,.csv" multiple hidden></label>
     </div>
   </div>
 
@@ -194,43 +194,83 @@ function loadXLSX(){ if (window.XLSX) return Promise.resolve(window.XLSX);
   return xlsxP; }
 function fixRange(XLSX, ws){ let mr=-1, mc=-1; for (const k in ws){ if (k[0]==='!') continue; const c = XLSX.utils.decode_cell(k); if (c.r>mr) mr=c.r; if (c.c>mc) mc=c.c; } if (mr>=0) ws['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:mr,c:mc}}); }
 
-/* ---------- live load from the shared order sheets (same as ยอดขายรายวัน) ---------- */
-const ORDER_SHEETS = [
-  { platform:'TikTok', id:'1uc46n128puQkaUQJ_eiy3ZhRgSUeSRcE50HKB3H5a-Q' },
-  { platform:'Shopee', id:'1xWW-u1ebmnpmlde4k7GsXUCJLgecfOqWOkEyWbouAHY' },
-];
-async function sheetTabs(id){
-  try { const html = await (await fetch('https://docs.google.com/spreadsheets/d/' + id + '/htmlview')).text();
-    const re = /\{name:\s*"([^"]+)"[^}]*?gid:\s*"?(\d+)"?/g; const out = []; let m;
-    while ((m = re.exec(html))) out.push({ name:m[1], gid:m[2] });
-    return out.length ? out : [{ name:'', gid:'0' }];
-  } catch { return [{ name:'', gid:'0' }]; }
-}
+/* ---------- load from Google Drive via Apps Script Web App (JSONP — no CORS) ---------- */
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzbPat2ALiKRm2hVXVk-Pt3rhUxe5fyGXoZAgSOIX48cfvkI3vBRZuZZTyxGTqaAcWj/exec';
+const YEAR = 2026;
+const MONN = { jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12 };
+const canon = mon => YEAR + '-' + pad(MONN[String(mon||'').slice(0,3).toLowerCase()] || 0);   // folder month name → YYYY-MM
+let TREE = [], MODE = 'gas'; const LOADED = new Set();   // "platform|brand|folderMonth" already fetched
 function showMsg(kind, text){ const m = $('#msg'); m.className = 'msg ' + kind; m.innerHTML = text || ''; m.style.display = text ? 'block' : 'none'; }
 
-async function loadFromSheet(){
-  showMsg('info', 'กำลังโหลดออเดอร์จาก Google Sheet …');
-  try {
-    const merged = new Map(); const byPlat = {}; let done = 0, total = 0;
-    const jobs = [];
-    for (const S of ORDER_SHEETS){ const tabs = await sheetTabs(S.id); for (const tab of tabs) jobs.push({ S, tab }); }
-    total = jobs.length;
-    for (const { S, tab } of jobs){
-      done++; showMsg('info', 'กำลังโหลดออเดอร์ … (' + done + '/' + total + ' แท็บ · ' + S.platform + ' ' + tab.name + ')');
-      const url = 'https://docs.google.com/spreadsheets/d/' + S.id + '/export?format=csv&gid=' + tab.gid;
-      let txt = ''; try { txt = await (await fetch(url)).text(); } catch { continue; }
-      if (!txt || txt.trim().startsWith('<')) continue;
-      const brand = brandOf(tab.name);
-      const res = buildOrders(parseCSV(txt), S.platform, S.platform, brand);
-      if (res){ for (const o of res.orders) merged.set(S.platform + '|' + o.id, o); byPlat[S.platform] = (byPlat[S.platform]||0) + res.orders.length; }
-      await new Promise(r => setTimeout(r, 0));   // yield so the progress text paints
-    }
-    if (!merged.size) throw new Error('ไม่พบออเดอร์ในชีต — ตรวจว่าแชร์ “ทุกคนที่มีลิงก์ดูได้”');
-    ORDERS = [...merged.values()];
-    const platTxt = Object.entries(byPlat).map(([k,v]) => k + ' ' + nf.format(v)).join(' · ');
-    showMsg('ok', 'โหลดแล้ว ' + nf.format(merged.size) + ' ออเดอร์ (' + platTxt + ')');
-    boot();
-  } catch (e){ showMsg('error', 'โหลดไม่สำเร็จ: ' + ((e && e.message) ? e.message : String(e))); }
+let _jid = 0;
+function jsonp(url, timeoutMs){ return new Promise((res, rej) => {
+  const cb = '__dpcb' + (++_jid), sep = url.indexOf('?') >= 0 ? '&' : '?';
+  const s = document.createElement('script'); let done = false;
+  function clean(){ try { delete window[cb]; } catch (e){ window[cb] = undefined; } s.remove(); }
+  window[cb] = d => { done = true; res(d); clean(); };
+  s.onerror = () => { if (!done){ clean(); rej(new Error('โหลดไม่สำเร็จ')); } };
+  s.src = url + sep + 'callback=' + cb;
+  document.body.appendChild(s);
+  setTimeout(() => { if (!done){ clean(); rej(new Error('หมดเวลา (timeout)')); } }, timeoutMs || 180000);
+}); }
+
+// fixed-schema CSV rows [id,status,product,sku,qty,lineVal,orderAt] → order objects (grouped by id)
+function rowsToOrders(rows, platform, brand){
+  const map = new Map();
+  for (const R of rows){ const id = str(R[0]); if (!id) continue;
+    let o = map.get(id);
+    if (!o){ o = { id, statusRaw:str(R[1]), orderAt:parseDate(R[6]), items:[], platform, brand }; o.cancel = isCancel(o.statusRaw); map.set(id, o); }
+    o.items.push({ name:str(R[2]), sku:str(R[3]), variation:'', qty:num(R[4]), val:num(R[5]) });
+  }
+  return [...map.values()];
+}
+// Shopee .xlsx (base64) → order objects via SheetJS + the shared header mapping
+function xlsxToOrders(b64, platform, brand){
+  try { const wb = XLSX.read(b64, { type:'base64' });
+    for (const nm of wb.SheetNames){ const ws = wb.Sheets[nm]; fixRange(XLSX, ws); const res = buildOrders(XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''}), platform, platform, brand); if (res && res.orders.length) return res.orders; }
+  } catch (e){}
+  return [];
+}
+
+// connect → read the Drive folder tree → build selectors → load the latest month
+async function init(){
+  showMsg('info', 'กำลังเชื่อมต่อ Google Drive (Apps Script) …');
+  let r; try { r = await jsonp(GAS_URL + '?list=1', 60000); } catch (e){ r = null; }
+  if (!r || !r.tree || !r.tree.length){ showMsg('error', 'เชื่อมต่อ Apps Script ไม่สำเร็จ — ตรวจว่า Deploy แบบ “ทุกคน” แล้ว · หรืออัปโหลดไฟล์เองด้านบนก็ได้'); return; }
+  TREE = r.tree; MODE = 'gas';
+  $('#controls').style.display = ''; $('#result').style.display = '';
+  const months = [...new Set(TREE.map(t => canon(t.month)))].sort();
+  state.month = months[months.length - 1] || '';
+  renderControls();
+  loadMonth(state.month);
+}
+
+// load the folders for a calendar month (every platform+brand) and ADD to memory.
+// Orders are bucketed by their real date, so a folder whose data is dated in another
+// month still lands in the right month (handles mislabeled folders).
+async function loadMonth(mk){
+  const entries = TREE.filter(t => canon(t.month) === mk && !LOADED.has(t.platform + '|' + t.brand + '|' + t.month));
+  if (!entries.length){ renderControls(); render(); return; }   // already in memory, or no folder for this month → just show
+  await loadXLSX().catch(() => null);   // Shopee files are .xlsx → need SheetJS
+  showMsg('info', 'กำลังโหลดเดือน ' + monthLabel(mk) + ' …');
+  const manifests = await Promise.all(entries.map(t =>
+    jsonp(GAS_URL + '?platform=' + encodeURIComponent(t.platform) + '&brand=' + encodeURIComponent(t.brand) + '&month=' + encodeURIComponent(t.month)).catch(() => null)));
+  const jobs = [];
+  manifests.forEach((m, i) => { if (m && m.files) m.files.forEach(fl => jobs.push({ t: entries[i], i: fl.i })); });
+  let done = 0;
+  for (const job of jobs){
+    done++; showMsg('info', 'กำลังโหลด ' + monthLabel(mk) + ' … (' + done + '/' + jobs.length + ' · ' + job.t.platform + ' ' + job.t.brand + ')');
+    let f; try { f = await jsonp(GAS_URL + '?platform=' + encodeURIComponent(job.t.platform) + '&brand=' + encodeURIComponent(job.t.brand) + '&month=' + encodeURIComponent(job.t.month) + '&file=' + job.i); } catch (e){ continue; }
+    if (!f || f.error) continue;
+    let orders = [];
+    if (f.kind === 'rows') orders = rowsToOrders(f.rows || [], job.t.platform, job.t.brand);
+    else if (f.kind === 'xlsx' && window.XLSX) orders = xlsxToOrders(f.b64, job.t.platform, job.t.brand);
+    addOrders(orders);
+    await new Promise(r => setTimeout(r, 0));
+  }
+  entries.forEach(t => LOADED.add(t.platform + '|' + t.brand + '|' + t.month));
+  showMsg('ok', 'โหลด ' + monthLabel(mk) + ' แล้ว · มีในหน่วยความจำ ' + nf.format(ORDERS.length) + ' ออเดอร์ · สลับเดือน/ช่องได้เลย');
+  renderControls(); render();
 }
 async function handleFiles(list){
   const files = [...list].filter(f => /\.(xlsx|xls|csv)$/i.test(f.name));
@@ -246,7 +286,7 @@ async function handleFiles(list){
       for (const name of wb.SheetNames){ const ws = wb.Sheets[name]; fixRange(XLSX, ws); const res = buildOrders(XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''}), f.name, plat, brand); if (res){ for (const o of res.orders) merged.set((plat||f.name) + '|' + o.id, o); break; } }
     }
     if (!merged.size) throw new Error('ไม่พบคอลัมน์ Order ID / Product Name ในไฟล์');
-    ORDERS = [...merged.values()];
+    ORDERS = [...merged.values()]; MODE = 'upload';
     showMsg('ok', 'อ่านแล้ว ' + nf.format(merged.size) + ' ออเดอร์ จาก ' + files.length + ' ไฟล์');
     boot();
   } catch (e){ showMsg('error', (e && e.message) || String(e)); }
@@ -261,12 +301,17 @@ const CAMPAIGNS = [
 const campOf = d => CAMPAIGNS.find(c => d >= c.s && d <= c.e) || null;
 
 /* ---------- state ---------- */
-let ORDERS = [];
+let ORDERS = []; const ORDERKEYS = new Set();
+function addOrders(list){ for (const o of list){ const k = o.platform + '|' + o.id; if (ORDERKEYS.has(k)) continue; ORDERKEYS.add(k); ORDERS.push(o); } }
 const state = { month:'', plat:'all', brand:'all', metric:'sales', sel:null };
 
-function monthsAvail(){ const set = new Set(); for (const o of ORDERS){ if (o.orderAt) set.add(o.orderAt.getFullYear() + '-' + pad(o.orderAt.getMonth()+1)); } return [...set].sort(); }
-function platsAvail(){ const m = {}; for (const o of ORDERS){ if (!o.cancel) m[o.platform||'อื่นๆ'] = (m[o.platform||'อื่นๆ']||0)+1; } return m; }
-function brandsAvail(){ const m = {}; for (const o of ORDERS){ if (!o.cancel) m[o.brand||'อื่นๆ'] = (m[o.brand||'อื่นๆ']||0)+1; } return m; }
+function monthsAvail(){ if (MODE === 'gas'){ const s = new Set(TREE.map(t => canon(t.month)));   // folder months + any real months found in loaded data (mislabeled folders)
+    ORDERS.forEach(o => { if (o.orderAt) s.add(o.orderAt.getFullYear() + '-' + pad(o.orderAt.getMonth()+1)); }); return [...s].sort(); }
+  const set = new Set(); for (const o of ORDERS){ if (o.orderAt) set.add(o.orderAt.getFullYear() + '-' + pad(o.orderAt.getMonth()+1)); } return [...set].sort(); }
+function platsAvail(){ if (MODE === 'gas'){ const m = {}; TREE.forEach(t => m[t.platform] = (m[t.platform]||0)+1); return m; }
+  const m = {}; for (const o of ORDERS){ if (!o.cancel) m[o.platform||'อื่นๆ'] = (m[o.platform||'อื่นๆ']||0)+1; } return m; }
+function brandsAvail(){ if (MODE === 'gas'){ const m = {}; TREE.forEach(t => m[t.brand] = (m[t.brand]||0)+1); return m; }
+  const m = {}; for (const o of ORDERS){ if (!o.cancel) m[o.brand||'อื่นๆ'] = (m[o.brand||'อื่นๆ']||0)+1; } return m; }
 
 /* ---------- aggregate the selected month ---------- */
 function build(){
@@ -460,20 +505,20 @@ function boot(){
 }
 
 /* ---------- events ---------- */
-$('#loadSheet').addEventListener('click', loadFromSheet);
+$('#loadSheet').addEventListener('click', () => { ORDERS = []; ORDERKEYS.clear(); LOADED.clear(); init(); });
 $('#file').addEventListener('change', e => { handleFiles(e.target.files); e.target.value=''; });
 const drop = $('#drop');
 drop.addEventListener('click', () => $('#file').click());
 ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('hot'); }));
 ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('hot'); }));
 drop.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
-$('#monthSel').addEventListener('change', e => { state.month = e.target.value; state.sel=null; render(); });
+$('#monthSel').addEventListener('change', e => { state.month = e.target.value; state.sel=null; if (MODE === 'gas') loadMonth(state.month); else render(); });
 $('#platChips').addEventListener('click', e => { const b = e.target.closest('[data-kind]'); if (!b) return; state.plat = b.dataset.val; state.sel=null; renderControls(); render(); });
 $('#brandChips').addEventListener('click', e => { const b = e.target.closest('[data-kind]'); if (!b) return; state.brand = b.dataset.val; state.sel=null; renderControls(); render(); });
 $('#metricChips').addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; state.metric = b.dataset.m; renderControls(); render(); });
 
-// auto-load on open
-loadFromSheet();
+// auto-load on open — read the Drive folder via Apps Script
+init();
 </script>
 </body>
 </html>
