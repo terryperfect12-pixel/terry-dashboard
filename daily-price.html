@@ -4,12 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ยอดขายรายวัน & ราคาที่ขายดี</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#f6f7f9; --surface:#ffffff; --surface-2:#f1f3f6; --line:#e5e8ec; --line-2:#d3d8df;
     --ink:#121619; --ink-2:#3b434c; --muted:#8a929c; --accent:#2563eb; --accent-soft:#e8effe;
     --good:#16a34a; --bad:#e11d48; --warn:#d97706;
-    --f:"Segoe UI",system-ui,-apple-system,"Sarabun",sans-serif; --f-mono:ui-monospace,"Cascadia Mono",Menlo,monospace;
+    --f:"Sarabun","TH Sarabun New","Segoe UI",system-ui,-apple-system,sans-serif; --f-mono:ui-monospace,"Cascadia Mono",Menlo,monospace;
   }
   @media (prefers-color-scheme:dark){:root{
     --bg:#0f1317; --surface:#171c22; --surface-2:#1e242c; --line:#2a313a; --line-2:#394250;
@@ -97,7 +100,7 @@
       <div class="ctl"><span class="ctl-lbl">แพลตฟอร์ม</span><div class="chips" id="platChips"></div></div>
       <div class="ctl"><span class="ctl-lbl">แบรนด์</span><div class="chips" id="brandChips"></div></div>
       <div class="ctl"><span class="ctl-lbl">แสดงเป็น</span><div class="chips" id="metricChips">
-        <button class="chip on" data-m="sales">฿ ยอดขาย</button>
+        <button class="chip on" data-m="sales"> ยอดขาย</button>
         <button class="chip" data-m="units">ชิ้น</button></div></div>
     </div>
   </div>
@@ -132,9 +135,9 @@
 const $ = s => document.querySelector(s);
 const nf = new Intl.NumberFormat('th-TH');
 const mf = new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 });
-const money = v => '฿' + mf.format(Math.round(v || 0));
+const money = v => '' + mf.format(Math.round(v || 0));
 const kShort = n => { const a = Math.abs(n); return a >= 1e6 ? (n/1e6).toFixed(a>=1e7?0:1)+'M' : a >= 1e3 ? Math.round(n/1e3)+'K' : String(Math.round(n)); };
-const bShort = n => '฿' + kShort(n);
+const bShort = n => '' + kShort(n);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad = n => String(n).padStart(2, '0');
 const str = v => (v == null ? '' : String(v)).trim();

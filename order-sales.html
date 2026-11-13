@@ -4,12 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ยอดขายรายวัน & รายชั่วโมง</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#f6f7f9; --surface:#ffffff; --surface-2:#f1f3f6; --line:#e5e8ec; --line-2:#d3d8df;
     --ink:#121619; --ink-2:#3b434c; --muted:#8a929c; --accent:#2563eb; --accent-soft:#e8effe;
     --good:#16a34a; --bad:#e11d48; --warn:#d97706;
-    --f:"Segoe UI",system-ui,-apple-system,"Sarabun",sans-serif; --f-mono:ui-monospace,"Cascadia Mono",Menlo,monospace;
+    --f:"Sarabun","TH Sarabun New","Segoe UI",system-ui,-apple-system,sans-serif; --f-mono:ui-monospace,"Cascadia Mono",Menlo,monospace;
   }
   @media (prefers-color-scheme:dark){:root{
     --bg:#0f1317; --surface:#171c22; --surface-2:#1e242c; --line:#2a313a; --line-2:#394250;
@@ -233,7 +236,7 @@
 const $ = s => document.querySelector(s);
 const nf = new Intl.NumberFormat('th-TH');
 const mf = new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 });
-const money = v => '฿' + mf.format(Math.round(v || 0));
+const money = v => '' + mf.format(Math.round(v || 0));
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad = n => String(n).padStart(2, '0');
 const str = v => (v == null ? '' : String(v)).trim();
@@ -604,12 +607,12 @@ $('#allDaysBtn').addEventListener('click', () => { state.day = 'all'; render(); 
 $('#colchart').addEventListener('click', e => { const c = e.target.closest('.colday'); if (!c) return; state.day = c.dataset.k; render(); $('#prodPanel').scrollIntoView({behavior:'smooth', block:'nearest'}); });
 $('#copyProd').addEventListener('click', () => {
   const v = curView(); const rows = [...v.prod.values()].sort((a,b)=>b.sales-a.sales);
-  const head = ['สินค้า','SKU','ออเดอร์','ชิ้น','ยอดขาย(฿)'];
+  const head = ['สินค้า','SKU','ออเดอร์','ชิ้น','ยอดขาย(บาท)'];
   const body = rows.map(p => [String(p.name).replace(/[\t\r\n]+/g,' '), p.sku, p.ord.size, p.units, Math.round(p.sales)].join('\t'));
   copyText(['สินค้าที่ขาย · ' + curLabel(), head.join('\t'), ...body].join('\n'), 'ตารางสินค้า ' + rows.length + ' รายการ');
 });
 $('#copyHour').addEventListener('click', () => {
-  const v = curView(); const head = ['ชั่วโมง','สินค้าขายดีสุด','SKU','ยอดขายสินค้านั้น(฿)','ยอดรวม(฿)','ชิ้น','ออเดอร์'];
+  const v = curView(); const head = ['ชั่วโมง','สินค้าขายดีสุด','SKU','ยอดขายสินค้านั้น(บาท)','ยอดรวม(บาท)','ชิ้น','ออเดอร์'];
   const body = v.hours.map((h,i) => { const top = h.prod && h.prod.size ? [...h.prod.values()].sort((a,b)=>b.sales-a.sales||b.units-a.units)[0] : null; return [pad(i)+':00-'+pad(i)+':59', top?String(top.name).replace(/[\t\r\n]+/g,' '):'', top?top.sku:'', top?Math.round(top.sales):'', Math.round(h.sales), h.units, h.ord.size].join('\t'); });
   copyText(['รายชั่วโมง · ' + curLabel(), head.join('\t'), ...body].join('\n'), 'ตารางรายชั่วโมง');
 });

@@ -712,8 +712,8 @@ function renderKPI(){
   $('#kpi').innerHTML =
     tile('รายการที่มีโปรช่วงนี้', fmt(avail.length), 'จากทั้งหมด '+monthItems.length+' รายการ')+
     tile('เฉพาะในไลฟ์', fmt(onlyLive), 'รายการ Only Live')+
-    tile('ประหยัดสูงสุด', maxS>0?'฿'+fmt(maxS):'—', maxN||'—')+
-    tile('ราคาเริ่มต้น', minP<Infinity?'฿'+fmt(minP):'—', minN||'—');
+    tile('ประหยัดสูงสุด', maxS>0?fmt(maxS):'—', maxN||'—')+
+    tile('ราคาเริ่มต้น', minP<Infinity?fmt(minP):'—', minN||'—');
 }
 function rowHtml(it,cp){
   const now=it.prices[SEL], base=baseOf(it), save=saveOf(it), pct=base>0?Math.round(save/base*100):0;
@@ -728,9 +728,9 @@ function rowHtml(it,cp){
         <div class="rtags">${it.sku?`<span class="sku">${esc(it.sku)}</span>`:''}</div>
       </div>
     </div>
-    <div>${it.full>0?`<span class="rfull strike">฿${fmt(it.full)}</span>`:(it.prices.AWO>0?`<span class="rfull">AWO ${fmt(it.prices.AWO)}</span>`:'<span class="muted">—</span>')}</div>
-    <div class="rnow" style="color:${cp.c}">฿${fmt(now)}</div>
-    <div>${save>0?`<span class="save">-฿${fmt(save)} · ${pct}%</span>`:'<span class="muted">–</span>'}</div>
+    <div>${it.full>0?`<span class="rfull strike">${fmt(it.full)}</span>`:(it.prices.AWO>0?`<span class="rfull">AWO ${fmt(it.prices.AWO)}</span>`:'<span class="muted">—</span>')}</div>
+    <div class="rnow" style="color:${cp.c}">${fmt(now)}</div>
+    <div>${save>0?`<span class="save">-${fmt(save)} · ${pct}%</span>`:'<span class="muted">–</span>'}</div>
     <div class="ract">
       <button class="rhide" data-act="${it.custom?'delpromo':'hide'}" data-k="${k}" title="${it.custom?'ลบโปรฯ นี้':(closed?'เปิดตะกร้า':'ปิดตะกร้า')}">${it.custom?'🗑':(closed?'↺':'✕')}</button>
     </div>
@@ -753,7 +753,7 @@ function cardHtml(it,cp){
     : '';
   const optOpen=!!OPTOPEN[it.uid];
   const optStrip = grouped
-    ? `<div class="opts2"><button class="opts2-h" data-optexp="${esc(it.uid)}">🧩 ตัวเลือก (${members.length}) · กดเพื่อสลับ <span class="opts2-tog">${optOpen?'ย่อ ▲':'ขยาย ▼'}</span></button>${optOpen?`<div class="opts2-list">${members.map(m=>{const mp=m.prices[SEL], mi=displayImg(m); return `<div class="opt2 ${m.uid===aUid?'on':''}" data-optsel="${esc(m.uid)}" data-main="${esc(it.uid)}" title="${esc(m.name)}"><div class="opt2-img">${mi?imgTag(mi,'',true):'<span>📦</span>'}</div><div class="opt2-nm">${esc(m.name)}</div><div class="opt2-pr" style="color:${cp.c}">${mp>0?'฿'+fmt(mp):'—'}</div>${m.uid!==it.uid?`<button class="opt2-x" data-act="ungroup" data-k="${esc(m.uid)}" title="เอาออกจากกลุ่ม">✕</button>`:'<span class="opt2-main">หลัก</span>'}</div>`;}).join('')}</div>`:''}</div>`
+    ? `<div class="opts2"><button class="opts2-h" data-optexp="${esc(it.uid)}">🧩 ตัวเลือก (${members.length}) · กดเพื่อสลับ <span class="opts2-tog">${optOpen?'ย่อ ▲':'ขยาย ▼'}</span></button>${optOpen?`<div class="opts2-list">${members.map(m=>{const mp=m.prices[SEL], mi=displayImg(m); return `<div class="opt2 ${m.uid===aUid?'on':''}" data-optsel="${esc(m.uid)}" data-main="${esc(it.uid)}" title="${esc(m.name)}"><div class="opt2-img">${mi?imgTag(mi,'',true):'<span>📦</span>'}</div><div class="opt2-nm">${esc(m.name)}</div><div class="opt2-pr" style="color:${cp.c}">${mp>0?fmt(mp):'—'}</div>${m.uid!==it.uid?`<button class="opt2-x" data-act="ungroup" data-k="${esc(m.uid)}" title="เอาออกจากกลุ่ม">✕</button>`:'<span class="opt2-main">หลัก</span>'}</div>`;}).join('')}</div>`:''}</div>`
     : '';
   return `<div class="pc ${closed?'closed':''} ${grouped?'grouped':''}" draggable="true" data-uid="${esc(it.uid)}">
     <div class="pimg">
@@ -767,7 +767,7 @@ function cardHtml(it,cp){
                <button class="pbbtn no" data-act="pbcancel" title="ยกเลิก">✕</button>
              </div>
              <div class="pbrow2">
-               <span class="pbbaht">฿</span>
+               <span class="pbbaht"></span>
                <input type="number" class="pbin" min="0" step="1" value="${esc(String(campPrice(it,PENDING.camp)||''))}" placeholder="กรอกราคา">
                <button class="pbbtn ok" data-act="pbok" data-k="${esc(it.uid)}" data-camp="${esc(PENDING.camp)}">✓ บันทึก</button>
              </div>
@@ -777,7 +777,7 @@ function cardHtml(it,cp){
                <option value="">➕ ใส่ในแคมเปญ…</option>
                ${allCamps().filter(c=>c.k!=='AWO').map(c=>`<option value="${esc(c.k)}">${camps.includes(c.k)?'✅ ':'➕ '}${esc(c.k)}${camps.includes(c.k)?' · อยู่แล้ว (แก้ราคา)':''}</option>`).join('')}
              </select>
-             ${SEL!=='AWO'?`<button class="edit" data-act="editprice" data-k="${esc(it.uid)}" data-camp="${esc(SEL)}" title="แก้ราคาโปรฯ นี้">✎ ฿</button><button class="edit del" data-act="rmcamp" data-k="${esc(it.uid)}" data-camp="${esc(SEL)}" title="เอาออกจากโปรฯ นี้">✕ โปร</button>`:''}
+             ${SEL!=='AWO'?`<button class="edit" data-act="editprice" data-k="${esc(it.uid)}" data-camp="${esc(SEL)}" title="แก้ราคาโปรฯ นี้">✎ </button><button class="edit del" data-act="rmcamp" data-k="${esc(it.uid)}" data-camp="${esc(SEL)}" title="เอาออกจากโปรฯ นี้">✕ โปร</button>`:''}
              ${(act.custom&&closed)?`<button class="edit del" data-act="delpromo" data-k="${k}" title="ลบโปรฯ นี้ถาวร">🗑 ลบถาวร</button>`:''}
              <button class="edit" data-act="pick" data-k="${k}" data-label="${lbl}">✎ รูป</button>
            </div>`
@@ -786,7 +786,7 @@ function cardHtml(it,cp){
     <div class="pbody">
       <div class="nm" title="${lbl}">${esc(act.name)}</div>
       <div class="row1">${act.sku?`<span class="sku">${esc(act.sku)}</span>`:''}<span class="typ ${act.isSet?'set':'single'}">${act.isSet?'เซ็ต/ตะกร้า':'ชิ้นเดียว'}</span>${best?'<span class="tag best">ถูกสุด</span>':''}</div>
-      <div class="prices"><span class="pnow" style="color:${cp.c}">฿${fmt(now)}</span>${act.full>0&&act.full>now?`<span class="pfull">฿${fmt(act.full)}</span>`:''}${save>0?`<span class="save">-${pct}%</span>`:''}</div>
+      <div class="prices"><span class="pnow" style="color:${cp.c}">${fmt(now)}</span>${act.full>0&&act.full>now?`<span class="pfull">${fmt(act.full)}</span>`:''}${save>0?`<span class="save">-${pct}%</span>`:''}</div>
       ${camps.filter(c=>c!=='AWO').length?`<div class="campstrip" title="แคมเปญที่สินค้านี้อยู่">${camps.filter(c=>c!=='AWO').map(ck=>{const c=allCamps().find(x=>x.k===ck)||cp;return `<span class="campchip" style="--cc:${c.c}">${esc(ck)}<button class="campx" data-act="rmcamp" data-k="${esc(it.uid)}" data-camp="${esc(ck)}" title="เอาออกจากแคมเปญ ${esc(ck)}">✕</button></span>`;}).join('')}</div>`:''}
       ${!act.isSet?platTags(act.name,act.pid):''}
       ${parts}
@@ -832,8 +832,8 @@ function renderTable(){
       : `<strong>${esc(it.name)}</strong>`;
     return `<tr class="${child?'subrow':'mainrow'}"><td class="l" style="text-align:left">${timg?`<img src="${esc(thumbUrl(timg))}" loading="lazy" style="width:${sz}px;height:${sz}px;object-fit:cover;vertical-align:middle;margin-right:9px;border-radius:7px">`:''}${nm}</td>`+
       `<td style="text-align:left">${esc(it.sku)||'—'}</td>`+
-      `<td class="muted">${it.full>0?'฿'+fmt(it.full):'—'}</td>`+
-      allCamps().map(c=>{const cust=ASSIGN[it.uid]&&+ASSIGN[it.uid][c.k]; const v=cust>0?cust:(it.prices[c.k]||0); const cz=cust>0?' style="font-weight:800"':''; return `<td class="${v>0&&v===minP&&allP.length>1?'cheap':''}"${cz}>${v>0?'฿'+fmt(v):'—'}</td>`;}).join('')+
+      `<td class="muted">${it.full>0?fmt(it.full):'—'}</td>`+
+      allCamps().map(c=>{const cust=ASSIGN[it.uid]&&+ASSIGN[it.uid][c.k]; const v=cust>0?cust:(it.prices[c.k]||0); const cz=cust>0?' style="font-weight:800"':''; return `<td class="${v>0&&v===minP&&allP.length>1?'cheap':''}"${cz}>${v>0?fmt(v):'—'}</td>`;}).join('')+
       `<td style="text-align:left">${esc(it.gwp)||'—'}</td>`+
       `<td style="text-align:left">${esc(it.remark)||'—'}</td></tr>`;
   };
@@ -1080,13 +1080,13 @@ function renderPrev(){ const store=WZ.scope==='store'; const items=compItems(); 
   if(store){
     const full=num(fIn?fIn.value:0), promo=num(pIn?pIn.value:0), sv=full>promo?full-promo:0, pct=full>0?Math.round(sv/full*100):0;
     const nm=(($('#cRemark')||{}).value||'').trim()||'โปรทั้งร้าน';
-    const priceTxt = promo>0 ? '฿'+fmt(promo)+(full>promo?` <s class="muted">฿${fmt(full)}</s> <span class="save">-${pct}%</span>`:'') : (pct>0?`ลด ${pct}%`:'โปรทั้งร้าน');
+    const priceTxt = promo>0 ? fmt(promo)+(full>promo?` <s class="muted">${fmt(full)}</s> <span class="save">-${pct}%</span>`:'') : (pct>0?`ลด ${pct}%`:'โปรทั้งร้าน');
     $('#cpv').innerHTML=`<div class="cprevcard" style="border:1px solid var(--line);border-radius:12px;background:var(--surface-2)"><div class="cph">🛍️</div><div style="flex:1;min-width:0"><div class="cpn">ทั้งร้าน · ${esc(nm)}</div><div class="cpp" style="color:var(--accent)">${priceTxt}</div>${rg?`<div class="muted" style="font-size:12px;margin-top:3px">📅 ${esc(rg)}</div>`:''}${gwp?`<div class="muted" style="font-size:12px;margin-top:3px">🎁 ${esc(gwp)}</div>`:''}</div>${WZ.giftImg?`<img src="${WZ.giftImg}" style="width:48px;height:48px;border-radius:9px;object-fit:cover">`:''}</div>`;
     return;
   }
   const full=num(fIn?fIn.value:0)||sF, promo=num(pIn?pIn.value:0)||sA, sv=full>promo?full-promo:0, pct=full>0?Math.round(sv/full*100):0, img=items[0]&&items[0].img;
   $('#cpv').innerHTML = items.length
-    ? `<div class="cprevcard" style="border:1px solid var(--line);border-radius:12px;background:var(--surface-2)">${img?`<img src="${esc(thumbUrl(img))}">`:'<div class="cph">📷</div>'}<div style="flex:1;min-width:0"><div class="cpn">${esc(compName(items))}</div><div class="cpp" style="color:var(--accent)">฿${fmt(promo)} ${full>promo?`<s class="muted">฿${fmt(full)}</s> <span class="save">-${pct}%</span>`:''}</div>${rg?`<div class="muted" style="font-size:12px;margin-top:3px">📅 ${esc(rg)}</div>`:''}${gwp?`<div class="muted" style="font-size:12px;margin-top:3px">🎁 ${esc(gwp)}</div>`:''}</div>${WZ.giftImg?`<img src="${WZ.giftImg}" style="width:48px;height:48px;border-radius:9px;object-fit:cover">`:''}</div>`
+    ? `<div class="cprevcard" style="border:1px solid var(--line);border-radius:12px;background:var(--surface-2)">${img?`<img src="${esc(thumbUrl(img))}">`:'<div class="cph">📷</div>'}<div style="flex:1;min-width:0"><div class="cpn">${esc(compName(items))}</div><div class="cpp" style="color:var(--accent)">${fmt(promo)} ${full>promo?`<s class="muted">${fmt(full)}</s> <span class="save">-${pct}%</span>`:''}</div>${rg?`<div class="muted" style="font-size:12px;margin-top:3px">📅 ${esc(rg)}</div>`:''}${gwp?`<div class="muted" style="font-size:12px;margin-top:3px">🎁 ${esc(gwp)}</div>`:''}</div>${WZ.giftImg?`<img src="${WZ.giftImg}" style="width:48px;height:48px;border-radius:9px;object-fit:cover">`:''}</div>`
     : '<div class="muted" style="padding:14px">เลือก/กรอกสินค้าอย่างน้อย 1 รายการ</div>'; }
 function addComposer(){ const store=WZ.scope==='store'; const items=compItems();
   if(!store && !items.length){ alert('เลือก/กรอกสินค้าอย่างน้อย 1 รายการ'); return; }

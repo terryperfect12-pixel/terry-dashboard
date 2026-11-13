@@ -299,8 +299,8 @@
 <script>
 const $=s=>document.querySelector(s);
 const fmt=n=>{n=Math.round(+n||0);return n.toLocaleString('en-US');};
-const baht=n=>'<span class="cur">฿</span>'+fmt(n);
-const bahtT=n=>'฿'+fmt(n);
+const baht=n=>'<span class="cur"></span>'+fmt(n);
+const bahtT=n=>fmt(n);
 const pct=(a,b)=>b>0?Math.round(a/b*100):0;
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const TH_M=['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
@@ -407,20 +407,20 @@ function renderOverview(){
   const done=S('เสร็จ|complete'), canc=S('ยกเลิก|cancel'), ship=S('จัดส่ง|ship|deliver');
   const other=Math.max(0, tot-done.orders-canc.orders-ship.orders);
   const otherAmt=Math.max(0, o.totalAmt-done.amt-canc.amt-ship.amt);
-  $('#ovrNote').innerHTML=`งวด ${esc(periodShort((o.from||'').slice(0,7)))} · ${esc(o.from||'')} ถึง ${esc(o.to||'')} · มูลค่าคำสั่งซื้อรวม <b>฿${fmt(o.totalAmt)}</b>`;
+  $('#ovrNote').innerHTML=`งวด ${esc(periodShort((o.from||'').slice(0,7)))} · ${esc(o.from||'')} ถึง ${esc(o.to||'')} · มูลค่าคำสั่งซื้อรวม <b>${fmt(o.totalAmt)}</b>`;
   $('#ovrKpi').innerHTML =
-    tile('คำสั่งซื้อเข้ามา', fmt(tot), 'ทุกสถานะ · ฿'+fmt(o.totalAmt),'')+
-    tile('ขายสำเร็จ', fmt(done.orders)+' <span class="ks" style="display:inline">('+pct(done.orders,tot)+'%)</span>', '฿'+fmt(done.amt)+' · ยอดขายจริง','hl2')+
-    tile('ยกเลิก', fmt(canc.orders)+' <span class="ks" style="display:inline">('+pct(canc.orders,tot)+'%)</span>', '฿'+fmt(canc.amt)+' · เจาะลึกด้านล่าง','hl')+
-    (ship.orders?tile('กำลังจัดส่ง', fmt(ship.orders), '฿'+fmt(ship.amt),''):'')+
-    (other>0?tile('อื่นๆ', fmt(other), '฿'+fmt(otherAmt),''):'');
+    tile('คำสั่งซื้อเข้ามา', fmt(tot), 'ทุกสถานะ · '+fmt(o.totalAmt),'')+
+    tile('ขายสำเร็จ', fmt(done.orders)+' <span class="ks" style="display:inline">('+pct(done.orders,tot)+'%)</span>', fmt(done.amt)+' · ยอดขายจริง','hl2')+
+    tile('ยกเลิก', fmt(canc.orders)+' <span class="ks" style="display:inline">('+pct(canc.orders,tot)+'%)</span>', fmt(canc.amt)+' · เจาะลึกด้านล่าง','hl')+
+    (ship.orders?tile('กำลังจัดส่ง', fmt(ship.orders), fmt(ship.amt),''):'')+
+    (other>0?tile('อื่นๆ', fmt(other), fmt(otherAmt),''):'');
   const seg=(w,c,t)=>w>0?`<div style="width:${w}%;background:${c}" title="${t}"></div>`:'';
   $('#ovrBar').innerHTML=`<div class="splitbar" style="height:24px;border-radius:7px">
       ${seg(pct(done.amt,o.totalAmt),'var(--good)','ขายสำเร็จ')}${seg(pct(canc.amt,o.totalAmt),'var(--bad)','ยกเลิก')}${seg(pct(ship.amt,o.totalAmt),'var(--warn)','จัดส่ง')}${seg(pct(otherAmt,o.totalAmt),'var(--muted)','อื่นๆ')}</div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;margin-top:7px;color:var(--muted)">
-      <span>🟩 ขายสำเร็จ ฿${fmt(done.amt)} (${pct(done.orders,tot)}%)</span>
-      <span>🟥 ยกเลิก ฿${fmt(canc.amt)} (${pct(canc.orders,tot)}%)</span>
-      ${ship.orders?`<span>🟧 จัดส่ง ฿${fmt(ship.amt)}</span>`:''}</div>`;
+      <span>🟩 ขายสำเร็จ ${fmt(done.amt)} (${pct(done.orders,tot)}%)</span>
+      <span>🟥 ยกเลิก ${fmt(canc.amt)} (${pct(canc.orders,tot)}%)</span>
+      ${ship.orders?`<span>🟧 จัดส่ง ${fmt(ship.amt)}</span>`:''}</div>`;
   // extra sales totals from the sheet (shown when available)
   const extra=$('#ovrSales'); if(extra){
     if(done.units||done.sub){
@@ -428,11 +428,11 @@ function renderOverview(){
       extra.classList.remove('hidden');
       extra.innerHTML = `<div class="sline"><b>💰 สรุปยอดขาย (ขายสำเร็จ)</b></div>`+
         `<div class="sgrid">`+
-        statTile('ยอดขายรวม (GMV)','฿'+fmt(done.amt))+
-        statTile('มูลค่าสินค้าสุทธิ','฿'+fmt(done.sub))+
-        statTile('ค่าจัดส่งที่เก็บได้','฿'+fmt(done.ship))+
+        statTile('ยอดขายรวม (GMV)',fmt(done.amt))+
+        statTile('มูลค่าสินค้าสุทธิ',fmt(done.sub))+
+        statTile('ค่าจัดส่งที่เก็บได้',fmt(done.ship))+
         statTile('ชิ้นที่ขายได้',fmt(done.units)+' ชิ้น')+
-        statTile('เฉลี่ย/ออเดอร์ (AOV)','฿'+fmt(aov))+
+        statTile('เฉลี่ย/ออเดอร์ (AOV)',fmt(aov))+
         (o.totalUnits?statTile('ชิ้นที่สั่งทั้งหมด',fmt(o.totalUnits)+' ชิ้น'):'')+
         `</div>`;
     } else extra.classList.add('hidden');
@@ -513,7 +513,7 @@ function render(){
   // products
   const prodMap=new Map();
   for(const it of list){ const e=prodMap.get(it.sku)||{sku:it.sku,prod:it.prod,lines:0,qty:0,sub:0,oids:new Set()}; e.lines++; e.qty+=it.qty; e.sub+=it.sub; e.oids.add(it.oid); prodMap.set(it.sku,e); }
-  const allProd=[...prodMap.values()].filter(e=>e.sub>0);   // ตัดสินค้าที่ยอดขาย ฿0 ออก (เช่น tester "Not For Sale")
+  const allProd=[...prodMap.values()].filter(e=>e.sub>0);   // ตัดสินค้าที่ยอดขาย 0 ออก (เช่น tester "Not For Sale")
   const SK={name:e=>e.sku, ord:e=>e.oids.size, qty:e=>e.qty, sub:e=>e.sub};
   allProd.sort((a,b)=>{ const va=SK[prodSort.k](a), vb=SK[prodSort.k](b);
     const c = (prodSort.k==='name') ? String(va).localeCompare(String(vb),'th') : (va-vb); return c*prodSort.dir; });

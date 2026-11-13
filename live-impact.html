@@ -143,7 +143,7 @@
 <script>
 const $ = s => document.querySelector(s);
 const nf = new Intl.NumberFormat('th-TH');
-const money = v => '฿' + nf.format(Math.round(v||0));
+const money = v => '' + nf.format(Math.round(v||0));
 const kB = v => v>=1e6 ? (v/1e6).toFixed(2)+'M' : v>=1e3 ? (v/1e3).toFixed(1)+'K' : nf.format(Math.round(v||0));
 const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad = n => String(n).padStart(2,'0');
