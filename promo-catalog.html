@@ -355,7 +355,7 @@
   <a class="sitem" data-brand="gala" href="promo-catalog.html?brand=gala"><span class="sic" style="background:#e11d48"></span>Gala</a>
   <div class="sidesec">โปรโมชัน</div>
   <a class="sitem on" href="#"><span class="semoji">🏷️</span>บอร์ดราคาโปรฯ</a>
-  <a class="sitem" href="index.html?tool=promos"><span class="semoji">🗓️</span>บันทึกโปรโมชัน</a>
+  <button class="sitem" type="button" onclick="openRecord()"><span class="semoji">🗓️</span>บันทึกโปรโมชัน</button>
   <div class="sidesec">สร้าง</div>
   <button class="sitem" type="button" onclick="document.getElementById('newPromo').click()"><span class="semoji">➕</span>สร้างโปรโมชัน</button>
   <button class="sitem" type="button" onclick="document.getElementById('newBasket').click()"><span class="semoji">🧺</span>สร้างตะกร้า</button>
@@ -363,6 +363,7 @@
 </aside>
 <div class="wrap">
   <div class="head">
+    <a class="back" href="./" style="display:inline-flex;align-items:center;margin-bottom:8px;font-weight:700">‹ กลับหน้าหลัก</a>
     <h1><span class="dot"></span>โปรโมชัน Terry</h1>
     <span class="muted" style="font-size:12px">ราคาโปรแต่ละแคมเปญ · อ่านสดจาก Master Promotion Plan + Promotion TT (รูปสินค้าแมพอัตโนมัติ)</span>
     <select id="monthSel" class="monthsel hidden" title="เลือกเดือนของโปรโมชัน"></select>
@@ -433,8 +434,21 @@
   </div>
 </div>
 
+<!-- record-promo popup (embeds the บันทึกโปรโมชัน tool — no page navigation) -->
+<div class="modal hidden" id="recModal">
+  <div class="sheet" style="max-width:1120px;width:96vw;height:92vh;padding:0;overflow:hidden">
+    <div class="sh-top" style="padding:10px 14px"><b>🗓️ บันทึกโปรโมชัน</b><span class="who">บันทึกช่วงโปรแต่ละแบรนด์ — ไปขึ้นเป็นแถบบนกราฟ GMV</span><button class="xbtn" id="recX">✕</button></div>
+    <iframe id="recFrame" title="บันทึกโปรโมชัน" style="width:100%;height:calc(92vh - 48px);border:0;display:block"></iframe>
+  </div>
+</div>
+
 <script>
 const $=s=>document.querySelector(s);
+function openRecord(){ const fr=document.getElementById('recFrame'); if(!fr.getAttribute('src')) fr.setAttribute('src','index.html?tool=promos&embed=1'); document.getElementById('recModal').classList.remove('hidden'); }
+function closeRecord(){ document.getElementById('recModal').classList.add('hidden'); }
+document.getElementById('recX').addEventListener('click',closeRecord);
+document.getElementById('recModal').addEventListener('click',e=>{ if(e.target.id==='recModal')closeRecord(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape')closeRecord(); });
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=v=>{const n=Number(String(v==null?'':v).replace(/[,฿\s]/g,''));return isNaN(n)?0:n;};
 const fmt=v=>v>0?v.toLocaleString('th-TH'):'—';
