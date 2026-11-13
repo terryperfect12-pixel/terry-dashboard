@@ -634,6 +634,18 @@ let ACTIVE={}; // mainUid -> currently-shown member uid (session only)
 let OPTOPEN={}; // mainUid -> options strip expanded? (session only; collapsed by default)
 function loadGroups(){ try{GROUP=JSON.parse(localStorage.getItem('promoGroups')||'{}')}catch{GROUP={}} if(!GROUP||typeof GROUP!=='object')GROUP={}; }
 function saveGroups(){ try{localStorage.setItem('promoGroups',JSON.stringify(GROUP))}catch{} }
+// ---- AUTO-grouping (like Benutra/Gala): single products sharing a BASE name become one card with
+// a "ตัวเลือก" dropdown. Base = name minus trailing shade/number (01/02/03) & size (20ML/50ML). ----
+let AUTOG={};   // childUid -> mainUid (auto, recomputed from ITEMS)
+const baseName=s=>{ let x=String(s||'').trim().toLowerCase();
+  x=x.replace(/\s*x\s*\d+$/,'');                              // x1, x2 (shouldn't hit singles, just in case)
+  x=x.replace(/\s*\d+(\.\d+)?\s*(ml|g|กรัม|ชิ้น|cc)\.?$/,'');  // 50ml · 20 ml · 1.8g
+  x=x.replace(/\s*(no\.?|เบอร์|สี|shade|เฉด)?\s*\d{1,3}$/,''); // trailing 01/02/03
+  return x.replace(/[\s\-_.]+/g,''); };
+function buildAutoG(){ AUTOG={}; const byBase=new Map();
+  for(const it of ITEMS){ if(it.isSet||it.custom)continue; const b=baseName(it.name); if(!b||b.length<2)continue; if(!byBase.has(b))byBase.set(b,[]); byBase.get(b).push(it); }
+  for(const arr of byBase.values()){ if(arr.length<2)continue; arr.sort((a,c)=>String(a.name).localeCompare(String(c.name),'th')); const main=arr[0].uid; for(let i=1;i<arr.length;i++) AUTOG[arr[i].uid]=main; } }
+const effParent=uid=>GROUP[uid]||AUTOG[uid];   // manual drag-group wins over auto
 // campaign copy: AWO = home (always shows EVERY basket). Copying a basket to a campaign ADDS it there
 // (it stays on AWO too) and can carry its own price for that campaign.
 let ASSIGN={}; // uid -> { campaignKey: price }  (price 0/empty = use the sheet price for that campaign)
@@ -648,7 +660,7 @@ const inCampaign=it=> SEL==='AWO' ? true : campsOf(it.uid).includes(SEL);   // A
 // price for a basket under a campaign: its custom price wins, else the sheet price for that campaign
 function campPrice(it,camp){ const m=ASSIGN[it.uid]; const c=m&&+m[camp]; return c>0?c:(it.prices[camp]||it.prices.AWO||0); }
 const uidOf=u=>ITEMS.find(x=>x.uid===u);
-const childrenOf=main=>ITEMS.filter(x=>GROUP[x.uid]===main.uid && inMonth(x));
+const childrenOf=main=>ITEMS.filter(x=>effParent(x.uid)===main.uid && inMonth(x));
 function groupUnder(childUid, targetUid){
   if(childUid===targetUid) return;
   const main = GROUP[targetUid] || targetUid;          // if target is itself an option, use its main
@@ -659,12 +671,13 @@ function groupUnder(childUid, targetUid){
   rerender();
 }
 function filtered(){
-  return ITEMS.filter(it=>inMonth(it) && !GROUP[it.uid] && (TYPE==='all'||(TYPE==='set'?it.isSet:!it.isSet)) && (showHidden || !isHidden(it)));
+  return ITEMS.filter(it=>inMonth(it) && !effParent(it.uid) && (TYPE==='all'||(TYPE==='set'?it.isSet:!it.isSet)) && (showHidden || !isHidden(it)));
 }
-function campCount(k){ if(k==='AWO') return ITEMS.filter(it=>inMonth(it)&&!GROUP[it.uid]).length;
-  return ITEMS.filter(it=>inMonth(it)&&!GROUP[it.uid]&&campsOf(it.uid).includes(k)).length; }
+function campCount(k){ if(k==='AWO') return ITEMS.filter(it=>inMonth(it)&&!effParent(it.uid)).length;
+  return ITEMS.filter(it=>inMonth(it)&&!effParent(it.uid)&&campsOf(it.uid).includes(k)).length; }
 
 function renderChips(){
+  buildAutoG();
   const chips=allCamps().map(cp=>{const on=cp.k===SEL; const custom=isCustomCamp(cp.k);
     return `<button class="chip ${on?'on':''}" data-k="${esc(cp.k)}" style="${on?`background:${cp.c}`:''}">
       <span class="cdot" style="background:${cp.c}"></span>${esc(cp.k)} <span class="cnt">${campCount(cp.k)}</span>${custom?`<span class="cx" data-delcamp="${esc(cp.k)}" title="ลบหัวข้อโปรนี้">✕</span>`:''}</button>`;}).join('');
@@ -783,6 +796,7 @@ function cardHtml(it,cp){
   </div>`;
 }
 function renderCards(){
+  buildAutoG();
   const cp=allCamps().find(c=>c.k===SEL)||CAMP[0];
   const s=SRCH.trim().toLowerCase();
   const list=filtered().filter(it=>inCampaign(it) && (!s||it.name.toLowerCase().includes(s)||it.sku.toLowerCase().includes(s)));
@@ -805,6 +819,7 @@ function copyScript(it){
 }
 
 function renderTable(){
+  buildAutoG();
   const list=filtered();
   const head=`<tr><th class="l">สินค้า</th><th>SKU</th><th>ราคาเต็ม</th>`+
     allCamps().map(c=>`<th style="color:${c.c}">${esc(c.k)}</th>`).join('')+
