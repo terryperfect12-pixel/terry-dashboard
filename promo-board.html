@@ -457,8 +457,8 @@ const thumbUrl=s=>(/(cf\.shopee|susercontent)/i.test(s)&&/\/file\//.test(s)&&!/_
 const imgTag=(src,cls,eager)=>`<img class="${cls||''}" src="${esc(thumbUrl(src))}" data-full="${esc(src)}" ${eager?'':'loading="lazy"'} onerror="if(this.src!==this.dataset.full){this.src=this.dataset.full}">`;
 function parseCSV(t){const R=[];let r=[],c="",q=false;for(let i=0;i<t.length;i++){const h=t[i];if(q){if(h==='"'){if(t[i+1]==='"'){c+='"';i++}else q=false}else c+=h}else{if(h==='"')q=true;else if(h===','){r.push(c);c=""}else if(h==='\n'){r.push(c);R.push(r);r=[];c=""}else if(h==='\r'){}else c+=h}}if(c!==""||r.length){r.push(c);R.push(r)}return R}
 
-const PROMO_SHEET='1A9zb0Duv4xj8-JGflSgbtD2NhpoO9Xa4sAgMWyrcfyc';
-const GID_MASTER=280317179, GID_TT=1322032194;     // Master Promotion Plan + Promotion TT (maps SKU→Product ID)
+const PROMO_SHEET='17OrznIaHLhQb4uJ3RooMkY2CTsU1VFWyYhjgh1MHh3I';   // new promo plan: Name·SKU·ราคาเต็ม·AWO·DD·MM·PD·flash·(รหัส TikTok)
+const GID_MASTER=1308460539;                        // single tab — image Product ID read from a "รหัส TikTok" column in this same sheet
 const COVER_SHEET='1Omn_T1Y3UUnP9d5IcVXnhL2TsXD9AI3IB3A80IUoKqY';
 const COVER_TABS=[720887439,919830494];            // Terry tiktok, Terry Shopee (code→image)
 // Terry single-product images (from the "Terry" image tab, gid=455187715): master product name → TikTok Product ID.
@@ -582,48 +582,37 @@ function updateCount(){ const n=Object.keys(IMG).filter(k=>IMG[k]).length; $('#i
 function rerender(){ VIEW==='cards'?renderCards():renderTable(); }
 
 async function load(){
-  // pull Master + Promotion TT + the two Terry cover tabs together (all live)
-  const [gM,gTT,...covG]=await Promise.all([ csvTab(PROMO_SHEET,GID_MASTER), csvTab(PROMO_SHEET,GID_TT), ...COVER_TABS.map(gid=>csvTab(COVER_SHEET,gid)) ]);
+  // pull the promo plan (Sheet 1) + the Terry cover tabs (Sheet 2, code→image) together (all live)
+  const [gM,...covG]=await Promise.all([ csvTab(PROMO_SHEET,GID_MASTER), ...COVER_TABS.map(gid=>csvTab(COVER_SHEET,gid)) ]);
   if(!gM.length) throw new Error('อ่านชีตไม่ได้ (ตรวจการแชร์)');
-  // cover map: product code → image URL (image = first http cell; layout differs per tab)
+  // cover map: TikTok Product ID → image URL (image = first http cell)
   const cover=new Map(); COVER_NAME=[];
   for(const g of covG){ for(let i=1;i<g.length;i++){ const code=String(g[i][0]||'').trim(); const nm=String(g[i][1]||'').trim(); const img=firstHttp(g[i]); if(!img)continue;
     if(code&&!cover.has(code)) cover.set(code,img);
     COVER_NAME.push({ k:nkImg(nm), pid:/^\d{10,}$/.test(code)?code:'', img }); } }
   COVER_PID=cover;
-  // Promotion TT: internal SKU / Name → Product ID
-  const ttBySku=new Map(), ttByName=new Map();
-  { const hr=gTT.findIndex(r=>r.includes('Product ID')&&r.includes('Name'));
-    if(hr>=0){ const H=gTT[hr], cN=H.indexOf('Name'), cS=H.indexOf('SKU'), cP=H.indexOf('Product ID');
-      for(let i=hr+1;i<gTT.length;i++){ const r=gTT[i]; const pid=String(r[cP]||'').trim(); if(!/^\d{6,}$/.test(pid))continue;
-        const sk=normSku(r[cS]); if(sk&&!ttBySku.has(sk)) ttBySku.set(sk,pid);
-        const nm=normNm(r[cN]); if(nm&&!ttByName.has(nm)) ttByName.set(nm,pid); } } }
-  // Master Promotion Plan rows (the display data)
+  // Sheet 1 rows (the display data)
   const hr=gM.findIndex(r=>r.includes('Name')&&r.some(c=>/ราคาเต็ม/.test(c)));
   if(hr<0) throw new Error('ไม่พบหัวตาราง (Name / ราคาเต็ม)');
-  const base=gM[hr].indexOf('Name');
-  // month marker: the row above the header carries a month label (e.g. "Oct") over the campaign block
-  let smon=0; const mrow=gM[hr-1]||[];
-  for(const c of mrow){ const t=String(c||'').trim().toLowerCase().slice(0,3); if(MTH_ABBR[t]){ smon=MTH_ABBR[t]; break; } }
-  const yr=new Date().getFullYear();
-  SHEET_MONTH = monthKey(yr, smon||(new Date().getMonth()+1));
+  const H=gM[hr], base=H.indexOf('Name');
+  // the "รหัส TikTok" column (Product ID per row, matches Sheet 2) — match by header, else auto-detect a column of long IDs
+  let pidCol=H.findIndex(c=>/tiktok|product\s*id|รหัส\s*tiktok|รหัสสินค้า/i.test(String(c)));
+  SHEET_MONTH = monthKey(new Date().getFullYear(), new Date().getMonth()+1);
   const occ=new Map();   // disambiguate duplicate (name|sku) rows so each gets a unique uid
   for(let i=hr+1;i<gM.length;i++){const r=gM[i];const name=String(r[base]||'').trim();if(!name||name==='Name')continue;
     const prices={}; CAMP.forEach(cp=>prices[cp.k]=num(r[base+cp.off]));
     const full=num(r[base+2]); const sku=String(r[base+1]||'').trim();
-    const typRaw=String(r[10]||'').trim().toLowerCase();
-    const isSet = typRaw==='set' || (/\+|x\s*\d|x\d/i.test(name) && typRaw!=='single');
-    // Product ID + image straight from the sheet: Promotion TT (SKU/Name→ID) → cover tab by name → (last) baked map
-    const cm = !isSet ? coverMatchByName(name) : null;
-    let pid = ttBySku.get(normSku(sku)) || ttByName.get(normNm(name)) || (cm&&cm.pid) || (!isSet?(TERRY_SINGLE_PID[normNm(name)]||''):'') || '';
-    let autoImg = (pid && cover.get(pid)) || (cm&&cm.img) || '';                 // image via Product ID, else by name
+    // basket/set if the name shows a bundle (+, x2, x3) — no auto-grouping, baskets are their own rows
+    const isSet = /\+|x\s*\d|เซ็ต|ตะกร้า/i.test(name);
+    // image: Product ID from the sheet's "รหัส TikTok" column → cover; else (singles) best-effort by name
+    let pid = pidCol>=0 ? String(r[pidCol]||'').trim() : '';
+    if(!/^\d{10,}$/.test(pid)) pid='';
+    const cm = (!pid && !isSet) ? coverMatchByName(name) : null;
+    if(!pid && cm&&cm.pid) pid=cm.pid;
+    if(!pid && !isSet) pid = TERRY_SINGLE_PID[normNm(name)]||'';
+    const autoImg = (pid && cover.get(pid)) || (cm&&cm.img) || '';
     const bk=name+'|'+sku; const n=occ.get(bk)||0; occ.set(bk,n+1); const uid=bk+'|'+n;
-    // set components: columns SKU1,QTY,SKU2,QTY,...,SKU5,QTY (0..9) → each with its own image via TT→cover
-    const parts=[];
-    for(let c=0;c<10;c+=2){ const pn=String(r[c]||'').trim(); if(!pn)continue; const q=num(r[c+1])||1;
-      const ppid=ttByName.get(normNm(pn)); parts.push({ name:pn, qty:q, img: ppid?(cover.get(ppid)||''):'' }); }
-    ITEMS.push({ uid, name, sku, full, prices, tiktok:num(r[base+8]),
-      gwp:String(r[base+9]||'').trim(), remark:String(r[base+10]||'').trim(), isSet, pid, autoImg, month:SHEET_MONTH, parts });
+    ITEMS.push({ uid, name, sku, full, prices, tiktok:0, gwp:'', remark:'', isSet, pid, autoImg, month:SHEET_MONTH, parts:[] });
   }
 }
 
@@ -636,16 +625,9 @@ function loadGroups(){ try{GROUP=JSON.parse(localStorage.getItem('promoGroups')|
 function saveGroups(){ try{localStorage.setItem('promoGroups',JSON.stringify(GROUP))}catch{} }
 // ---- AUTO-grouping (like Benutra/Gala): single products sharing a BASE name become one card with
 // a "ตัวเลือก" dropdown. Base = name minus trailing shade/number (01/02/03) & size (20ML/50ML). ----
-let AUTOG={};   // childUid -> mainUid (auto, recomputed from ITEMS)
-const baseName=s=>{ let x=String(s||'').trim().toLowerCase();
-  x=x.replace(/\s*x\s*\d+$/,'');                              // x1, x2 (shouldn't hit singles, just in case)
-  x=x.replace(/\s*\d+(\.\d+)?\s*(ml|g|กรัม|ชิ้น|cc)\.?$/,'');  // 50ml · 20 ml · 1.8g
-  x=x.replace(/\s*(no\.?|เบอร์|สี|shade|เฉด)?\s*\d{1,3}$/,''); // trailing 01/02/03
-  return x.replace(/[\s\-_.]+/g,''); };
-function buildAutoG(){ AUTOG={}; const byBase=new Map();
-  for(const it of ITEMS){ if(it.isSet||it.custom)continue; const b=baseName(it.name); if(!b||b.length<2)continue; if(!byBase.has(b))byBase.set(b,[]); byBase.get(b).push(it); }
-  for(const arr of byBase.values()){ if(arr.length<2)continue; arr.sort((a,c)=>String(a.name).localeCompare(String(c.name),'th')); const main=arr[0].uid; for(let i=1;i<arr.length;i++) AUTOG[arr[i].uid]=main; } }
-const effParent=uid=>GROUP[uid]||AUTOG[uid];   // manual drag-group wins over auto
+let AUTOG={};   // (removed) auto-grouping created messy baskets — baskets now come only from real Sheet 1 rows
+function buildAutoG(){ AUTOG={}; }              // no-op: no auto-grouping
+const effParent=uid=>GROUP[uid];               // only manual drag-grouping (ตัวเลือก) — no auto
 // campaign copy: AWO = home (always shows EVERY basket). Copying a basket to a campaign ADDS it there
 // (it stays on AWO too) and can carry its own price for that campaign.
 let ASSIGN={}; // uid -> { campaignKey: price }  (price 0/empty = use the sheet price for that campaign)
