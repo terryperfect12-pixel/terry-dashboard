@@ -630,11 +630,16 @@ let ACTIVE={}; // mainUid -> currently-shown member uid (session only)
 let OPTOPEN={}; // mainUid -> options strip expanded? (session only; collapsed by default)
 function loadGroups(){ try{GROUP=JSON.parse(localStorage.getItem('promoGroups')||'{}')}catch{GROUP={}} if(!GROUP||typeof GROUP!=='object')GROUP={}; }
 function saveGroups(){ try{localStorage.setItem('promoGroups',JSON.stringify(GROUP))}catch{} }
-// ---- AUTO-grouping (like Benutra/Gala): single products sharing a BASE name become one card with
-// a "ตัวเลือก" dropdown. Base = name minus trailing shade/number (01/02/03) & size (20ML/50ML). ----
-let AUTOG={};   // (removed) auto-grouping created messy baskets — baskets now come only from real Sheet 1 rows
-function buildAutoG(){ AUTOG={}; }              // no-op: no auto-grouping
-const effParent=uid=>GROUP[uid];               // only manual drag-grouping (ตัวเลือก) — no auto
+// ---- AUTO-grouping (like Benutra/Gala, but data-driven): items that share the SAME TikTok listing
+// (same cover Product ID = real online variants, e.g. ลิปบาล์ม 01/02/03, กันแดดหนมปัง 1/3 ชิ้น)
+// collapse into ONE card with a "ตัวเลือก" dropdown. No name-guessing → no messy baskets. ----
+let AUTOG={};   // childUid -> mainUid
+function buildAutoG(){ AUTOG={}; const byPid=new Map();
+  for(const it of ITEMS){ if(!it.pid||!inMonth(it))continue; if(!byPid.has(it.pid))byPid.set(it.pid,[]); byPid.get(it.pid).push(it); }
+  for(const arr of byPid.values()){ if(arr.length<2)continue;
+    arr.sort((a,c)=>((a.isSet?1:0)-(c.isSet?1:0))||((a.full||0)-(c.full||0))||String(a.name).localeCompare(String(c.name),'th'));
+    const main=arr[0].uid; for(let i=1;i<arr.length;i++) AUTOG[arr[i].uid]=main; } }
+const effParent=uid=>GROUP[uid]||AUTOG[uid];   // manual drag-group wins over auto (by listing)
 // campaign copy: AWO = home (always shows EVERY basket). Copying a basket to a campaign ADDS it there
 // (it stays on AWO too) and can carry its own price for that campaign.
 let ASSIGN={}; // uid -> { campaignKey: price }  (price 0/empty = use the sheet price for that campaign)
