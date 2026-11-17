@@ -585,11 +585,17 @@ async function load(){
   // pull the promo plan (Sheet 1) + the Terry cover tabs (Sheet 2, code→image) together (all live)
   const [gM,...covG]=await Promise.all([ csvTab(PROMO_SHEET,GID_MASTER), ...COVER_TABS.map(gid=>csvTab(COVER_SHEET,gid)) ]);
   if(!gM.length) throw new Error('อ่านชีตไม่ได้ (ตรวจการแชร์)');
-  // cover map: TikTok Product ID → image URL (image = first http cell)
-  const cover=new Map(); COVER_NAME=[];
-  for(const g of covG){ for(let i=1;i<g.length;i++){ const code=String(g[i][0]||'').trim(); const nm=String(g[i][1]||'').trim(); const img=firstHttp(g[i]); if(!img)continue;
-    if(code&&!cover.has(code)) cover.set(code,img);
-    COVER_NAME.push({ k:nkImg(nm), pid:/^\d{10,}$/.test(code)?code:'', img }); } }
+  // cover tabs now carry a "SKU ของผู้ขาย" (seller SKU) column that matches Sheet 1's SKU exactly →
+  // build: seller SKU → {img,pid} (primary match), TikTok Product ID → img, and name → img (fallback)
+  const cover=new Map(), coverBySku=new Map(); COVER_NAME=[];
+  for(const g of covG){ if(!g.length)continue;
+    const Hc=g[0]; const skuC=Hc.findIndex(c=>/SKU\s*ของผู้ขาย/i.test(String(c))); const imgC=Hc.findIndex(c=>/ภาพ/.test(String(c)));
+    for(let i=1;i<g.length;i++){ const row=g[i]; const code=String(row[0]||'').trim(); const nm=String(row[1]||'').trim();
+      const img=(imgC>=0?String(row[imgC]||'').trim():'')||firstHttp(row); if(!/^https?:\/\//.test(img))continue;
+      const pid=/^\d{10,}$/.test(code)?code:'';
+      if(code&&!cover.has(code)) cover.set(code,img);
+      const ssku=skuC>=0?normSku(row[skuC]):''; if(ssku&&!coverBySku.has(ssku)) coverBySku.set(ssku,{img,pid});
+      COVER_NAME.push({ k:nkImg(nm), pid, img }); } }
   COVER_PID=cover;
   // Sheet 1 rows (the display data)
   const hr=gM.findIndex(r=>r.includes('Name')&&r.some(c=>/ราคาเต็ม/.test(c)));
@@ -604,13 +610,14 @@ async function load(){
     const full=num(r[base+2]); const sku=String(r[base+1]||'').trim();
     // basket/set if the name shows a bundle (+, x2, x3) — no auto-grouping, baskets are their own rows
     const isSet = /\+|x\s*\d|เซ็ต|ตะกร้า/i.test(name);
-    // image: Product ID from the sheet's "รหัส TikTok" column → cover; else (singles) best-effort by name
-    let pid = pidCol>=0 ? String(r[pidCol]||'').trim() : '';
-    if(!/^\d{10,}$/.test(pid)) pid='';
-    const cm = (!pid && !isSet) ? coverMatchByName(name) : null;
+    // image match: seller SKU (exact, works for singles AND baskets) → optional "รหัส TikTok" col → name fallback
+    const bySku = coverBySku.get(normSku(sku));
+    let pid = (bySku&&bySku.pid) || (pidCol>=0 ? String(r[pidCol]||'').trim() : '');
+    if(!/^\d{10,}$/.test(pid)) pid = (bySku&&bySku.pid) || '';
+    const cm = (!bySku && !isSet) ? coverMatchByName(name) : null;
     if(!pid && cm&&cm.pid) pid=cm.pid;
     if(!pid && !isSet) pid = TERRY_SINGLE_PID[normNm(name)]||'';
-    const autoImg = (pid && cover.get(pid)) || (cm&&cm.img) || '';
+    const autoImg = (bySku&&bySku.img) || (pid && cover.get(pid)) || (cm&&cm.img) || '';
     const bk=name+'|'+sku; const n=occ.get(bk)||0; occ.set(bk,n+1); const uid=bk+'|'+n;
     ITEMS.push({ uid, name, sku, full, prices, tiktok:0, gwp:'', remark:'', isSet, pid, autoImg, month:SHEET_MONTH, parts:[] });
   }
