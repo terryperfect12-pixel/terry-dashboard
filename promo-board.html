@@ -595,12 +595,12 @@ async function load(){
   // build: seller SKU → {img,pid} (primary match), TikTok Product ID → img, and name → img (fallback)
   const cover=new Map(), coverBySku=new Map(); COVER_NAME=[];
   for(const g of covG){ if(!g.length)continue;
-    const Hc=g[0]; const skuC=Hc.findIndex(c=>/SKU\s*ของผู้ขาย/i.test(String(c))); const imgC=Hc.findIndex(c=>/ภาพ/.test(String(c)));
+    const Hc=g[0]; const skuC=Hc.findIndex(c=>/SKU\s*ของผู้ขาย/i.test(String(c))); const imgC=Hc.findIndex(c=>/ภาพ/.test(String(c))); const varC=Hc.findIndex(c=>/ตัวเลือกสินค้า/.test(String(c)));
     for(let i=1;i<g.length;i++){ const row=g[i]; const code=String(row[0]||'').trim(); const nm=String(row[1]||'').trim();
       const img=(imgC>=0?String(row[imgC]||'').trim():'')||firstHttp(row); if(!/^https?:\/\//.test(img))continue;
-      const pid=/^\d{10,}$/.test(code)?code:'';
+      const pid=/^\d{10,}$/.test(code)?code:''; const variant=varC>=0?String(row[varC]||'').trim():'';
       if(code&&!cover.has(code)) cover.set(code,img);
-      const ssku=skuC>=0?normSku(row[skuC]):''; if(ssku&&!coverBySku.has(ssku)) coverBySku.set(ssku,{img,pid});
+      const ssku=skuC>=0?normSku(row[skuC]):''; if(ssku&&!coverBySku.has(ssku)) coverBySku.set(ssku,{img,pid,variant});
       COVER_NAME.push({ k:nkImg(nm), pid, img }); } }
   COVER_PID=cover;
   // Sheet 1 rows (the display data)
@@ -624,8 +624,9 @@ async function load(){
     if(!pid && cm&&cm.pid) pid=cm.pid;
     if(!pid && !isSet) pid = TERRY_SINGLE_PID[normNm(name)]||'';
     const autoImg = (bySku&&bySku.img) || (pid && cover.get(pid)) || (cm&&cm.img) || '';
+    const variant = (bySku&&bySku.variant) || '';   // ตัวเลือกย่อย label (ตัวเลือกสินค้า from Sheet 2)
     const bk=name+'|'+sku; const n=occ.get(bk)||0; occ.set(bk,n+1); const uid=bk+'|'+n;
-    ITEMS.push({ uid, name, sku, full, prices, tiktok:0, gwp:'', remark:'', isSet, pid, autoImg, month:SHEET_MONTH, parts:[] });
+    ITEMS.push({ uid, name, sku, full, prices, tiktok:0, gwp:'', remark:'', isSet, pid, variant, autoImg, month:SHEET_MONTH, parts:[] });
   }
 }
 
@@ -752,7 +753,7 @@ function cardHtml(it,cp){
     : '';
   const optOpen=!!OPTOPEN[it.uid];
   const optStrip = grouped
-    ? `<div class="opts2"><button class="opts2-h" data-optexp="${esc(it.uid)}">🧩 ตัวเลือก (${members.length}) · กดเพื่อสลับ <span class="opts2-tog">${optOpen?'ย่อ ▲':'ขยาย ▼'}</span></button>${optOpen?`<div class="opts2-list">${members.map(m=>{const mp=m.prices[SEL], mi=displayImg(m); return `<div class="opt2 ${m.uid===aUid?'on':''}" data-optsel="${esc(m.uid)}" data-main="${esc(it.uid)}" title="${esc(m.name)}"><div class="opt2-img">${mi?imgTag(mi,'',true):'<span>📦</span>'}</div><div class="opt2-nm">${esc(m.name)}</div><div class="opt2-pr" style="color:${cp.c}">${mp>0?fmt(mp):'—'}</div>${m.uid!==it.uid?`<button class="opt2-x" data-act="ungroup" data-k="${esc(m.uid)}" title="เอาออกจากกลุ่ม">✕</button>`:'<span class="opt2-main">หลัก</span>'}</div>`;}).join('')}</div>`:''}</div>`
+    ? `<div class="opts2"><button class="opts2-h" data-optexp="${esc(it.uid)}">🧩 ตัวเลือก (${members.length}) · กดเพื่อสลับ <span class="opts2-tog">${optOpen?'ย่อ ▲':'ขยาย ▼'}</span></button>${optOpen?`<div class="opts2-list">${members.map(m=>{const mp=m.prices[SEL], mi=displayImg(m); return `<div class="opt2 ${m.uid===aUid?'on':''}" data-optsel="${esc(m.uid)}" data-main="${esc(it.uid)}" title="${esc(m.name)}"><div class="opt2-img">${mi?imgTag(mi,'',true):'<span>📦</span>'}</div><div class="opt2-nm">${esc(m.variant||m.name)}</div><div class="opt2-pr" style="color:${cp.c}">${mp>0?fmt(mp):'—'}</div>${m.uid!==it.uid?`<button class="opt2-x" data-act="ungroup" data-k="${esc(m.uid)}" title="เอาออกจากกลุ่ม">✕</button>`:'<span class="opt2-main">หลัก</span>'}</div>`;}).join('')}</div>`:''}</div>`
     : '';
   return `<div class="pc ${closed?'closed':''} ${grouped?'grouped':''}" draggable="true" data-uid="${esc(it.uid)}">
     <div class="pimg">
