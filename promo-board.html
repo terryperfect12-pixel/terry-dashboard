@@ -625,8 +625,9 @@ async function load(){
     if(!pid && !isSet) pid = TERRY_SINGLE_PID[normNm(name)]||'';
     const autoImg = (bySku&&bySku.img) || (pid && cover.get(pid)) || (cm&&cm.img) || '';
     const variant = (bySku&&bySku.variant) || '';   // ตัวเลือกย่อย label (ตัวเลือกสินค้า from Sheet 2)
+    const gpid = (bySku&&bySku.pid) || '';           // group ONLY by exact seller-SKU listing (never fuzzy name → no mis-group)
     const bk=name+'|'+sku; const n=occ.get(bk)||0; occ.set(bk,n+1); const uid=bk+'|'+n;
-    ITEMS.push({ uid, name, sku, full, prices, tiktok:0, gwp:'', remark:'', isSet, pid, variant, autoImg, month:SHEET_MONTH, parts:[] });
+    ITEMS.push({ uid, name, sku, full, prices, tiktok:0, gwp:'', remark:'', isSet, pid, gpid, variant, autoImg, month:SHEET_MONTH, parts:[] });
   }
 }
 
@@ -642,7 +643,7 @@ function saveGroups(){ try{localStorage.setItem('promoGroups',JSON.stringify(GRO
 // collapse into ONE card with a "ตัวเลือก" dropdown. No name-guessing → no messy baskets. ----
 let AUTOG={};   // childUid -> mainUid
 function buildAutoG(){ AUTOG={}; const byPid=new Map();
-  for(const it of ITEMS){ if(!it.pid||!inMonth(it))continue; if(!byPid.has(it.pid))byPid.set(it.pid,[]); byPid.get(it.pid).push(it); }
+  for(const it of ITEMS){ if(!it.gpid||!inMonth(it))continue; if(!byPid.has(it.gpid))byPid.set(it.gpid,[]); byPid.get(it.gpid).push(it); }
   for(const arr of byPid.values()){ if(arr.length<2)continue;
     arr.sort((a,c)=>((a.isSet?1:0)-(c.isSet?1:0))||((a.full||0)-(c.full||0))||String(a.name).localeCompare(String(c.name),'th'));
     const main=arr[0].uid; for(let i=1;i<arr.length;i++) AUTOG[arr[i].uid]=main; } }
