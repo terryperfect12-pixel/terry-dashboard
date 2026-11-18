@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terry Live — เป้า vs ยอดจริง</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f7f9; --surface:#ffffff; --surface-2:#f1f3f6; --line:#e5e8ec; --line-2:#d3d8df;
+    --ink:#121619; --ink-2:#3b434c; --muted:#8a929c; --accent:#2563eb; --accent-soft:#e8effe;
+    --good:#16a34a; --bad:#e11d48; --warn:#d97706; --self:#2563eb; --affi:#f59e0b;
+    --f:"Sarabun","TH Sarabun New","Segoe UI",system-ui,-apple-system,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#0f1317; --surface:#171c22; --surface-2:#1e242c; --line:#2a313a; --line-2:#394250;
+    --ink:#eef1f4; --ink-2:#c3cad2; --muted:#8893a0; --accent:#5b9bff; --accent-soft:#1b2740;
+  }}
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:16px 18px 70px}
+  a.back{display:inline-block;margin-bottom:10px;color:var(--muted);text-decoration:none;font-weight:700}
+  h1{font-size:20px;margin:0 0 2px}
+  .sub{color:var(--muted);font-size:12.5px;margin:0 0 16px}
+  .muted{color:var(--muted)}
+  .tnum{font-variant-numeric:tabular-nums}
+  .row{display:flex;flex-wrap:wrap;gap:12px}
+  .tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px}
+  @media(min-width:760px){.tiles{grid-template-columns:repeat(5,1fr)}}
+  .tile{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px}
+  .tile .l{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
+  .tile .v{font-size:22px;font-weight:800;margin-top:4px;line-height:1.1}
+  .tile .s{font-size:11px;color:var(--muted);margin-top:4px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px}
+  .card h2{font-size:14px;margin:0 0 10px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);font-weight:700}
+  td.l,th.l{text-align:left}
+  .chip{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700}
+  .chip.self{background:color-mix(in oklab,var(--self) 15%,var(--surface));color:var(--self)}
+  .chip.affi{background:color-mix(in oklab,var(--affi) 18%,var(--surface));color:var(--warn)}
+  .pct{font-weight:800}
+  .pct.g{color:var(--good)} .pct.b{color:var(--bad)} .pct.n{color:var(--muted)}
+  .bar{height:7px;border-radius:5px;background:var(--surface-2);overflow:hidden;min-width:70px}
+  .bar>span{display:block;height:100%}
+  .loading{padding:40px;text-align:center;color:var(--muted)}
+  .note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:8px}
+  .scroll{overflow-x:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="./">‹ กลับหน้าหลัก</a>
+  <h1>📺 Terry Live — เป้า vs ยอดจริง</h1>
+  <p class="sub">แผนไลฟ์ (เป้ายอดขาย ต่อวัน/ช่องทาง/Host) · จับคู่กับยอดขายจริงจากชีตไลฟ์ (Self Live + Affiliate Live) · <span id="monthlbl"></span></p>
+  <div id="app"><div class="loading">⏳ กำลังโหลดข้อมูล…</div></div>
+</div>
+<script>
+const PLAN_SHEET='1c-Pj4yfIYUnTjPpJyqxIapqiUkOHs_uTKsg1sKhfNs4', PLAN_GID='0';
+const F_SELF='1PZjve_Ud_JdaMIwzEM5SHcAYsckotMIEdLUahCAvn1s';   // Self Live
+const F_AFF ='1EvO5V6ai-BH_nzWOGLW-fjUVWxHKmBjJ8GFZwEQhBqA';   // Affiliate Live
+const BRAND='Terry';
+const MON_ABBR={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+const TH_ABBR={'ม.ค.':1,'ก.พ.':2,'มี.ค.':3,'เม.ย.':4,'พ.ค.':5,'มิ.ย.':6,'ก.ค.':7,'ส.ค.':8,'ก.ย.':9,'ต.ค.':10,'พ.ย.':11,'ธ.ค.':12};
+const TH_MONTH=['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const EN_MON=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function parseCSV(t){const R=[];let r=[],c="",q=false;for(let i=0;i<t.length;i++){const h=t[i];if(q){if(h==='"'){if(t[i+1]==='"'){c+='"';i++}else q=false}else c+=h}else{if(h==='"')q=true;else if(h===','){r.push(c);c=""}else if(h==='\n'){r.push(c);R.push(r);r=[];c=""}else if(h==='\r'){}else c+=h}}if(c!==""||r.length){r.push(c);R.push(r)}return R}
+const num=v=>{const n=Number(String(v==null?'':v).replace(/[,฿\s]/g,''));return isNaN(n)?0:n};
+const fmt=n=>Math.round(n||0).toLocaleString('en-US');
+const kOf=n=>n>=1e6?(n/1e6).toFixed(2)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':fmt(n);
+async function csv(id,gid){const t=await (await fetch(`https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}&cb=${Date.now()}`)).text();return t.trim().startsWith('<')?[]:parseCSV(t)}
+async function gidOf(id,wantName){const t=await (await fetch(`https://docs.google.com/spreadsheets/d/${id}/htmlview?cb=${Date.now()}`)).text();
+  const re=/items\.push\(\{name:\s*"([^"]+)"[\s\S]*?("?\d{3,}"?|"0")\s*==\s*gid/g;let m;const map={};
+  while((m=re.exec(t))){map[m[1].trim().toLowerCase()]=m[2].replace(/"/g,'')}
+  return map[wantName.toLowerCase()]||null; }
+
+// parse a messy plan date cell → {m,d} (schedule month = schedMon, used to disambiguate numeric d/m)
+function parseDate(cell, schedMon){
+  const s=String(cell||'').trim(); if(!s) return null;
+  // Thai abbr "พ.ย. 1, 2026" or "8 พ.ย."
+  for(const k in TH_ABBR){ if(s.includes(k)){ const d=(s.match(/\d{1,2}/)||[])[0]; if(d) return {m:TH_ABBR[k],d:+d}; } }
+  // English "9 Nov" / "Nov 9"
+  const em=s.toLowerCase().match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/);
+  if(em){ const d=(s.match(/\d{1,2}/)||[])[0]; if(d) return {m:MON_ABBR[em[1]],d:+d}; }
+  // numeric a/b/(y)
+  const parts=s.split(/[\/\-.]/).map(x=>+x).filter(x=>!isNaN(x));
+  if(parts.length>=2){ let [a,b]=parts;
+    // if one part equals the schedule month, that's the month; the other is the day
+    if(a===schedMon && b>=1 && b<=31) return {m:a,d:b};
+    if(b===schedMon && a>=1 && a<=31) return {m:b,d:a};
+    // else assume D/M
+    if(a>=1&&a<=31&&b>=1&&b<=12) return {m:b,d:a};
+    if(a>=1&&a<=12&&b>=1&&b<=31) return {m:a,d:b};
+  }
+  return null;
+}
+// session date from the live sheet's "start" ("2026/11/08/ 19:10" or "2026-11-08 ...") → "M-D"
+function sessDate(start){ const m=String(start||'').match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/); return m?(+m[2])+'-'+(+m[3]):null; }
+const normHost=s=>String(s||'').toLowerCase().replace(/\(.*?\)/g,'').replace(/[^a-z0-9ก-๙]/g,'');
+
+(async function(){
+  try{
+    const plan=await csv(PLAN_SHEET,PLAN_GID);
+    if(!plan.length) throw new Error('อ่านชีตแผนไลฟ์ไม่ได้ (ตรวจการแชร์)');
+    // header: col0 month/date, col1 target, col2 channel, col3 host
+    const hdr=plan[0].map(c=>String(c||'').trim());
+    let schedMon=11; const hm=hdr[0]&&hdr[0].toLowerCase(); if(hm&&MON_ABBR[hm.slice(0,3)]) schedMon=MON_ABBR[hm.slice(0,3)];
+    const rows=[];
+    for(let i=1;i<plan.length;i++){ const r=plan[i]; const dc=String(r[0]||'').trim(); if(!dc) continue;
+      const dt=parseDate(dc,schedMon); const target=num(r[1]); const chRaw=String(r[2]||'').trim();
+      const isAffi=/affi|แอฟ/i.test(chRaw); const ch=isAffi?'Affi':'Self';
+      rows.push({ raw:dc, m:dt?dt.m:0, d:dt?dt.d:0, key:dt?(dt.m+'-'+dt.d):null, target, ch, host:String(r[3]||'').trim() }); }
+    const year=2026;
+    document.getElementById('monthlbl').textContent = TH_MONTH[schedMon]+' '+year;
+
+    // actuals from the live sheets (month = schedMon → tab "<EnMon> Terry")
+    const tabName=EN_MON[schedMon]+' '+BRAND;
+    const [gSelf,gAff]=await Promise.all([gidOf(F_SELF,tabName),gidOf(F_AFF,tabName)]);
+    const [selfRows,affRows]=await Promise.all([ gSelf?csv(F_SELF,gSelf):[], gAff?csv(F_AFF,gAff):[] ]);
+    // parse sessions: r0 id, r1 creator, r2 handle, r3 start, r5 gmv, r19 views
+    const parseSess=g=>{const o=[];for(let i=1;i<g.length;i++){const r=g[i];const cr=String(r[1]||'').trim();if(!cr)continue;const dd=sessDate(r[3]);if(!dd)continue;o.push({creator:cr,handle:String(r[2]||'').trim(),date:dd,gmv:num(r[5]),views:num(r[19])});}return o;};
+    const selfS=parseSess(selfRows), affS=parseSess(affRows);
+    // aggregate actual by date
+    const aggByDate=(sess)=>{const m={};for(const s of sess){(m[s.date]=m[s.date]||{gmv:0,views:0,n:0});m[s.date].gmv+=s.gmv;m[s.date].views+=s.views;m[s.date].n++;}return m;};
+    const selfByDate=aggByDate(selfS), affByDate=aggByDate(affS);
+    // per host (affi) by date+host
+    const affByHostDate={};for(const s of affS){const k=s.date+'|'+normHost(s.creator)+'|'+normHost(s.handle);}
+    function affActualFor(key,host){ const base=affByDate[key]||{gmv:0,views:0,n:0};
+      if(host){ const hk=normHost(host); const hit=affS.filter(s=>s.date===key&&(normHost(s.creator).includes(hk)||normHost(s.handle).includes(hk)||hk.includes(normHost(s.creator))));
+        if(hit.length) return {gmv:hit.reduce((a,x)=>a+x.gmv,0),views:hit.reduce((a,x)=>a+x.views,0),n:hit.length,matched:true}; }
+      return {...base,matched:false}; }
+
+    // join
+    for(const r of rows){ if(!r.key){ r.actual=0; r.views=0; r.matched=false; continue; }
+      if(r.ch==='Self'){ const a=selfByDate[r.key]||{gmv:0,views:0}; r.actual=a.gmv; r.views=a.views; r.matched=!!selfByDate[r.key]; }
+      else { const a=affActualFor(r.key,r.host); r.actual=a.gmv; r.views=a.views; r.matched=a.matched||!!affByDate[r.key]; } }
+
+    render(rows, schedMon, {selfByDate,affByDate});
+  }catch(e){ document.getElementById('app').innerHTML='<div class="loading" style="color:var(--bad)">⚠️ '+e.message+'</div>'; }
+})();
+
+function pctCell(actual,target){ if(!target) return '<span class="pct n">—</span>'; const p=Math.round(actual/target*100); const cl=p>=100?'g':p>=70?'n':'b'; return `<span class="pct ${cl}">${p}%</span>`; }
+function barCell(actual,target){ const p=target?Math.min(100,actual/target*100):0; const col=p>=100?'var(--good)':p>=70?'var(--warn)':'var(--bad)'; return `<div class="bar"><span style="width:${p}%;background:${col}"></span></div>`; }
+
+function render(rows, schedMon){
+  const tgt=rows.reduce((a,r)=>a+r.target,0), act=rows.reduce((a,r)=>a+r.actual,0);
+  const self=rows.filter(r=>r.ch==='Self'), affi=rows.filter(r=>r.ch==='Affi');
+  const sumT=a=>a.reduce((s,r)=>s+r.target,0), sumA=a=>a.reduce((s,r)=>s+r.actual,0);
+  const ach=tgt?Math.round(act/tgt*100):0;
+  const hit=rows.filter(r=>r.target&&r.actual>=r.target).length;
+  // by host
+  const hostMap={}; for(const r of rows){ const h=r.host||'(ไม่ระบุ)'; (hostMap[h]=hostMap[h]||{t:0,a:0,n:0,ch:new Set()}); hostMap[h].t+=r.target; hostMap[h].a+=r.actual; hostMap[h].n++; hostMap[h].ch.add(r.ch); }
+  const hosts=Object.entries(hostMap).map(([h,v])=>({h,...v})).sort((a,b)=>b.a-a.a||b.t-a.t);
+
+  const tile=(l,v,s)=>`<div class="tile"><div class="l">${l}</div><div class="v tnum">${v}</div>${s?`<div class="s">${s}</div>`:''}</div>`;
+  let html=`<div class="tiles">
+    ${tile('จำนวนไลฟ์ (แผน)', rows.length, `Self ${self.length} · Affi ${affi.length}`)}
+    ${tile('เป้ารวม', fmt(tgt), `เฉลี่ย ${fmt(tgt/(rows.length||1))}/ไลฟ์`)}
+    ${tile('ยอดจริงรวม', fmt(act), `จากชีตไลฟ์ (เท่าที่จับคู่ได้)`)}
+    ${tile('ทำได้เทียบเป้า', `<span style="color:${ach>=100?'var(--good)':ach>=70?'var(--warn)':'var(--bad)'}">${ach}%</span>`, `ถึงเป้า ${hit}/${rows.length} ไลฟ์`)}
+    ${tile('ส่วนต่าง', (act-tgt>=0?'+':'−')+fmt(Math.abs(act-tgt)), act>=tgt?'เกินเป้า':'ต่ำกว่าเป้า')}
+  </div>`;
+
+  // by channel
+  html+=`<div class="card"><h2>แยกตามช่องทาง</h2><div class="scroll"><table>
+    <thead><tr><th class="l">ช่องทาง</th><th>จำนวนไลฟ์</th><th>เป้า</th><th>ยอดจริง</th><th>ทำได้</th><th class="l">ความคืบหน้า</th></tr></thead><tbody>
+    ${[['Self','self',self],['Affi','affi',affi]].map(([lab,cls,arr])=>`<tr>
+      <td class="l"><span class="chip ${cls}">${lab==='Self'?'Live Self':'Live Affi'}</span></td>
+      <td class="tnum">${arr.length}</td><td class="tnum">${fmt(sumT(arr))}</td><td class="tnum">${fmt(sumA(arr))}</td>
+      <td>${pctCell(sumA(arr),sumT(arr))}</td><td class="l" style="min-width:120px">${barCell(sumA(arr),sumT(arr))}</td></tr>`).join('')}
+  </tbody></table></div></div>`;
+
+  // per live
+  html+=`<div class="card"><h2>รายไลฟ์ (เรียงตามวันที่)</h2><div class="scroll"><table>
+    <thead><tr><th class="l">วันที่</th><th class="l">ช่องทาง</th><th class="l">Host</th><th>เป้า</th><th>ยอดจริง</th><th>ทำได้</th><th>ยอดวิว</th><th class="l">ความคืบหน้า</th></tr></thead><tbody>
+    ${rows.slice().sort((a,b)=>(a.d||99)-(b.d||99)).map(r=>`<tr>
+      <td class="l">${r.d?(r.d+' '+TH_MONTH[r.m||schedMon].slice(0,0)+(EN_MON[r.m||schedMon])):'<span class="muted">'+esc(r.raw)+'</span>'}</td>
+      <td class="l"><span class="chip ${r.ch==='Self'?'self':'affi'}">${r.ch==='Self'?'Self':'Affi'}</span></td>
+      <td class="l">${esc(r.host||'—')}</td>
+      <td class="tnum">${fmt(r.target)}</td>
+      <td class="tnum">${r.matched?fmt(r.actual):'<span class="muted">—</span>'}</td>
+      <td>${r.matched?pctCell(r.actual,r.target):'<span class="pct n">—</span>'}</td>
+      <td class="tnum muted">${r.views?kOf(r.views):'—'}</td>
+      <td class="l" style="min-width:120px">${r.matched?barCell(r.actual,r.target):''}</td></tr>`).join('')}
+  </tbody></table></div>
+  <div class="note">* "ยอดจริง" จับคู่จากชีตไลฟ์ตาม<b>วันที่</b> (Self = ไลฟ์บัญชีร้าน · Affi = ไลฟ์ครีเอเตอร์ จับตาม Host+วันที่ ถ้าแมตชื่อได้ ไม่งั้นรวมทั้งวัน) · วันที่ที่ขึ้น "—" คือยังไม่มีไลฟ์จริงในชีตของวันนั้น หรือรูปแบบวันที่ในแผนอ่านไม่ออก</div></div>`;
+
+  // per host
+  html+=`<div class="card"><h2>แยกตาม Host</h2><div class="scroll"><table>
+    <thead><tr><th class="l">Host</th><th>ไลฟ์</th><th>เป้ารวม</th><th>ยอดจริงรวม</th><th>ทำได้</th><th class="l">ความคืบหน้า</th></tr></thead><tbody>
+    ${hosts.map(h=>`<tr><td class="l">${esc(h.h)}</td><td class="tnum">${h.n}</td><td class="tnum">${fmt(h.t)}</td><td class="tnum">${fmt(h.a)}</td><td>${pctCell(h.a,h.t)}</td><td class="l" style="min-width:120px">${barCell(h.a,h.t)}</td></tr>`).join('')}
+  </tbody></table></div></div>`;
+
+  document.getElementById('app').innerHTML=html;
+}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+</script>
+</body>
+</html>
