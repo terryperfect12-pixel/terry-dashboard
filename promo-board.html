@@ -178,6 +178,9 @@
   .chip .cx:hover{background:var(--bad,#ef4444);color:#fff}
   .chip.addcamp{border-style:dashed;color:var(--accent);font-weight:800;background:transparent}
   .chip.addcamp:hover{background:color-mix(in oklab,var(--accent) 10%,var(--surface))}
+  .compmodes{display:flex;gap:6px;padding:2px 16px 12px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:4px}
+  .compmodes button{border:1px solid var(--line-2);background:var(--surface);color:var(--ink-2);border-radius:10px;padding:7px 13px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+  .compmodes button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
   /* KPI tiles */
   .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:10px;margin-bottom:12px}
   .ktile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 14px}
@@ -354,10 +357,7 @@
   <a class="sitem" href="promo-catalog.html?brand=gala"><span class="sic" style="background:#e11d48"></span>Gala</a>
   <div class="sidesec">โปรโมชัน</div>
   <a class="sitem on" href="promo-board.html"><span class="semoji">🏷️</span>บอร์ดราคาโปรฯ</a>
-  <button class="sitem" type="button" onclick="openRecord()"><span class="semoji">🗓️</span>บันทึกโปรโมชัน</button>
-  <div class="sidesec">สร้าง</div>
-  <button class="sitem" type="button" onclick="document.getElementById('newPromo').click()"><span class="semoji">➕</span>สร้างโปรโมชัน</button>
-  <button class="sitem" type="button" onclick="document.getElementById('newBasket').click()"><span class="semoji">🧺</span>สร้างตะกร้า</button>
+  <button class="sitem" type="button" onclick="openComposer('promo')"><span class="semoji">➕</span>สร้าง / บันทึกโปรฯ</button>
   <div class="sidefoot"><a class="back" href="./">‹ หน้าหลัก</a></div>
 </aside>
 <div class="wrap">
@@ -406,8 +406,14 @@
 <div class="modal hidden" id="composer">
   <div class="sheet" style="max-width:1000px;height:auto;max-height:92vh">
     <div class="sh-top"><b id="compTitle">สร้างโปรโมชัน</b><span class="who" id="compSub">เลือก/กรอกสินค้า → ตั้งราคา → เพิ่มลงบอร์ด</span><button class="xbtn" id="compX">✕</button></div>
-    <div class="cbody2"><div class="ccol" id="ccolL"></div><div class="ccol" id="ccolR"></div></div>
-    <div class="wizfoot"><button class="cadd wizbtn-next" id="cAdd">➕ เพิ่มลงบอร์ด</button></div>
+    <div class="compmodes" id="compModes">
+      <button type="button" data-cm="promo" class="on">🏷️ สร้างโปรโมชัน</button>
+      <button type="button" data-cm="basket">🧺 ตะกร้า / เซ็ต</button>
+      <button type="button" data-cm="record">🗓️ บันทึกช่วงโปร (ปฏิทิน)</button>
+    </div>
+    <div class="cbody2" id="compBody"><div class="ccol" id="ccolL"></div><div class="ccol" id="ccolR"></div></div>
+    <div id="compRec" class="hidden" style="height:72vh;padding:0 16px 14px"><iframe id="recFrame2" title="บันทึกช่วงโปร" style="width:100%;height:100%;border:0;border-radius:12px;display:block"></iframe></div>
+    <div class="wizfoot" id="compFoot"><button class="cadd wizbtn-next" id="cAdd">➕ เพิ่มลงบอร์ด</button></div>
   </div>
 </div>
 
@@ -675,10 +681,9 @@ function renderChips(){
   const chips=allCamps().map(cp=>{const on=cp.k===SEL; const custom=isCustomCamp(cp.k);
     return `<button class="chip ${on?'on':''}" data-k="${esc(cp.k)}" style="${on?`background:${cp.c}`:''}">
       <span class="cdot" style="background:${cp.c}"></span>${esc(cp.k)} <span class="cnt">${campCount(cp.k)}</span>${custom?`<span class="cx" data-delcamp="${esc(cp.k)}" title="ลบหัวข้อโปรนี้">✕</span>`:''}</button>`;}).join('');
-  $('#camps').innerHTML=chips+`<button class="chip addcamp" data-addcamp="1" title="เพิ่มหัวข้อโปรใหม่ (เผื่อมีโปรแทรก)">＋ เพิ่มหัวข้อโปร</button>`;
+  $('#camps').innerHTML=chips;   // "เพิ่มหัวข้อโปร" moved into สร้างโปรโมชัน (composer → หัวข้อโปร)
   $('#camps').querySelectorAll('.chip').forEach(b=>b.onclick=(e)=>{
     if(e.target.closest('[data-delcamp]')){ e.stopPropagation(); removeCamp(e.target.closest('[data-delcamp]').dataset.delcamp); return; }
-    if(b.dataset.addcamp){ addCamp(); return; }
     SEL=b.dataset.k;PENDING=null;renderChips();renderCards();});
 }
 
@@ -987,6 +992,17 @@ const compName=items=>items.map(p=>`${p.name} x${p.qty}`).join(' + ');
 const compSums=items=>({ full:items.reduce((s,p)=>s+(p.full||0)*p.qty,0), awo:items.reduce((s,p)=>s+(p.awo||0)*p.qty,0) });
 function openComposer(mode){
   mode = mode || 'promo';
+  document.querySelectorAll('#compModes button').forEach(b=>b.classList.toggle('on', b.dataset.cm===mode));
+  $('#composer').classList.remove('hidden');
+  const body=$('#compBody'), foot=$('#compFoot'), rec=$('#compRec');
+  if(mode==='record'){   // บันทึกช่วงโปร — embed the promo-log tool (no separate page)
+    $('#compTitle').textContent='บันทึกช่วงโปรโมชัน';
+    $('#compSub').textContent='ลงช่วงโปร/แคมเปญของแต่ละแบรนด์ → ไปขึ้นเป็นแถบบนกราฟ GMV';
+    body.classList.add('hidden'); foot.classList.add('hidden'); rec.classList.remove('hidden');
+    const fr=$('#recFrame2'); if(fr && !fr.getAttribute('src')) fr.setAttribute('src','index.html?tool=promos&embed=1');
+    return;
+  }
+  body.classList.remove('hidden'); foot.classList.remove('hidden'); rec.classList.add('hidden');
   WZ={ base:baseList(), items:[], giftImg:'', scope:'items', mode };
   const T=$('#compTitle'); if(T)T.textContent = mode==='basket' ? 'สร้างตะกร้า / เซ็ต' : 'สร้างโปรโมชัน';
   const S=$('#compSub'); if(S)S.textContent = mode==='basket' ? 'เลือกสินค้า → ตั้งราคา → เพิ่มลงบอร์ด (ตะกร้า/เซ็ต)' : 'เลือกหัวข้อโปร → เลือก/กรอกสินค้า → ตั้งราคา → เพิ่มลงบอร์ด';
@@ -1099,6 +1115,7 @@ function addComposer(){ const store=WZ.scope==='store'; const items=compItems();
   MONTH=mon; closeComposer(); renderMonthSel(); renderChips(); renderCards(); }
 $('#newBasket').addEventListener('click',()=>openComposer('basket'));
 $('#newPromo').addEventListener('click',()=>openComposer('promo'));
+document.querySelectorAll('#compModes button').forEach(b=>b.addEventListener('click',()=>openComposer(b.dataset.cm)));
 $('#compX').addEventListener('click',closeComposer);
 $('#composer').addEventListener('click',e=>{ if(e.target.id==='composer')closeComposer(); });
 $('#cAdd').addEventListener('click',addComposer);
