@@ -463,8 +463,8 @@ const thumbUrl=s=>(/(cf\.shopee|susercontent)/i.test(s)&&/\/file\//.test(s)&&!/_
 const imgTag=(src,cls,eager)=>`<img class="${cls||''}" src="${esc(thumbUrl(src))}" data-full="${esc(src)}" ${eager?'':'loading="lazy"'} onerror="if(this.src!==this.dataset.full){this.src=this.dataset.full}">`;
 function parseCSV(t){const R=[];let r=[],c="",q=false;for(let i=0;i<t.length;i++){const h=t[i];if(q){if(h==='"'){if(t[i+1]==='"'){c+='"';i++}else q=false}else c+=h}else{if(h==='"')q=true;else if(h===','){r.push(c);c=""}else if(h==='\n'){r.push(c);R.push(r);r=[];c=""}else if(h==='\r'){}else c+=h}}if(c!==""||r.length){r.push(c);R.push(r)}return R}
 
-const PROMO_SHEET='17OrznIaHLhQb4uJ3RooMkY2CTsU1VFWyYhjgh1MHh3I';   // new promo plan: Name·SKU·ราคาเต็ม·AWO·DD·MM·PD·flash·(รหัส TikTok)
-const GID_MASTER=1308460539;                        // single tab — image Product ID read from a "รหัส TikTok" column in this same sheet
+const PROMO_SHEET='1A9zb0Duv4xj8-JGflSgbtD2NhpoO9Xa4sAgMWyrcfyc';   // Terry Promotion&Budget plan 2026 → "Master Promotion Plan" tab (SET components SKU1..5+QTY · Name · SKU · ราคาเต็ม · AWO · Double Day · Mid Month · Pay Day · flash sale CEO live)
+const GID_MASTER=280317179;                          // Master Promotion Plan tab — real baskets with component columns
 const COVER_SHEET='1Omn_T1Y3UUnP9d5IcVXnhL2TsXD9AI3IB3A80IUoKqY';
 const COVER_TABS=[720887439,919830494];            // Terry tiktok, Terry Shopee (code→image)
 // Terry single-product images (from the "Terry" image tab, gid=455187715): master product name → TikTok Product ID.
@@ -607,15 +607,20 @@ async function load(){
   const hr=gM.findIndex(r=>r.includes('Name')&&r.some(c=>/ราคาเต็ม/.test(c)));
   if(hr<0) throw new Error('ไม่พบหัวตาราง (Name / ราคาเต็ม)');
   const H=gM[hr], base=H.indexOf('Name');
-  // the "รหัส TikTok" column (Product ID per row, matches Sheet 2) — match by header, else auto-detect a column of long IDs
-  let pidCol=H.findIndex(c=>/tiktok|product\s*id|รหัส\s*tiktok|รหัสสินค้า/i.test(String(c)));
+  // the Product-ID column (matches Sheet 2) — match by header only (avoid the "TikTok Price" column)
+  let pidCol=H.findIndex(c=>/product\s*id|รหัส\s*tiktok|รหัสสินค้า/i.test(String(c)));
+  // SET-component columns: SKU1..SKU5 each followed by its QTY (contents of each basket) → รายการในตะกร้า
+  const compCols=[]; for(let c=0;c<base;c++){ if(/^SKU\s*\d+$/i.test(String(H[c]||'').trim())){ const qn=/qty|จำนวน/i.test(String(H[c+1]||''))?c+1:-1; compCols.push({nameCol:c, qtyCol:qn}); } }
+  const partImg=nm=>{ const cm=coverMatchByName(nm); if(cm&&cm.img)return cm.img; const pid=TERRY_SINGLE_PID[normNm(nm)]; if(pid&&COVER_PID.get(pid))return COVER_PID.get(pid); return ''; };
   SHEET_MONTH = monthKey(new Date().getFullYear(), new Date().getMonth()+1);
   const occ=new Map();   // disambiguate duplicate (name|sku) rows so each gets a unique uid
   for(let i=hr+1;i<gM.length;i++){const r=gM[i];const name=String(r[base]||'').trim();if(!name||name==='Name')continue;
     const prices={}; CAMP.forEach(cp=>prices[cp.k]=num(r[base+cp.off]));
     const full=num(r[base+2]); const sku=String(r[base+1]||'').trim();
-    // basket/set if the name shows a bundle (+, x2, x3) — no auto-grouping, baskets are their own rows
-    const isSet = /\+|x\s*\d|เซ็ต|ตะกร้า/i.test(name);
+    // basket contents from the SKU1..5 component columns (name + qty + image)
+    const parts=[]; for(const cc of compCols){ const pn=String(r[cc.nameCol]||'').trim(); if(!pn)continue; const q=cc.qtyCol>=0?(num(r[cc.qtyCol])||1):1; parts.push({name:pn, qty:q, img:partImg(pn)}); }
+    // basket/set if it has >1 component, or the name shows a bundle (+, x2, x3)
+    const isSet = parts.length>1 || /\+|x\s*\d|เซ็ต|ตะกร้า/i.test(name);
     // image match: seller SKU (exact, works for singles AND baskets) → optional "รหัส TikTok" col → name fallback
     const bySku = coverBySku.get(normSku(sku));
     let pid = (bySku&&bySku.pid) || (pidCol>=0 ? String(r[pidCol]||'').trim() : '');
@@ -627,7 +632,7 @@ async function load(){
     const variant = (bySku&&bySku.variant) || '';   // ตัวเลือกย่อย label (ตัวเลือกสินค้า from Sheet 2)
     const gpid = (bySku&&bySku.pid) || '';           // group ONLY by exact seller-SKU listing (never fuzzy name → no mis-group)
     const bk=name+'|'+sku; const n=occ.get(bk)||0; occ.set(bk,n+1); const uid=bk+'|'+n;
-    ITEMS.push({ uid, name, sku, full, prices, tiktok:0, gwp:'', remark:'', isSet, pid, gpid, variant, autoImg, month:SHEET_MONTH, parts:[] });
+    ITEMS.push({ uid, name, sku, full, prices, tiktok:0, gwp:'', remark:'', isSet, pid, gpid, variant, autoImg, month:SHEET_MONTH, parts });
   }
 }
 
@@ -658,7 +663,10 @@ function loadAssign(){ try{ASSIGN=JSON.parse(localStorage.getItem('promoAssign')
     if(!ASSIGN[u]||typeof ASSIGN[u]!=='object') delete ASSIGN[u]; } }
 function saveAssign(){ try{localStorage.setItem('promoAssign',JSON.stringify(ASSIGN))}catch{} }
 const campsOf=uid=>{ const m=ASSIGN[uid]; return m?Object.keys(m):[]; };
-const inCampaign=it=> SEL==='AWO' ? true : campsOf(it.uid).includes(SEL);   // AWO = all; campaign = copied there
+const isBuiltinCamp=k=>CAMP.some(c=>c.k===k);
+// AWO = all baskets. A built-in campaign (Double Day / Mid Month / Pay Day / flash) shows every basket
+// that has a price in THAT campaign's column in the sheet (data-driven) — plus any manually copied in.
+const inCampaign=it=> SEL==='AWO' ? true : (campsOf(it.uid).includes(SEL) || (isBuiltinCamp(SEL) && (it.prices[SEL]||0)>0));
 // price for a basket under a campaign: its custom price wins, else the sheet price for that campaign
 function campPrice(it,camp){ const m=ASSIGN[it.uid]; const c=m&&+m[camp]; return c>0?c:(it.prices[camp]||it.prices.AWO||0); }
 const uidOf=u=>ITEMS.find(x=>x.uid===u);
@@ -676,7 +684,8 @@ function filtered(){
   return ITEMS.filter(it=>inMonth(it) && !effParent(it.uid) && (TYPE==='all'||(TYPE==='set'?it.isSet:!it.isSet)) && (showHidden || !isHidden(it)));
 }
 function campCount(k){ if(k==='AWO') return ITEMS.filter(it=>inMonth(it)&&!effParent(it.uid)).length;
-  return ITEMS.filter(it=>inMonth(it)&&!effParent(it.uid)&&campsOf(it.uid).includes(k)).length; }
+  const bi=isBuiltinCamp(k);
+  return ITEMS.filter(it=>inMonth(it)&&!effParent(it.uid)&&(campsOf(it.uid).includes(k)||(bi&&(it.prices[k]||0)>0))).length; }
 
 function renderChips(){
   buildAutoG();
